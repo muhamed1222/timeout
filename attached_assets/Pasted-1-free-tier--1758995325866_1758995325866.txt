@@ -1,0 +1,556 @@
+1. Цель и контекст
+
+Создать бесплатный к запуску (free tier) сервис, который:
+
+собирает статусы смен (старт/обед/финиш) и ежедневные отчёты сотрудников;
+
+напоминает в Telegram за X минут до начала/конца смены и обеда;
+
+предоставляет веб-админку для компаний/менеджеров с дашбордом исключений и лентой отчётов;
+
+работает целиком на Supabase (Postgres + Auth + Storage + Edge Functions + Cron), админка на Vercel.
+
+Не цели (v1):
+
+Без платных брокеров/очередей/воркеров;
+
+Без сложных интеграций (Jira/Google Calendar) — фича-флаг на будущее.
+
+2. Роли и персоны
+
+Сотрудник — взаимодействует только через Telegram-бот + Telegram WebApp (без логина в админку).
+
+Менеджер/Админ компании — настраивает графики, следит за отчётами/исключениями (веб-админка).
+
+Владелец компании (owner) — управление биллингом/политиками/правами (пока без оплаты, но роль есть).
+
+Суперадмин платформы — скрытая роль для поддержки (только через сервис-ключ в Edge Functions).
+
+3. Основные сценарии
+3.1 Сотрудник (Telegram)
+
+Утро: за 10–15 мин до planned_start приходит напоминание → кнопка «Открыть форму» (WebApp).
+
+Старт смены: форма «План на день» (3 пункта + ссылки на задачи) → запись WorkInterval.start_at.
+
+Обед: в break_start/break_end — напоминания. Если не нажал — ставится «плановый» перерыв (источник auto).
+
+Вечер: за 10 мин до planned_end напоминание → форма «Итоги дня» (Что сделал, Блокеры, распределение времени, вложения).
+
+Статусы отсутствия: «Отпуск/Больничный/Командировка/Выходной» — приглушают напоминания.
+
+3.2 Менеджер/Админ (веб)
+
+Дашборд «Исключения»: опоздания, нет отчёта, слишком короткий день, длинный обед, no show.
+
+Лента отчётов: фильтры по датам/командам/сотрудникам; экспорт CSV.
+
+Справочники: сотрудники (инвайт), графики (шаблоны), праздники/календарь.
+
+Настройки: таймзона компании, шаблон напоминаний, политики приватности.
+
+4. Нефункциональные требования
+
+Хостинг: Supabase Free (БД, Auth, Storage, Edge Functions, Cron), админка — Vercel Hobby, статика WebApp — Vercel.
+
+Надёжность: Edge Functions идемпотентны; отправка телеграм-сообщений батчами с джиттером.
+
+Производительность: до 1–3 тыс. сотрудников на free-tier (батчи 20–30/запуск, крон раз в 5 мин).
+
+Безопасность: RLS на все таблицы, верификация Telegram initData, шифрование TLS.
+
+Приватность: гео/фото по умолчанию OFF; TTL на вложения; политика хранения задаётся компанией.
+
+Соблюдение времени: все timestamptz в UTC, бизнес-логика с учётом TZ компании/сотрудника.
+
+5. Архитектура
+
+БД: PostgreSQL (Supabase) + RLS. Материализованные представления для сводок.
+
+Edge Functions (Deno + Supabase):
+
+/tg/webhook — приём апдейтов Telegram.
+
+/webapp/submit — приём форм WebApp (план/итоги/обед).
+
+/scheduler/tick — крон-сканер напоминаний/генератор плановых интервалов.
+
+/admin/invite — выпуск инвайтов для сотрудников (deep-link на бота).
+
+Telegram:
+
+Bot API (вебхук на /tg/webhook);
+
+Telegram Web Apps (SDK) для форм.
+
+Админка: Next.js + Supabase Auth (email magic link), Supabase JS client (RLS).
+
+Файлы: Supabase Storage reports bucket (публичные временные URL через signed URLs).
+
+6. Модель данных (DDL v1)
+-- Компания
+create table company (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  timezone text not null default 'Europe/Amsterdam',
+  locale text not null default 'ru',
+  privacy_settings jsonb not null default '{}'::jsonb,
+  created_at timestamptz default now()
+);
+
+-- Админка (Supabase Auth)
+create table admin_user (
+  id uuid primary key default auth.uid(),
+  company_id uuid not null references company(id) on delete cascade,
+  role text not null check (role in ('owner','admin','viewer')),
+  created_at timestamptz default now()
+);
+
+-- Сотрудники
+create table employee (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references company(id) on delete cascade,
+  full_name text not null,
+  position text,
+  telegram_user_id text unique,
+  status text not null default 'active' check (status in ('active','inactive')),
+  tz text, -- если отличается от компании
+  created_at timestamptz default now()
+);
+
+-- Инвайты для сотрудников
+create table employee_invite (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references company(id) on delete cascade,
+  code text not null unique,
+  full_name text,
+  position text,
+  created_at timestamptz default now(),
+  used_by_employee uuid references employee(id),
+  used_at timestamptz
+);
+
+-- Шаблоны графиков
+create table schedule_template (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references company(id) on delete cascade,
+  name text not null,
+  rules jsonb not null, -- {days:[1-5], work:{start:'10:00',end:'18:00'}, breaks:[{'14:00','15:00'}]}
+  created_at timestamptz default now()
+);
+
+-- Назначения графиков сотрудникам
+create table employee_schedule (
+  employee_id uuid references employee(id) on delete cascade,
+  schedule_id uuid references schedule_template(id) on delete cascade,
+  valid_from date not null,
+  valid_to date,
+  primary key (employee_id, valid_from)
+);
+
+-- Смены
+create table shift (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid not null references employee(id) on delete cascade,
+  planned_start_at timestamptz not null,
+  planned_end_at timestamptz not null,
+  status text not null default 'planned' check (status in ('planned','active','done','missed')),
+  created_at timestamptz default now()
+);
+
+-- Рабочие интервалы
+create table work_interval (
+  id uuid primary key default gen_random_uuid(),
+  shift_id uuid not null references shift(id) on delete cascade,
+  start_at timestamptz not null,
+  end_at timestamptz,
+  source text not null default 'bot' check (source in ('bot','auto','admin'))
+);
+
+-- Перерывы
+create table break_interval (
+  id uuid primary key default gen_random_uuid(),
+  shift_id uuid not null references shift(id) on delete cascade,
+  start_at timestamptz not null,
+  end_at timestamptz,
+  type text not null default 'lunch',
+  source text not null default 'auto' check (source in ('bot','auto','admin'))
+);
+
+-- Ежедневный отчёт
+create table daily_report (
+  id uuid primary key default gen_random_uuid(),
+  shift_id uuid not null references shift(id) on delete cascade,
+  planned_items text[],
+  done_items text[],
+  blockers text,
+  tasks_links text[],
+  time_spent jsonb, -- {"taskLabel": minutes}
+  attachments jsonb, -- [{"name":"...", "path":"..."}, ...]
+  submitted_at timestamptz
+);
+
+-- Исключения/сигналы
+create table exception (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid not null references employee(id) on delete cascade,
+  date date not null,
+  kind text not null check (kind in ('late','no_report','short_day','long_break','no_show')),
+  severity int not null default 1,
+  details jsonb,
+  resolved_at timestamptz
+);
+
+-- Напоминания
+create table reminder (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid not null references employee(id) on delete cascade,
+  type text not null check (type in ('pre_start','lunch_start','lunch_end','pre_end','end_report')),
+  planned_at timestamptz not null,
+  sent_at timestamptz
+);
+
+-- Аудит (минимально)
+create table audit_log (
+  id bigserial primary key,
+  at timestamptz default now(),
+  actor text not null,   -- 'tg:<user_id>' | 'admin:<auth.uid>'
+  action text not null,  -- 'start_shift' | 'submit_report' | ...
+  entity text not null,  -- 'shift:uuid' ...
+  payload jsonb
+);
+
+Индексы (минимум)
+
+shift(employee_id, planned_start_at)
+
+work_interval(shift_id, start_at)
+
+break_interval(shift_id, start_at)
+
+exception(employee_id, date)
+
+reminder(planned_at)
+
+daily_report(shift_id)
+
+Представления (пример)
+
+v_timesheet: сводные часы = сумма work_interval − сумма break_interval по дате/сотруднику.
+
+v_exceptions_today: исключения за сегодня по компании.
+
+7. Политики безопасности (RLS)
+
+Включить RLS на всех таблицах, кроме audit_log (только insert через сервис-роль):
+
+Пример для employee:
+
+alter table employee enable row level security;
+
+create policy read_employee_same_company
+on employee for select
+using (company_id = (
+  select company_id from admin_user where id = auth.uid()
+));
+
+-- Вставка/обновление из админки
+create policy write_employee_same_company
+on employee for insert with check (company_id = (
+  select company_id from admin_user where id = auth.uid()
+));
+create policy update_employee_same_company
+on employee for update using (company_id = (
+  select company_id from admin_user where id = auth.uid()
+));
+
+-- Для Edge Functions с service_role: обход RLS (ключ в среде функций).
+
+
+Для действий от лица сотрудника (через Telegram) — все мутации идут через Edge Functions с service role, где дополнительно проводится валидация initData и маппинг telegram_user_id → employee_id.
+
+8. Edge Functions (контракты)
+8.1 POST /tg/webhook
+
+Принимает апдейты Telegram:
+
+Callback-кнопки: start, lunch_start, lunch_end, finish, open_webapp, status:vacation|sick|trip|dayoff.
+
+Сообщения/команды: /start, /help.
+
+Действия:
+
+Идемпотентность по update_id + callback_query.id.
+
+Определить employee по from.id (telegram_user_id).
+
+Создать/закрыть work_interval/break_interval, обновить shift.status.
+
+Лог в audit_log.
+
+Ответы:
+
+200 JSON {ok:true}; обработка ошибок с retry Telegram.
+
+8.2 POST /webapp/submit
+
+Body: { initData: string, type: 'plan'|'report'|'lunch', payload: {...} }
+
+Проверить подпись initData (HMAC на bot_token согласно Telegram WebApp).
+
+Найти employee по user.id из initData.
+
+type=plan: создать/активировать shift, записать planned_items, work_interval.start_at (если нет).
+
+type=report: записать done_items, blockers, time_spent, attachments, submitted_at, закрыть открытый work_interval и shift (status=done).
+
+type=lunch: создать/закрыть break_interval.
+
+Вернуть {success:true}.
+
+8.3 POST /scheduler/tick (cron */5)
+
+Выбрать reminder с planned_at between now() and now()+10m and sent_at is null.
+
+Группировать по типу, отправлять батчами 20–30 сообщений с задержкой 200–300мс между батчами.
+
+Ставить sent_at = now().
+
+Генерировать плановые напоминания на следующие 24 часа по employee_schedule (если ещё не созданы).
+
+Для закрытых дней без report.submitted_at до planned_end + 2h создать exception(no_report).
+
+8.4 POST /admin/invite (только авторизованный админ)
+
+Body: { full_name, position }
+
+Создать employee_invite c уникальным code.
+
+Вернуть deep-link в бота: https://t.me/<bot>?start=<code>.
+
+9. Админка (UI/страницы)
+
+Login (Supabase Auth magic link).
+
+Dashboard:
+
+Cards: «Исключения сегодня», «Без отчёта», «Опоздания».
+
+Таблица исключений (фильтры: дата, команда, тип).
+
+Отчёты:
+
+Список отчётов: сотрудник, дата/смена, «План»/«Сделал»/«Блокеры», часы, вложения (ссылки на Storage signed URL).
+
+Экспорт CSV (серверный Endpoint в Function или клиент через Supabase + преобразование).
+
+Сотрудники:
+
+Список + статусы, инвайт (генерация ссылки/QR).
+
+Карточка сотрудника: смены, отчёты, исключения.
+
+Графики:
+
+CRUD шаблонов (часы, перерывы, дни недели), привязка к сотрудникам.
+
+Настройки:
+
+Таймзона, локаль, шаблоны напоминаний (тексты), приватность (гео/фото — OFF/ON).
+
+10. Telegram UX (сообщения/кнопки)
+
+Утро: «Через 10 минут старт вашей смены (10:00). Открыть форму плана?» [Открыть] [Я опоздаю]
+
+Старт: «Начинаем день?» [Старт сейчас] [Я опоздаю]
+
+Обед (14:00): «Пора на обед.» [Начать обед]
+
+Обед (15:00): «Возвращаемся к работе.» [Закончить обед]
+
+Вечер: «Через 10 минут конец смены. Заполнить краткий отчёт?» [Открыть]
+
+Команды: /start, /help, /status → меню статусов отсутствия.
+
+WebApp формы:
+
+План: 3 поля «Что планирую», массив ссылок; кнопка «Сохранить».
+
+Отчёт: повтор planned → отметка done, «Блокеры», слайдер распределения времени (сумма 100%), вложения (фото/файл).
+
+11. Напоминания (логика)
+
+Генерация reminder на сутки вперёд по активным сотрудникам + их графику:
+
+pre_start = planned_start - 10m
+
+lunch_start/end по шаблону
+
+pre_end = planned_end - 10m
+
+end_report = planned_end
+
+scheduler/tick каждые 5 мин отсылает «окном» ближайшие.
+
+Rate limit Telegram соблюдается батчами и задержками.
+
+12. Хранилище файлов
+
+Bucket: reports (private).
+
+Загрузка: через WebApp (FormData → /webapp/submit → upload с сервис-ключом, запись пути в daily_report.attachments).
+
+Доступ: админка запрашивает signed URLs с ограниченным TTL (например, 1 час).
+
+13. Ошибки и идемпотентность
+
+Идемпотентные ключи: update_id для Telegram, hash(initData+payload) для /webapp/submit.
+
+Повторы отправок: safe, функции должны обрабатывать «уже есть».
+
+Временные ошибки Telegram API: retry с экспоненциальным backoff (до 3 попыток).
+
+Логи: audit_log + console logs в Edge Functions.
+
+14. Критерии приёмки (Acceptance Criteria)
+
+Сотрудник:
+
+Получает напоминания согласно графику (pre_start, lunch_start/end, pre_end, end_report).
+
+Может начать/закончить смену и обед кнопкой в Telegram или формой в WebApp.
+
+Может отправить отчёт (поля план/факт/блокеры/вложение).
+
+Данные:
+
+В БД создаются shift, work_interval, break_interval, daily_report.
+
+Автозаполнение планового обеда при отсутствии факта.
+
+Исключение no_report выставляется, если нет отчёта по истечении 2 часов после planned_end.
+
+Админка:
+
+Авторизация через Supabase Auth.
+
+Видит ленту отчётов, дашборд исключений, список сотрудников.
+
+Может создать инвайт для сотрудника, привязать график.
+
+Экспорт CSV работает (UTF-8, ; как разделитель).
+
+Безопасность:
+
+RLS ограничивает доступ по company_id.
+
+Верификация initData обязательна, без неё 403.
+
+Storage приватный, выдача файлов только по signed URL.
+
+15. Тест-кейсы (минимум)
+
+Обычный день: напоминания → старт → обед старт/конец → отчёт → проверка интервалов/отчёта/исключений (их нет).
+
+Опоздание: пропустить старт до planned_start+15m → создать exception(late) → начать позже → исключение остаётся.
+
+Нет отчёта: не отправлять отчёт → по +2 часа появляется no_report.
+
+Автообед: не нажимать обед → система ставит плановый перерыв.
+
+Две смены в день: создать 2 shift → обработать независимо.
+
+Ночная смена: planned_end на следующий день → отчёт привязывается к дате начала смены.
+
+Статус «Отпуск»: установка статуса — напоминания не отправляются.
+
+Файлы: загрузка вложения → доступ через signed URL в админке.
+
+RLS: админ одной компании не видит сотрудников другой (проба прямого запроса).
+
+Повторы: повторный клик «Старт» — не создаёт дубликатов интервалов.
+
+16. Мониторинг и метрики
+
+Логи Edge Functions (ошибки/время ответа).
+
+Тех.метрики: delivery rate Telegram, CTR на кнопки (через callback-ответы), количество exceptions/day.
+
+Бизнес-метрики: % смен с отчётом, средние опоздания, «время заполнения отчёта».
+
+17. Деплой и конфигурация
+17.1 Переменные окружения
+
+SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+
+TELEGRAM_BOT_TOKEN
+
+WEBAPP_BASE_URL (Vercel)
+
+TZ_DEFAULT=Europe/Amsterdam
+
+17.2 Порядок запуска
+
+Создать проект Supabase, накатить DDL, включить RLS/политики.
+
+Залить Edge Functions (tg/webhook, webapp/submit, scheduler/tick, admin/invite).
+
+Настроить Cron (scheduler/tick — */5 * * * *).
+
+Создать Telegram-бота, выставить webhook на URL функции.
+
+Деплой админки (Vercel) и WebApp (Vercel).
+
+Создать первую компанию/owner (через SQL/функцию), залогиниться, создать шаблон графика, пригласить сотрудника.
+
+18. Ограничения free-tier и обходы
+
+Лимит Storage — включить TTL на вложения (например, 90 дней) и сжатие фото на клиенте.
+
+Нет очередей — крон-сканер и батчи с джиттером.
+
+Ограничения частоты функций — все тяжёлые вычисления в кроне/представлениях.
+
+19. Риски и меры
+
+DST/таймзоны: хранить UTC, планировать с учётом TZ; тест на переходах.
+
+Потеря вебхука: периодически проверять setWebhook или иметь ручную команду healthcheck.
+
+Telegram rate limit: не более 1–2 напоминаний на событие, батчи.
+
+20. Бэклог (MVP → MVP+)
+
+[MVP] Базовые сценарии (разделы 3–12).
+
+[MVP+] Эскалации по правилам (уведомления TL/HR), статусы «командировка/больничный» с документами, интеграции-подсказки (календарь), материализованные сводки с автообновлением.
+
+21. План работ (ориентир)
+
+Неделя 1: БД+RLS, tg/webhook, webapp/submit, базовые напоминания, WebApp формы.
+
+Неделя 2: Админка (Auth, дашборд исключений, лента отчётов, сотрудники/инвайты), экспорт CSV.
+
+Неделя 3: Шаблоны графиков/привязка, ночные/двойные смены, автоперерывы, тестирование/фиксы.
+
+22. Definition of Done
+
+Все критерии приёмки выполнены; тест-кейсы зелёные.
+
+Код функций покрыт обработкой ошибок, идемпотентностью, логированием.
+
+RLS включён и проверен; админка не видит чужие компании.
+
+Документация Readme (деплой/переменные/скрипты).
+
+Демонстрационный аккаунт компании и 1–2 тестовых сотрудника.
+
+23. Приложения
+
+Тексты сообщений бота (RU/EN) — файл локализации.
+
+JSON-схемы WebApp форм (поля, валидация).
+
+SQL-миграции (DDL + политики RLS).
+
+Примеры запросов (curl) к Edge Functions.
