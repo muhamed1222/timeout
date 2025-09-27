@@ -27,6 +27,7 @@ export interface IStorage {
   // Companies
   createCompany(company: InsertCompany): Promise<Company>;
   getCompany(id: string): Promise<Company | undefined>;
+  getAllCompanies(): Promise<Company[]>;
   
   // Employees
   createEmployee(employee: InsertEmployee): Promise<Employee>;
@@ -90,6 +91,10 @@ export class PostgresStorage implements IStorage {
   async getCompany(id: string): Promise<Company | undefined> {
     const [result] = await db.select().from(schema.company).where(eq(schema.company.id, id));
     return result;
+  }
+
+  async getAllCompanies(): Promise<Company[]> {
+    return db.select().from(schema.company);
   }
 
   // Employees

@@ -41,6 +41,7 @@ const requestReminderSchema = insertReminderSchema.extend({
 });
 
 import { randomBytes } from "crypto";
+import { shiftMonitor } from "./services/shiftMonitor";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -552,6 +553,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Break ended successfully", workInterval });
     } catch (error) {
       console.error("Error ending break:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Shift Monitoring API
+  app.post("/api/companies/:companyId/monitor", async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const result = await shiftMonitor.processCompanyShifts(companyId);
+      res.json({
+        message: "Shift monitoring completed",
+        ...result
+      });
+    } catch (error) {
+      console.error("Error in shift monitoring:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/monitor/global", async (req, res) => {
+    try {
+      const result = await shiftMonitor.runGlobalMonitoring();
+      res.json({
+        message: "Global shift monitoring completed",
+        ...result
+      });
+    } catch (error) {
+      console.error("Error in global monitoring:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/companies/:companyId/violations", async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const violations = await shiftMonitor.checkShiftViolations(companyId);
+      res.json(violations);
+    } catch (error) {
+      console.error("Error checking violations:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
