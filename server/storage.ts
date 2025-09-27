@@ -140,7 +140,10 @@ export class PostgresStorage implements IStorage {
         used_by_employee: employeeId, 
         used_at: sql`now()` 
       })
-      .where(eq(schema.employee_invite.code, code))
+      .where(and(
+        eq(schema.employee_invite.code, code),
+        sql`${schema.employee_invite.used_by_employee} IS NULL`
+      ))
       .returning();
     return result;
   }
