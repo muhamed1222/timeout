@@ -43,6 +43,77 @@ const requestReminderSchema = insertReminderSchema.extend({
 import { randomBytes } from "crypto";
 import { shiftMonitor } from "./services/shiftMonitor";
 
+// Helper functions for Telegram integration
+async function handleTelegramMessage(message: any) {
+  const chatId = message.chat.id;
+  const text = message.text;
+  const userId = message.from.id;
+  
+  console.log(`Received Telegram message from ${userId}: ${text}`);
+  
+  // Handle commands
+  if (text === '/start') {
+    // Send welcome message with WebApp button
+    await sendTelegramMessage(chatId, 
+      "Добро пожаловать в систему управления сменами! 🚀\n\n" +
+      "Используйте кнопку ниже для управления рабочими сменами.",
+      {
+        reply_markup: {
+          inline_keyboard: [[
+            {
+              text: "🚀 Открыть панель смен",
+              web_app: { url: `${process.env.WEBAPP_URL || 'https://your-domain.replit.app'}/webapp` }
+            }
+          ]]
+        }
+      }
+    );
+  } else if (text === '/status') {
+    // Get employee status
+    const employee = await storage.getEmployeeByTelegramId(userId.toString());
+    
+    if (employee) {
+      const shifts = await storage.getShiftsByEmployee(employee.id);
+      const activeShift = shifts.find(s => s.status === 'active');
+      
+      if (activeShift) {
+        await sendTelegramMessage(chatId, `📊 Статус: На работе\n⏰ Смена с ${activeShift.planned_start_at} до ${activeShift.planned_end_at}`);
+      } else {
+        await sendTelegramMessage(chatId, "📊 Статус: Не на работе");
+      }
+    } else {
+      await sendTelegramMessage(chatId, "❌ Сотрудник не найден. Обратитесь к администратору.");
+    }
+  }
+}
+
+async function handleTelegramCallback(callbackQuery: any) {
+  console.log("Received callback query:", callbackQuery.data);
+}
+
+async function sendTelegramMessage(chatId: number, text: string, options?: any) {
+  // In a real implementation, this would send a message via Telegram Bot API
+  console.log(`Sending message to ${chatId}: ${text}`, options);
+}
+
+function getEmployeeStatus(activeShift: any, workIntervals: any[], breakIntervals: any[]) {
+  if (!activeShift) {
+    return 'off_work';
+  }
+  
+  const activeBreak = breakIntervals.find(bi => bi.start_at && !bi.end_at);
+  if (activeBreak) {
+    return 'on_break';
+  }
+  
+  const activeWork = workIntervals.find(wi => wi.start_at && !wi.end_at);
+  if (activeWork) {
+    return 'working';
+  }
+  
+  return 'unknown';
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   
   // Companies API
@@ -592,6 +663,283 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(violations);
     } catch (error) {
       console.error("Error checking violations:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Telegram Bot Integration API
+  
+  // Webhook endpoint for Telegram bot
+  app.post("/api/telegram/webhook", async (req, res) => {
+    try {
+      const update = req.body;
+      
+      // Handle different types of Telegram updates
+      if (update.message) {
+        await handleTelegramMessage(update.message);
+      } else if (update.callback_query) {
+        await handleTelegramCallback(update.callback_query);
+      }
+      
+      res.status(200).json({ ok: true });
+    } catch (error) {
+      console.error("Error handling Telegram webhook:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // WebApp API for Telegram Mini Apps
+  
+  // Get employee data for WebApp
+  app.get("/api/webapp/employee/:telegramId", async (req, res) => {
+    try {
+      const { telegramId } = req.params;
+      const employee = await storage.getEmployeeByTelegramId(telegramId);
+      
+      if (!employee) {
+        return res.status(404).json({ error: "Employee not found" });
+      }
+      
+      // Get current active shift
+      const shifts = await storage.getShiftsByEmployee(employee.id);
+      const activeShift = shifts.find(s => s.status === 'active');
+      
+      // Get work intervals for today
+      const today = new Date().toISOString().split('T')[0];
+      const todayShifts = shifts.filter(s => s.planned_start_at.startsWith(today));
+      
+      let workIntervals = [];
+      let breakIntervals = [];
+      
+      if (todayShifts.length > 0) {
+        const todayShift = todayShifts[0];
+        workIntervals = await storage.getWorkIntervalsByShift(todayShift.id);
+        breakIntervals = await storage.getBreakIntervalsByShift(todayShift.id);
+      }
+      
+      res.json({
+        employee: {
+          id: employee.id,
+          name: employee.name,
+          telegram_id: employee.telegram_id
+        },
+        activeShift,
+        workIntervals,
+        breakIntervals,
+        status: getEmployeeStatus(activeShift, workIntervals, breakIntervals)
+      });
+    } catch (error) {
+      console.error("Error getting employee data:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Start shift via WebApp
+  app.post("/api/webapp/shift/start", async (req, res) => {
+    try {
+      const { telegramId, location } = req.body;
+      
+      if (!telegramId) {
+        return res.status(400).json({ error: "Telegram ID is required" });
+      }
+      
+      const employee = await storage.getEmployeeByTelegramId(telegramId);
+      
+      if (!employee) {
+        return res.status(404).json({ error: "Employee not found" });
+      }
+      
+      // Find planned shift for today
+      const today = new Date().toISOString().split('T')[0];
+      const shifts = await storage.getShiftsByEmployee(employee.id);
+      const todayShift = shifts.find(s => 
+        s.planned_start_at.startsWith(today) && s.status === 'planned'
+      );
+      
+      if (!todayShift) {
+        return res.status(400).json({ error: "No planned shift found for today" });
+      }
+      
+      // Update shift to active
+      const updatedShift = await storage.updateShift(todayShift.id, {
+        status: 'active',
+        actual_start_at: new Date().toISOString()
+      });
+      
+      // Create work interval
+      const workInterval = await storage.createWorkInterval({
+        employee_id: employee.id,
+        shift_id: todayShift.id,
+        start_at: new Date().toISOString(),
+        source: "webapp",
+        location
+      });
+      
+      res.json({
+        message: "Shift started successfully",
+        shift: updatedShift,
+        workInterval
+      });
+    } catch (error) {
+      console.error("Error starting shift:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // End shift via WebApp
+  app.post("/api/webapp/shift/end", async (req, res) => {
+    try {
+      const { telegramId, location } = req.body;
+      
+      if (!telegramId) {
+        return res.status(400).json({ error: "Telegram ID is required" });
+      }
+      
+      const employee = await storage.getEmployeeByTelegramId(telegramId);
+      
+      if (!employee) {
+        return res.status(404).json({ error: "Employee not found" });
+      }
+      
+      // Find active shift
+      const shifts = await storage.getShiftsByEmployee(employee.id);
+      const activeShift = shifts.find(s => s.status === 'active');
+      
+      if (!activeShift) {
+        return res.status(400).json({ error: "No active shift found" });
+      }
+      
+      // End current work interval
+      const workIntervals = await storage.getWorkIntervalsByShift(activeShift.id);
+      const activeInterval = workIntervals.find(wi => !wi.end_at);
+      
+      if (activeInterval) {
+        await storage.updateWorkInterval(activeInterval.id, {
+          end_at: new Date().toISOString(),
+          location
+        });
+      }
+      
+      // Update shift to completed
+      const updatedShift = await storage.updateShift(activeShift.id, {
+        status: 'completed',
+        actual_end_at: new Date().toISOString()
+      });
+      
+      res.json({
+        message: "Shift ended successfully",
+        shift: updatedShift
+      });
+    } catch (error) {
+      console.error("Error ending shift:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Start break via WebApp
+  app.post("/api/webapp/break/start", async (req, res) => {
+    try {
+      const { telegramId, location } = req.body;
+      
+      if (!telegramId) {
+        return res.status(400).json({ error: "Telegram ID is required" });
+      }
+      
+      const employee = await storage.getEmployeeByTelegramId(telegramId);
+      
+      if (!employee) {
+        return res.status(404).json({ error: "Employee not found" });
+      }
+      
+      // Find active shift
+      const shifts = await storage.getShiftsByEmployee(employee.id);
+      const activeShift = shifts.find(s => s.status === 'active');
+      
+      if (!activeShift) {
+        return res.status(400).json({ error: "No active shift found" });
+      }
+      
+      // End current work interval
+      const workIntervals = await storage.getWorkIntervalsByShift(activeShift.id);
+      const activeInterval = workIntervals.find(wi => !wi.end_at);
+      
+      if (activeInterval) {
+        await storage.updateWorkInterval(activeInterval.id, {
+          end_at: new Date().toISOString(),
+          location
+        });
+      }
+      
+      // Create break interval
+      const breakInterval = await storage.createBreakInterval({
+        employee_id: employee.id,
+        shift_id: activeShift.id,
+        start_at: new Date().toISOString(),
+        source: "webapp",
+        location
+      });
+      
+      res.json({
+        message: "Break started successfully",
+        breakInterval
+      });
+    } catch (error) {
+      console.error("Error starting break:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // End break via WebApp
+  app.post("/api/webapp/break/end", async (req, res) => {
+    try {
+      const { telegramId, location } = req.body;
+      
+      if (!telegramId) {
+        return res.status(400).json({ error: "Telegram ID is required" });
+      }
+      
+      const employee = await storage.getEmployeeByTelegramId(telegramId);
+      
+      if (!employee) {
+        return res.status(404).json({ error: "Employee not found" });
+      }
+      
+      // Find active shift
+      const shifts = await storage.getShiftsByEmployee(employee.id);
+      const activeShift = shifts.find(s => s.status === 'active');
+      
+      if (!activeShift) {
+        return res.status(400).json({ error: "No active shift found" });
+      }
+      
+      // End current break interval
+      const breakIntervals = await storage.getBreakIntervalsByShift(activeShift.id);
+      const activeBreak = breakIntervals.find(bi => !bi.end_at);
+      
+      if (!activeBreak) {
+        return res.status(400).json({ error: "No active break found" });
+      }
+      
+      await storage.updateBreakInterval(activeBreak.id, {
+        end_at: new Date().toISOString(),
+        location
+      });
+      
+      // Start new work interval
+      const workInterval = await storage.createWorkInterval({
+        employee_id: employee.id,
+        shift_id: activeShift.id,
+        start_at: new Date().toISOString(),
+        source: "webapp",
+        location
+      });
+      
+      res.json({
+        message: "Break ended successfully",
+        workInterval
+      });
+    } catch (error) {
+      console.error("Error ending break:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

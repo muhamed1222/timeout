@@ -9,6 +9,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import Dashboard from "@/pages/Dashboard";
 import Exceptions from "@/pages/Exceptions";
 import NotFound from "@/pages/NotFound";
+import WebAppPage from "@/pages/webapp";
 
 function Router() {
   return (
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/schedules" component={() => <div className="p-8"><h1 className="text-2xl font-bold">Графики</h1><p className="text-muted-foreground">Раздел в разработке</p></div>} />
       <Route path="/settings" component={() => <div className="p-8"><h1 className="text-2xl font-bold">Настройки</h1><p className="text-muted-foreground">Раздел в разработке</p></div>} />
       <Route path="/company" component={() => <div className="p-8"><h1 className="text-2xl font-bold">Настройки компании</h1><p className="text-muted-foreground">Раздел в разработке</p></div>} />
+      <Route path="/webapp" component={WebAppPage} />
       <Route component={NotFound} />
     </Switch>
   );
