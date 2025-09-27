@@ -19,7 +19,7 @@ import {
 // Initialize database connection
 const connectionString = process.env.DATABASE_URL!;
 const client = postgres(connectionString, { 
-  ssl: connectionString.includes('supabase') ? 'require' : false 
+  ssl: connectionString.includes('supabase') ? { rejectUnauthorized: false } : false 
 });
 const db = drizzle(client, { schema });
 
@@ -165,8 +165,22 @@ export class PostgresStorage implements IStorage {
 
   async getActiveShiftsByCompany(companyId: string): Promise<(Shift & { employee: Employee })[]> {
     return db.select({
-      ...schema.shift,
-      employee: schema.employee
+      id: schema.shift.id,
+      employee_id: schema.shift.employee_id,
+      planned_start_at: schema.shift.planned_start_at,
+      planned_end_at: schema.shift.planned_end_at,
+      status: schema.shift.status,
+      created_at: schema.shift.created_at,
+      employee: {
+        id: schema.employee.id,
+        company_id: schema.employee.company_id,
+        full_name: schema.employee.full_name,
+        position: schema.employee.position,
+        telegram_user_id: schema.employee.telegram_user_id,
+        status: schema.employee.status,
+        tz: schema.employee.tz,
+        created_at: schema.employee.created_at
+      }
     })
     .from(schema.shift)
     .innerJoin(schema.employee, eq(schema.shift.employee_id, schema.employee.id))
@@ -176,7 +190,7 @@ export class PostgresStorage implements IStorage {
         eq(schema.shift.status, 'planned'),
         eq(schema.shift.status, 'active')
       )
-    ));
+));
   }
 
   async updateShift(id: string, updates: Partial<InsertShift>): Promise<Shift | undefined> {
@@ -241,9 +255,33 @@ export class PostgresStorage implements IStorage {
 
   async getDailyReportsByCompany(companyId: string, limit = 50): Promise<(DailyReport & { shift: Shift; employee: Employee })[]> {
     return db.select({
-      ...schema.daily_report,
-      shift: schema.shift,
-      employee: schema.employee
+      id: schema.daily_report.id,
+      shift_id: schema.daily_report.shift_id,
+      planned_items: schema.daily_report.planned_items,
+      done_items: schema.daily_report.done_items,
+      blockers: schema.daily_report.blockers,
+      tasks_links: schema.daily_report.tasks_links,
+      time_spent: schema.daily_report.time_spent,
+      attachments: schema.daily_report.attachments,
+      submitted_at: schema.daily_report.submitted_at,
+      shift: {
+        id: schema.shift.id,
+        employee_id: schema.shift.employee_id,
+        planned_start_at: schema.shift.planned_start_at,
+        planned_end_at: schema.shift.planned_end_at,
+        status: schema.shift.status,
+        created_at: schema.shift.created_at
+      },
+      employee: {
+        id: schema.employee.id,
+        company_id: schema.employee.company_id,
+        full_name: schema.employee.full_name,
+        position: schema.employee.position,
+        telegram_user_id: schema.employee.telegram_user_id,
+        status: schema.employee.status,
+        tz: schema.employee.tz,
+        created_at: schema.employee.created_at
+      }
     })
     .from(schema.daily_report)
     .innerJoin(schema.shift, eq(schema.daily_report.shift_id, schema.shift.id))
@@ -261,8 +299,23 @@ export class PostgresStorage implements IStorage {
 
   async getExceptionsByCompany(companyId: string): Promise<(Exception & { employee: Employee })[]> {
     return db.select({
-      ...schema.exception,
-      employee: schema.employee
+      id: schema.exception.id,
+      employee_id: schema.exception.employee_id,
+      date: schema.exception.date,
+      kind: schema.exception.kind,
+      severity: schema.exception.severity,
+      details: schema.exception.details,
+      resolved_at: schema.exception.resolved_at,
+      employee: {
+        id: schema.employee.id,
+        company_id: schema.employee.company_id,
+        full_name: schema.employee.full_name,
+        position: schema.employee.position,
+        telegram_user_id: schema.employee.telegram_user_id,
+        status: schema.employee.status,
+        tz: schema.employee.tz,
+        created_at: schema.employee.created_at
+      }
     })
     .from(schema.exception)
     .innerJoin(schema.employee, eq(schema.exception.employee_id, schema.employee.id))
@@ -287,8 +340,21 @@ export class PostgresStorage implements IStorage {
   async getPendingReminders(beforeTime?: Date): Promise<(Reminder & { employee: Employee })[]> {
     const timeFilter = beforeTime || new Date();
     return db.select({
-      ...schema.reminder,
-      employee: schema.employee
+      id: schema.reminder.id,
+      employee_id: schema.reminder.employee_id,
+      type: schema.reminder.type,
+      planned_at: schema.reminder.planned_at,
+      sent_at: schema.reminder.sent_at,
+      employee: {
+        id: schema.employee.id,
+        company_id: schema.employee.company_id,
+        full_name: schema.employee.full_name,
+        position: schema.employee.position,
+        telegram_user_id: schema.employee.telegram_user_id,
+        status: schema.employee.status,
+        tz: schema.employee.tz,
+        created_at: schema.employee.created_at
+      }
     })
     .from(schema.reminder)
     .innerJoin(schema.employee, eq(schema.reminder.employee_id, schema.employee.id))
