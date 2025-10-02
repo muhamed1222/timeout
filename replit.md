@@ -33,9 +33,36 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication & Authorization
 - **Admin Authentication**: Supabase Auth for dashboard access with company-based authorization
+  - Login/Register pages with email/password authentication
+  - Route protection: unauthorized users redirected to /login
+  - Automatic company creation on first admin registration
+  - Company ID stored in user_metadata for session management
 - **Employee Authentication**: Telegram WebApp authentication using cryptographic signature verification
 - **Role-Based Access**: Company-scoped data access with admin role management
 - **WebApp Security**: X-Telegram-Init-Data header validation for all mutation endpoints
+
+### Admin Registration System (October 2025)
+- **Registration Flow**: 
+  - Public registration endpoint: POST `/api/auth/register`
+  - Fields: full_name, company_name, email, password
+  - Automatic company creation in database
+  - Admin user creation in Supabase with Admin API
+  - Rollback mechanism: company deletion if Supabase registration fails
+  - Auto-login after successful registration
+- **Login Flow**:
+  - Standard Supabase signInWithPassword authentication
+  - Session management via Supabase client
+  - Redirect to dashboard on success
+- **Route Protection**:
+  - App.tsx implements authentication guards using useAuth() hook
+  - Loading state with centered spinner while checking auth
+  - Protected routes: all admin pages (/, /employees, /reports, etc.)
+  - Public routes: /login, /register, /webapp
+  - Authenticated users redirected away from auth pages
+- **Requirements**:
+  - SUPABASE_SERVICE_ROLE_KEY environment variable required for registration
+  - Available in Supabase project settings → API → service_role key
+  - Without this key, registration will fail with 500 error
 
 ### Employee Invitation System
 - **Invite Generation**: Cryptographically secure invite codes via randomBytes(16)
