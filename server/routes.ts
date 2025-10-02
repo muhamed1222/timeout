@@ -322,6 +322,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/companies/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = insertCompanySchema.partial().parse(req.body);
+      const company = await storage.updateCompany(id, updates);
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+      res.json(company);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      console.error("Error updating company:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/companies/:companyId/stats", async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      
+      const employees = await storage.getEmployeesByCompany(companyId);
+      const activeShifts = await storage.getActiveShiftsByCompany(companyId);
+      const exceptions = await storage.getExceptionsByCompany(companyId);
+      
+      const today = new Date().toISOString().split('T')[0];
+      const todayShifts = activeShifts.filter(shift => 
+        shift.planned_start_at.toISOString().split('T')[0] === today
+      );
+      
+      const completedShifts = todayShifts.filter(shift => shift.status === 'completed').length;
+      
+      res.json({
+        totalEmployees: employees.length,
+        activeShifts: activeShifts.length,
+        completedShifts,
+        exceptions: exceptions.length
+      });
+    } catch (error) {
+      console.error("Error fetching company stats:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Employees API
   app.post("/api/employees", async (req, res) => {
     try {
@@ -454,6 +499,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error generating invite link:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Schedule Templates API
+  app.post("/api/schedule-templates", async (req, res) => {
+    try {
+      const validatedData = insertScheduleTemplateSchema.parse(req.body);
+      const template = await storage.createScheduleTemplate(validatedData);
+      res.json(template);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      console.error("Error creating schedule template:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/companies/:companyId/schedule-templates", async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const templates = await storage.getScheduleTemplatesByCompany(companyId);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching schedule templates:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/schedule-templates/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.getScheduleTemplate(id);
+      if (!template) {
+        return res.status(404).json({ error: "Schedule template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error("Error fetching schedule template:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/schedule-templates/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = insertScheduleTemplateSchema.partial().parse(req.body);
+      const template = await storage.updateScheduleTemplate(id, updates);
+      if (!template) {
+        return res.status(404).json({ error: "Schedule template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      console.error("Error updating schedule template:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/schedule-templates/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteScheduleTemplate(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting schedule template:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Employee Schedule Assignment
+  app.post("/api/employee-schedule", async (req, res) => {
+    try {
+      const { employee_id, schedule_id, valid_from, valid_to } = req.body;
+      if (!employee_id || !schedule_id || !valid_from) {
+        return res.status(400).json({ error: "employee_id, schedule_id, and valid_from are required" });
+      }
+      await storage.assignScheduleToEmployee(
+        employee_id, 
+        schedule_id, 
+        new Date(valid_from),
+        valid_to ? new Date(valid_to) : undefined
+      );
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error assigning schedule to employee:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/employees/:employeeId/schedules", async (req, res) => {
+    try {
+      const { employeeId } = req.params;
+      const schedules = await storage.getEmployeeSchedules(employeeId);
+      res.json(schedules);
+    } catch (error) {
+      console.error("Error fetching employee schedules:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/employees/:employeeId/active-schedule", async (req, res) => {
+    try {
+      const { employeeId } = req.params;
+      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      const schedule = await storage.getActiveEmployeeSchedule(employeeId, date);
+      res.json(schedule || null);
+    } catch (error) {
+      console.error("Error fetching active employee schedule:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
