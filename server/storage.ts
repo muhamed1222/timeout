@@ -40,6 +40,7 @@ export interface IStorage {
   createEmployeeInvite(invite: InsertEmployeeInvite): Promise<EmployeeInvite>;
   getEmployeeInviteByCode(code: string): Promise<EmployeeInvite | undefined>;
   useEmployeeInvite(code: string, employeeId: string): Promise<EmployeeInvite | undefined>;
+  updateEmployeeInvite(code: string, updates: Partial<InsertEmployeeInvite>): Promise<EmployeeInvite | undefined>;
   
   // Shifts
   createShift(shift: InsertShift): Promise<Shift>;
@@ -153,6 +154,14 @@ export class PostgresStorage implements IStorage {
     return result;
   }
 
+  async updateEmployeeInvite(code: string, updates: Partial<InsertEmployeeInvite>): Promise<EmployeeInvite | undefined> {
+    const [result] = await db.update(schema.employee_invite)
+      .set(updates)
+      .where(eq(schema.employee_invite.code, code))
+      .returning();
+    return result;
+  }
+
   // Shifts
   async createShift(shift: InsertShift): Promise<Shift> {
     const [result] = await db.insert(schema.shift).values(shift).returning();
@@ -177,6 +186,8 @@ export class PostgresStorage implements IStorage {
       employee_id: schema.shift.employee_id,
       planned_start_at: schema.shift.planned_start_at,
       planned_end_at: schema.shift.planned_end_at,
+      actual_start_at: schema.shift.actual_start_at,
+      actual_end_at: schema.shift.actual_end_at,
       status: schema.shift.status,
       created_at: schema.shift.created_at,
       employee: {
@@ -277,6 +288,8 @@ export class PostgresStorage implements IStorage {
         employee_id: schema.shift.employee_id,
         planned_start_at: schema.shift.planned_start_at,
         planned_end_at: schema.shift.planned_end_at,
+        actual_start_at: schema.shift.actual_start_at,
+        actual_end_at: schema.shift.actual_end_at,
         status: schema.shift.status,
         created_at: schema.shift.created_at
       },

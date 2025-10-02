@@ -61,9 +61,148 @@ async function handleTelegramMessage(message: any) {
   
   console.log(`Received Telegram message from ${userId}: ${text}`);
   
-  // Handle commands
-  if (text === '/start') {
-    // Send welcome message with WebApp button
+  // Handle /start command with optional invite code parameter
+  if (text?.startsWith('/start')) {
+    const parts = text.split(' ');
+    const inviteCode = parts[1];
+    
+    if (inviteCode) {
+      // Handle invite code
+      try {
+        // Check if employee with this telegram ID already exists
+        let employee = await storage.getEmployeeByTelegramId(userId.toString());
+        
+        if (employee) {
+          // Employee already linked
+          await sendTelegramMessage(chatId, 
+            "❌ Ваш Telegram уже связан с аккаунтом.\n\n" +
+            "Используйте /start для доступа к панели смен."
+          );
+          return;
+        }
+        
+        // Get invite info before attempting to use it
+        const invite = await storage.getEmployeeInviteByCode(inviteCode);
+        
+        if (!invite) {
+          await sendTelegramMessage(chatId, 
+            "❌ Приглашение не найдено.\n\n" +
+            "Обратитесь к администратору для получения нового приглашения."
+          );
+          return;
+        }
+        
+        // Check if invite has pre-created employee
+        if (invite.used_by_employee) {
+          // Link telegram ID to existing employee and atomically mark invite as used
+          const usedInvite = await storage.useEmployeeInvite(inviteCode, invite.used_by_employee);
+          
+          if (!usedInvite) {
+            await sendTelegramMessage(chatId, 
+              "❌ Это приглашение уже использовано.\n\n" +
+              "Обратитесь к администратору для получения нового приглашения."
+            );
+            return;
+          }
+          
+          await storage.updateEmployee(invite.used_by_employee, {
+            telegram_user_id: userId.toString()
+          });
+          employee = await storage.getEmployee(invite.used_by_employee);
+        } else {
+          // For new employees, use a temporary placeholder to reserve the invite first
+          // This prevents race conditions without orphaning employees
+          const tempEmployeeId = '00000000-0000-0000-0000-000000000000';
+          
+          // Try to atomically claim the invite with temp ID
+          const reservedInvite = await storage.useEmployeeInvite(inviteCode, tempEmployeeId);
+          
+          if (!reservedInvite) {
+            // Invite already used by another request
+            await sendTelegramMessage(chatId, 
+              "❌ Это приглашение уже использовано другим пользователем.\n\n" +
+              "Обратитесь к администратору для получения нового приглашения."
+            );
+            return;
+          }
+          
+          try {
+            // Now safe to create employee - invite is reserved
+            employee = await storage.createEmployee({
+              company_id: invite.company_id,
+              full_name: invite.full_name || `Сотрудник ${userId}`,
+              position: invite.position,
+              telegram_user_id: userId.toString(),
+              status: 'active'
+            });
+            
+            // Update invite with real employee ID
+            await storage.updateEmployeeInvite(inviteCode, {
+              used_by_employee: employee.id
+            });
+          } catch (creationError) {
+            // Rollback: release the reserved invite
+            await storage.updateEmployeeInvite(inviteCode, {
+              used_by_employee: null,
+              used_at: null
+            });
+            
+            console.error("Error creating employee, reservation rolled back:", creationError);
+            
+            // Check if it's a unique constraint violation
+            if (creationError && typeof creationError === 'object' && 'code' in creationError && creationError.code === '23505') {
+              await sendTelegramMessage(chatId, 
+                "❌ Ваш Telegram уже связан с аккаунтом.\n\n" +
+                "Используйте /start для доступа к панели смен."
+              );
+            } else {
+              await sendTelegramMessage(chatId, 
+                "❌ Ошибка при создании аккаунта.\n\n" +
+                "Пожалуйста, попробуйте позже или обратитесь к администратору."
+              );
+            }
+            return;
+          }
+        }
+        
+        // Send success message
+        await sendTelegramMessage(chatId, 
+          `✅ Добро пожаловать, ${employee!.full_name}!\n\n` +
+          "Ваш аккаунт успешно активирован.\n" +
+          "Используйте кнопку ниже для управления рабочими сменами.",
+          {
+            reply_markup: {
+              inline_keyboard: [[
+                {
+                  text: "🚀 Открыть панель смен",
+                  web_app: { url: `${process.env.WEBAPP_URL || 'https://your-domain.replit.app'}/webapp` }
+                }
+              ]]
+            }
+          }
+        );
+        return;
+      } catch (error) {
+        console.error("Error processing invite:", error);
+        
+        // Check if it's a unique constraint violation on telegram_user_id
+        if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
+          await sendTelegramMessage(chatId, 
+            "❌ Ваш Telegram уже связан с аккаунтом.\n\n" +
+            "Используйте /start для доступа к панели смен."
+          );
+          return;
+        }
+        
+        await sendTelegramMessage(chatId, 
+          "❌ Ошибка при обработке приглашения.\n\n" +
+          "Пожалуйста, попробуйте позже или обратитесь к администратору."
+        );
+        return;
+      }
+    }
+    
+    // Regular /start without invite code
     await sendTelegramMessage(chatId, 
       "Добро пожаловать в систему управления сменами! 🚀\n\n" +
       "Используйте кнопку ниже для управления рабочими сменами.",
@@ -287,6 +426,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(invite);
     } catch (error) {
       console.error("Error using employee invite:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Generate Telegram deep link for invite
+  app.get("/api/employee-invites/:code/link", async (req, res) => {
+    try {
+      const { code } = req.params;
+      const invite = await storage.getEmployeeInviteByCode(code);
+      
+      if (!invite) {
+        return res.status(404).json({ error: "Invite not found" });
+      }
+      
+      if (invite.used_at) {
+        return res.status(400).json({ error: "Invite already used" });
+      }
+      
+      const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'YourBotName';
+      const deepLink = `https://t.me/${botUsername}?start=${code}`;
+      
+      res.json({ 
+        code,
+        deep_link: deepLink,
+        qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(deepLink)}`
+      });
+    } catch (error) {
+      console.error("Error generating invite link:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
