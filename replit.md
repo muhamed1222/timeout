@@ -33,9 +33,18 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication & Authorization
 - **Admin Authentication**: Supabase Auth for dashboard access with company-based authorization
-- **Employee Authentication**: Telegram WebApp authentication using user IDs
+- **Employee Authentication**: Telegram WebApp authentication using cryptographic signature verification
 - **Role-Based Access**: Company-scoped data access with admin role management
-- **Invite System**: Secure employee onboarding via generated invite codes
+- **WebApp Security**: X-Telegram-Init-Data header validation for all mutation endpoints
+
+### Employee Invitation System
+- **Invite Generation**: Cryptographically secure invite codes via randomBytes(16)
+- **Deep Link Integration**: Telegram bot deep links (t.me/botname?start=CODE) for seamless onboarding
+- **Race Condition Prevention**: Temporary employee ID reservation strategy prevents concurrent redemption
+- **Rollback Logic**: Failed employee creation releases invite reservation for retry capability
+- **Duplicate Detection**: Unique constraint handling for telegram_user_id prevents duplicate accounts
+- **Single-Use Enforcement**: Atomic database updates ensure invites can only be used once
+- **QR Code Support**: Auto-generated QR codes for easy invite distribution via /api/employee-invites/:code/link
 
 ### Real-Time Monitoring
 - **Shift Monitor Service**: Automated violation detection for late arrivals, early departures, and extended breaks
