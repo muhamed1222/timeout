@@ -64,48 +64,68 @@ export default function WebAppPage() {
   });
 
   const startShiftMutation = useMutation({
-    mutationFn: () =>
-      fetch('/api/webapp/shift/start', {
+    mutationFn: () => {
+      const tg = (window as any).Telegram?.WebApp || mockTelegramWebApp;
+      return fetch('/api/webapp/shift/start', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegramId, location })
-      }).then(res => res.json()),
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Telegram-Init-Data': tg.initData || ''
+        },
+        body: JSON.stringify({ telegramId })
+      }).then(res => res.json());
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/webapp/employee', telegramId] });
     }
   });
 
   const endShiftMutation = useMutation({
-    mutationFn: () =>
-      fetch('/api/webapp/shift/end', {
+    mutationFn: () => {
+      const tg = (window as any).Telegram?.WebApp || mockTelegramWebApp;
+      return fetch('/api/webapp/shift/end', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegramId, location })
-      }).then(res => res.json()),
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Telegram-Init-Data': tg.initData || ''
+        },
+        body: JSON.stringify({ telegramId })
+      }).then(res => res.json());
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/webapp/employee', telegramId] });
     }
   });
 
   const startBreakMutation = useMutation({
-    mutationFn: () =>
-      fetch('/api/webapp/break/start', {
+    mutationFn: () => {
+      const tg = (window as any).Telegram?.WebApp || mockTelegramWebApp;
+      return fetch('/api/webapp/break/start', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegramId, location })
-      }).then(res => res.json()),
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Telegram-Init-Data': tg.initData || ''
+        },
+        body: JSON.stringify({ telegramId })
+      }).then(res => res.json());
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/webapp/employee', telegramId] });
     }
   });
 
   const endBreakMutation = useMutation({
-    mutationFn: () =>
-      fetch('/api/webapp/break/end', {
+    mutationFn: () => {
+      const tg = (window as any).Telegram?.WebApp || mockTelegramWebApp;
+      return fetch('/api/webapp/break/end', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegramId, location })
-      }).then(res => res.json()),
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Telegram-Init-Data': tg.initData || ''
+        },
+        body: JSON.stringify({ telegramId })
+      }).then(res => res.json());
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/webapp/employee', telegramId] });
     }

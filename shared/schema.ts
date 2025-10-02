@@ -25,7 +25,7 @@ export const company = pgTable("company", {
 
 // Администраторы (Supabase Auth)
 export const admin_user = pgTable("admin_user", {
-  id: uuid("id").primaryKey().default(sql`auth.uid()`),
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   company_id: uuid("company_id").notNull().references(() => company.id, { onDelete: "cascade" }),
   role: text("role").notNull(),
   created_at: timestamp("created_at").defaultNow(),
@@ -80,6 +80,8 @@ export const shift = pgTable("shift", {
   employee_id: uuid("employee_id").notNull().references(() => employee.id, { onDelete: "cascade" }),
   planned_start_at: timestamp("planned_start_at").notNull(),
   planned_end_at: timestamp("planned_end_at").notNull(),
+  actual_start_at: timestamp("actual_start_at"),
+  actual_end_at: timestamp("actual_end_at"),
   status: text("status").notNull().default("planned"),
   created_at: timestamp("created_at").defaultNow(),
 });

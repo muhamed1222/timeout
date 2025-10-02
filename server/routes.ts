@@ -42,6 +42,16 @@ const requestReminderSchema = insertReminderSchema.extend({
 
 import { randomBytes } from "crypto";
 import { shiftMonitor } from "./services/shiftMonitor";
+import { validateTelegramWebAppData, type TelegramUser } from "./services/telegramAuth";
+
+// Extend Express Request type to include Telegram user
+declare global {
+  namespace Express {
+    interface Request {
+      telegramUser?: TelegramUser;
+    }
+  }
+}
 
 // Helper functions for Telegram integration
 async function handleTelegramMessage(message: any) {
@@ -112,6 +122,34 @@ function getEmployeeStatus(activeShift: any, workIntervals: any[], breakInterval
   }
   
   return 'unknown';
+}
+
+// Middleware for Telegram WebApp authentication
+function authenticateTelegramWebApp(req: any, res: any, next: any) {
+  const initData = req.headers['x-telegram-init-data'] || req.body.initData;
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  
+  // In development mode without bot token, allow requests with telegramId
+  if (!botToken && process.env.NODE_ENV === 'development') {
+    console.warn('TELEGRAM_BOT_TOKEN not set - skipping WebApp auth validation (development mode)');
+    return next();
+  }
+  
+  if (!initData) {
+    return res.status(401).json({ error: 'Missing Telegram init data' });
+  }
+  
+  if (!botToken) {
+    return res.status(500).json({ error: 'Bot token not configured' });
+  }
+  
+  const user = validateTelegramWebAppData(initData, botToken);
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid Telegram signature' });
+  }
+  
+  req.telegramUser = user;
+  next();
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -705,11 +743,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activeShift = shifts.find(s => s.status === 'active');
       
       // Get work intervals for today
-      const today = new Date().toISOString().split('T')[0];
-      const todayShifts = shifts.filter(s => s.planned_start_at.startsWith(today));
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayShifts = shifts.filter(s => {
+        const shiftDate = new Date(s.planned_start_at);
+        shiftDate.setHours(0, 0, 0, 0);
+        return shiftDate.getTime() === today.getTime();
+      });
       
-      let workIntervals = [];
-      let breakIntervals = [];
+      let workIntervals: Awaited<ReturnType<typeof storage.getWorkIntervalsByShift>> = [];
+      let breakIntervals: Awaited<ReturnType<typeof storage.getBreakIntervalsByShift>> = [];
       
       if (todayShifts.length > 0) {
         const todayShift = todayShifts[0];
@@ -720,8 +763,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         employee: {
           id: employee.id,
-          name: employee.name,
-          telegram_id: employee.telegram_id
+          full_name: employee.full_name,
+          telegram_user_id: employee.telegram_user_id
         },
         activeShift,
         workIntervals,
@@ -735,13 +778,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Start shift via WebApp
-  app.post("/api/webapp/shift/start", async (req, res) => {
+  app.post("/api/webapp/shift/start", authenticateTelegramWebApp, async (req, res) => {
     try {
-      const { telegramId, location } = req.body;
-      
-      if (!telegramId) {
-        return res.status(400).json({ error: "Telegram ID is required" });
-      }
+      const telegramId = req.telegramUser?.id?.toString() || req.body.telegramId;
       
       const employee = await storage.getEmployeeByTelegramId(telegramId);
       
@@ -750,11 +789,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Find planned shift for today
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       const shifts = await storage.getShiftsByEmployee(employee.id);
-      const todayShift = shifts.find(s => 
-        s.planned_start_at.startsWith(today) && s.status === 'planned'
-      );
+      const todayShift = shifts.find(s => {
+        const shiftDate = new Date(s.planned_start_at);
+        shiftDate.setHours(0, 0, 0, 0);
+        return shiftDate.getTime() === today.getTime() && s.status === 'planned';
+      });
       
       if (!todayShift) {
         return res.status(400).json({ error: "No planned shift found for today" });
@@ -763,16 +805,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update shift to active
       const updatedShift = await storage.updateShift(todayShift.id, {
         status: 'active',
-        actual_start_at: new Date().toISOString()
+        actual_start_at: new Date()
       });
       
       // Create work interval
       const workInterval = await storage.createWorkInterval({
-        employee_id: employee.id,
         shift_id: todayShift.id,
-        start_at: new Date().toISOString(),
-        source: "webapp",
-        location
+        start_at: new Date(),
+        source: "webapp"
       });
       
       res.json({
@@ -787,13 +827,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // End shift via WebApp
-  app.post("/api/webapp/shift/end", async (req, res) => {
+  app.post("/api/webapp/shift/end", authenticateTelegramWebApp, async (req, res) => {
     try {
-      const { telegramId, location } = req.body;
-      
-      if (!telegramId) {
-        return res.status(400).json({ error: "Telegram ID is required" });
-      }
+      const telegramId = req.telegramUser?.id?.toString() || req.body.telegramId;
       
       const employee = await storage.getEmployeeByTelegramId(telegramId);
       
@@ -815,15 +851,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (activeInterval) {
         await storage.updateWorkInterval(activeInterval.id, {
-          end_at: new Date().toISOString(),
-          location
+          end_at: new Date()
         });
       }
       
       // Update shift to completed
       const updatedShift = await storage.updateShift(activeShift.id, {
         status: 'completed',
-        actual_end_at: new Date().toISOString()
+        actual_end_at: new Date()
       });
       
       res.json({
@@ -837,13 +872,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Start break via WebApp
-  app.post("/api/webapp/break/start", async (req, res) => {
+  app.post("/api/webapp/break/start", authenticateTelegramWebApp, async (req, res) => {
     try {
-      const { telegramId, location } = req.body;
-      
-      if (!telegramId) {
-        return res.status(400).json({ error: "Telegram ID is required" });
-      }
+      const telegramId = req.telegramUser?.id?.toString() || req.body.telegramId;
       
       const employee = await storage.getEmployeeByTelegramId(telegramId);
       
@@ -865,18 +896,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (activeInterval) {
         await storage.updateWorkInterval(activeInterval.id, {
-          end_at: new Date().toISOString(),
-          location
+          end_at: new Date()
         });
       }
       
       // Create break interval
       const breakInterval = await storage.createBreakInterval({
-        employee_id: employee.id,
         shift_id: activeShift.id,
-        start_at: new Date().toISOString(),
-        source: "webapp",
-        location
+        start_at: new Date(),
+        source: "webapp"
       });
       
       res.json({
@@ -890,13 +918,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // End break via WebApp
-  app.post("/api/webapp/break/end", async (req, res) => {
+  app.post("/api/webapp/break/end", authenticateTelegramWebApp, async (req, res) => {
     try {
-      const { telegramId, location } = req.body;
-      
-      if (!telegramId) {
-        return res.status(400).json({ error: "Telegram ID is required" });
-      }
+      const telegramId = req.telegramUser?.id?.toString() || req.body.telegramId;
       
       const employee = await storage.getEmployeeByTelegramId(telegramId);
       
@@ -921,17 +945,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.updateBreakInterval(activeBreak.id, {
-        end_at: new Date().toISOString(),
-        location
+        end_at: new Date()
       });
       
       // Start new work interval
       const workInterval = await storage.createWorkInterval({
-        employee_id: employee.id,
         shift_id: activeShift.id,
-        start_at: new Date().toISOString(),
-        source: "webapp",
-        location
+        start_at: new Date(),
+        source: "webapp"
       });
       
       res.json({
