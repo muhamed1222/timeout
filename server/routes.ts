@@ -5,7 +5,8 @@ import {
   insertCompanySchema, insertEmployeeSchema, insertShiftSchema,
   insertWorkIntervalSchema, insertBreakIntervalSchema,
   insertDailyReportSchema, insertExceptionSchema,
-  insertEmployeeInviteSchema, insertReminderSchema
+  insertEmployeeInviteSchema, insertReminderSchema,
+  insertScheduleTemplateSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -43,6 +44,7 @@ const requestReminderSchema = insertReminderSchema.extend({
 import { randomBytes } from "crypto";
 import { shiftMonitor } from "./services/shiftMonitor";
 import { validateTelegramWebAppData, type TelegramUser } from "./services/telegramAuth";
+import { handleTelegramMessage } from "./handlers/telegramHandlers";
 
 // Extend Express Request type to include Telegram user
 declare global {
@@ -53,198 +55,7 @@ declare global {
   }
 }
 
-// Helper functions for Telegram integration
-async function handleTelegramMessage(message: any) {
-  const chatId = message.chat.id;
-  const text = message.text;
-  const userId = message.from.id;
-  
-  console.log(`Received Telegram message from ${userId}: ${text}`);
-  
-  // Handle /start command with optional invite code parameter
-  if (text?.startsWith('/start')) {
-    const parts = text.split(' ');
-    const inviteCode = parts[1];
-    
-    if (inviteCode) {
-      // Handle invite code
-      try {
-        // Check if employee with this telegram ID already exists
-        let employee = await storage.getEmployeeByTelegramId(userId.toString());
-        
-        if (employee) {
-          // Employee already linked
-          await sendTelegramMessage(chatId, 
-            "❌ Ваш Telegram уже связан с аккаунтом.\n\n" +
-            "Используйте /start для доступа к панели смен."
-          );
-          return;
-        }
-        
-        // Get invite info before attempting to use it
-        const invite = await storage.getEmployeeInviteByCode(inviteCode);
-        
-        if (!invite) {
-          await sendTelegramMessage(chatId, 
-            "❌ Приглашение не найдено.\n\n" +
-            "Обратитесь к администратору для получения нового приглашения."
-          );
-          return;
-        }
-        
-        // Check if invite has pre-created employee
-        if (invite.used_by_employee) {
-          // Link telegram ID to existing employee and atomically mark invite as used
-          const usedInvite = await storage.useEmployeeInvite(inviteCode, invite.used_by_employee);
-          
-          if (!usedInvite) {
-            await sendTelegramMessage(chatId, 
-              "❌ Это приглашение уже использовано.\n\n" +
-              "Обратитесь к администратору для получения нового приглашения."
-            );
-            return;
-          }
-          
-          await storage.updateEmployee(invite.used_by_employee, {
-            telegram_user_id: userId.toString()
-          });
-          employee = await storage.getEmployee(invite.used_by_employee);
-        } else {
-          // For new employees, use a temporary placeholder to reserve the invite first
-          // This prevents race conditions without orphaning employees
-          const tempEmployeeId = '00000000-0000-0000-0000-000000000000';
-          
-          // Try to atomically claim the invite with temp ID
-          const reservedInvite = await storage.useEmployeeInvite(inviteCode, tempEmployeeId);
-          
-          if (!reservedInvite) {
-            // Invite already used by another request
-            await sendTelegramMessage(chatId, 
-              "❌ Это приглашение уже использовано другим пользователем.\n\n" +
-              "Обратитесь к администратору для получения нового приглашения."
-            );
-            return;
-          }
-          
-          try {
-            // Now safe to create employee - invite is reserved
-            employee = await storage.createEmployee({
-              company_id: invite.company_id,
-              full_name: invite.full_name || `Сотрудник ${userId}`,
-              position: invite.position,
-              telegram_user_id: userId.toString(),
-              status: 'active'
-            });
-            
-            // Update invite with real employee ID
-            await storage.updateEmployeeInvite(inviteCode, {
-              used_by_employee: employee.id
-            });
-          } catch (creationError) {
-            // Rollback: release the reserved invite
-            await storage.updateEmployeeInvite(inviteCode, {
-              used_by_employee: null,
-              used_at: null
-            });
-            
-            console.error("Error creating employee, reservation rolled back:", creationError);
-            
-            // Check if it's a unique constraint violation
-            if (creationError && typeof creationError === 'object' && 'code' in creationError && creationError.code === '23505') {
-              await sendTelegramMessage(chatId, 
-                "❌ Ваш Telegram уже связан с аккаунтом.\n\n" +
-                "Используйте /start для доступа к панели смен."
-              );
-            } else {
-              await sendTelegramMessage(chatId, 
-                "❌ Ошибка при создании аккаунта.\n\n" +
-                "Пожалуйста, попробуйте позже или обратитесь к администратору."
-              );
-            }
-            return;
-          }
-        }
-        
-        // Send success message
-        await sendTelegramMessage(chatId, 
-          `✅ Добро пожаловать, ${employee!.full_name}!\n\n` +
-          "Ваш аккаунт успешно активирован.\n" +
-          "Используйте кнопку ниже для управления рабочими сменами.",
-          {
-            reply_markup: {
-              inline_keyboard: [[
-                {
-                  text: "🚀 Открыть панель смен",
-                  web_app: { url: `${process.env.WEBAPP_URL || 'https://your-domain.replit.app'}/webapp` }
-                }
-              ]]
-            }
-          }
-        );
-        return;
-      } catch (error) {
-        console.error("Error processing invite:", error);
-        
-        // Check if it's a unique constraint violation on telegram_user_id
-        if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
-          await sendTelegramMessage(chatId, 
-            "❌ Ваш Telegram уже связан с аккаунтом.\n\n" +
-            "Используйте /start для доступа к панели смен."
-          );
-          return;
-        }
-        
-        await sendTelegramMessage(chatId, 
-          "❌ Ошибка при обработке приглашения.\n\n" +
-          "Пожалуйста, попробуйте позже или обратитесь к администратору."
-        );
-        return;
-      }
-    }
-    
-    // Regular /start without invite code
-    await sendTelegramMessage(chatId, 
-      "Добро пожаловать в систему управления сменами! 🚀\n\n" +
-      "Используйте кнопку ниже для управления рабочими сменами.",
-      {
-        reply_markup: {
-          inline_keyboard: [[
-            {
-              text: "🚀 Открыть панель смен",
-              web_app: { url: `${process.env.WEBAPP_URL || 'https://your-domain.replit.app'}/webapp` }
-            }
-          ]]
-        }
-      }
-    );
-  } else if (text === '/status') {
-    // Get employee status
-    const employee = await storage.getEmployeeByTelegramId(userId.toString());
-    
-    if (employee) {
-      const shifts = await storage.getShiftsByEmployee(employee.id);
-      const activeShift = shifts.find(s => s.status === 'active');
-      
-      if (activeShift) {
-        await sendTelegramMessage(chatId, `📊 Статус: На работе\n⏰ Смена с ${activeShift.planned_start_at} до ${activeShift.planned_end_at}`);
-      } else {
-        await sendTelegramMessage(chatId, "📊 Статус: Не на работе");
-      }
-    } else {
-      await sendTelegramMessage(chatId, "❌ Сотрудник не найден. Обратитесь к администратору.");
-    }
-  }
-}
-
-async function handleTelegramCallback(callbackQuery: any) {
-  console.log("Received callback query:", callbackQuery.data);
-}
-
-async function sendTelegramMessage(chatId: number, text: string, options?: any) {
-  // In a real implementation, this would send a message via Telegram Bot API
-  console.log(`Sending message to ${chatId}: ${text}`, options);
-}
-
+// Helper function to determine employee status
 function getEmployeeStatus(activeShift: any, workIntervals: any[], breakIntervals: any[]) {
   if (!activeShift) {
     return 'off_work';
@@ -261,6 +72,12 @@ function getEmployeeStatus(activeShift: any, workIntervals: any[], breakInterval
   }
   
   return 'unknown';
+}
+
+// Handler for Telegram callback queries (inline button presses)
+async function handleTelegramCallback(callbackQuery: any) {
+  console.log("Received callback query:", callbackQuery.data);
+  // TODO: Implement callback handling logic when needed
 }
 
 // Middleware for Telegram WebApp authentication
