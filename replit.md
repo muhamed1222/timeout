@@ -178,8 +178,35 @@ All admin dashboard pages are fully implemented and integrated with live API end
 ✅ Mobile-responsive design
 ✅ Architect-reviewed and approved
 
+### Recent Improvements (October 2025)
+
+#### Telegram Bot Integration
+- ✅ **Real Telegram Bot API**: Implemented `sendTelegramMessage` service using actual HTTPS API calls
+- ✅ **Service Architecture**: Created `server/services/telegramBot.ts` for bot communication
+- ✅ **Message Constants**: Extracted all Telegram messages to `server/constants/telegram.ts`
+- ✅ **Handler Separation**: Split `handleTelegramMessage` into dedicated handler functions in `server/handlers/telegramHandlers.ts`
+  - `handleStartCommand()` - Initial bot interaction
+  - `handleInviteCode()` - Employee invite redemption with dual-path logic
+  - `handleUnknownCommand()` - Graceful handling of unsupported commands
+
+#### Invite Redemption Flow Improvements
+- ✅ **Pre-created Employee Support**: Case 1 handles invites with pre-assigned employees (admin provisioning)
+- ✅ **New Employee Creation**: Case 2 handles dynamic employee creation with invite validation
+- ✅ **Atomic Reservation**: `useEmployeeInvite` atomically marks invites as used to prevent concurrent redemption
+- ✅ **Rollback Logic**: Failed invite claims trigger employee cleanup (mark inactive + clear telegram_user_id)
+- ⚠️ **Transaction Limitation**: Without database transactions, 100% atomicity cannot be guaranteed under extreme contention
+  - Current mitigation: Atomic invite reservation + compensating rollback
+  - Production impact: Minimal - race conditions require simultaneous redemption of identical invite codes
+
+#### Code Quality Improvements
+- ✅ **Removed Example Components**: Deleted 7 unused example files reducing code bloat
+- ✅ **SQL Optimization Verified**: Confirmed `getExceptionsByCompany` uses JOIN for efficient employee name resolution
+- ✅ **Error Handling**: Comprehensive error handling for Telegram API failures and invite redemption conflicts
+- ✅ **Duplicate Detection**: Handles telegram_user_id constraint violations gracefully
+
 ### Next Steps for Production
 1. End-to-end smoke testing in production environment
 2. Verify Supabase auth token propagation in production
-3. Monitor runtime logs for API validation errors
-4. Performance optimization if needed
+3. Test Telegram bot invite redemption with real bot credentials
+4. Monitor runtime logs for API validation errors
+5. (Optional) Implement database transactions for 100% atomic invite redemption
