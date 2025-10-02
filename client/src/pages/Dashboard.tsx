@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Plus, Filter, Download } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import DashboardStats from "@/components/DashboardStats";
 import ShiftCard from "@/components/ShiftCard";
 import RecentActivity, { type ActivityItem } from "@/components/RecentActivity";
@@ -9,6 +10,7 @@ import employeeImage from '@assets/generated_images/Professional_employee_avatar
 
 export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
+  const { toast } = useToast();
 
   //todo: remove mock functionality
   const mockStats = {
@@ -82,19 +84,47 @@ export default function Dashboard() {
 
   const handleSearch = (value: string) => {
     setSearchQuery(value);
-    console.log('Search query:', value);
   };
 
   const handleAddEmployee = () => {
-    console.log('Add employee clicked');
+    toast({
+      title: "Добавление сотрудника",
+      description: "Функция добавления сотрудника будет доступна в следующей версии",
+    });
   };
 
   const handleFilter = () => {
-    console.log('Filter clicked');
+    toast({
+      title: "Фильтры",
+      description: "Настройка фильтров будет доступна в следующей версии",
+    });
   };
 
   const handleExport = () => {
-    console.log('Export clicked');
+    const data = filteredShifts.map(shift => ({
+      Сотрудник: shift.employeeName,
+      Должность: shift.position,
+      Начало: shift.shiftStart,
+      Конец: shift.shiftEnd,
+      Статус: shift.status,
+      Локация: shift.location || '-'
+    }));
+    
+    const csv = [
+      Object.keys(data[0]).join(','),
+      ...data.map(row => Object.values(row).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `shifts_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    
+    toast({
+      title: "Экспорт завершен",
+      description: "Данные успешно экспортированы в CSV файл",
+    });
   };
 
   const filteredShifts = mockShifts.filter(shift =>
