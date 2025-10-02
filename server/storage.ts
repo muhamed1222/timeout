@@ -29,6 +29,7 @@ export interface IStorage {
   getCompany(id: string): Promise<Company | undefined>;
   getAllCompanies(): Promise<Company[]>;
   updateCompany(id: string, updates: Partial<InsertCompany>): Promise<Company | undefined>;
+  deleteCompany(companyId: string): Promise<void>;
   
   // Employees
   createEmployee(employee: InsertEmployee): Promise<Employee>;
@@ -113,6 +114,10 @@ export class PostgresStorage implements IStorage {
       .where(eq(schema.company.id, id))
       .returning();
     return result;
+  }
+
+  async deleteCompany(companyId: string): Promise<void> {
+    await db.delete(schema.company).where(eq(schema.company.id, companyId));
   }
 
   // Employees
