@@ -8,6 +8,8 @@ import { AppSidebar } from "@/components/AppSidebar";
 import ThemeToggle from "@/components/ThemeToggle";
 import Dashboard from "@/pages/Dashboard";
 import Exceptions from "@/pages/Exceptions";
+import Employees from "@/pages/Employees";
+import Reports from "@/pages/Reports";
 import NotFound from "@/pages/NotFound";
 import WebAppPage from "@/pages/webapp";
 
@@ -16,8 +18,8 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/exceptions" component={Exceptions} />
-      <Route path="/employees" component={() => <div className="p-8"><h1 className="text-2xl font-bold">Сотрудники</h1><p className="text-muted-foreground">Раздел в разработке</p></div>} />
-      <Route path="/reports" component={() => <div className="p-8"><h1 className="text-2xl font-bold">Отчеты</h1><p className="text-muted-foreground">Раздел в разработке</p></div>} />
+      <Route path="/employees" component={Employees} />
+      <Route path="/reports" component={Reports} />
       <Route path="/schedules" component={() => <div className="p-8"><h1 className="text-2xl font-bold">Графики</h1><p className="text-muted-foreground">Раздел в разработке</p></div>} />
       <Route path="/settings" component={() => <div className="p-8"><h1 className="text-2xl font-bold">Настройки</h1><p className="text-muted-foreground">Раздел в разработке</p></div>} />
       <Route path="/company" component={() => <div className="p-8"><h1 className="text-2xl font-bold">Настройки компании</h1><p className="text-muted-foreground">Раздел в разработке</p></div>} />
