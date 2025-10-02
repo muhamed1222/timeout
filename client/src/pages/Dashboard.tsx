@@ -1,86 +1,56 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Filter, Download } from "lucide-react";
+import { Search, Plus, Filter, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
 import DashboardStats from "@/components/DashboardStats";
 import ShiftCard from "@/components/ShiftCard";
 import RecentActivity, { type ActivityItem } from "@/components/RecentActivity";
-import employeeImage from '@assets/generated_images/Professional_employee_avatar_7b6fbe18.png';
+
+type DashboardStats = {
+  totalEmployees: number;
+  activeShifts: number;
+  completedShifts: number;
+  exceptions: number;
+};
+
+type ActiveShift = {
+  id: string;
+  employee_id: string;
+  employee: {
+    full_name: string;
+    position: string;
+  };
+  shift_start: string;
+  shift_end: string;
+  status: string;
+  current_work_interval?: {
+    started_at: string;
+  } | null;
+  current_break_interval?: {
+    started_at: string;
+  } | null;
+  daily_report?: {
+    summary: string;
+  } | null;
+};
 
 export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
+  const { companyId, loading: authLoading } = useAuth();
 
-  //todo: remove mock functionality
-  const mockStats = {
-    totalEmployees: 24,
-    activeShifts: 12,
-    completedShifts: 8,
-    exceptions: 3
-  };
+  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
+    queryKey: ['/api/companies', companyId, 'stats'],
+    enabled: !!companyId,
+  });
 
-  const mockShifts = [
-    {
-      employeeName: "Анна Петрова",
-      employeeImage: employeeImage,
-      position: "Менеджер продаж", 
-      shiftStart: "09:00",
-      shiftEnd: "18:00",
-      status: "active" as const,
-      location: "Офис Москва",
-      lastReport: "Встреча с клиентом завершена"
-    },
-    {
-      employeeName: "Михаил Сидоров",
-      position: "Разработчик",
-      shiftStart: "10:00", 
-      shiftEnd: "19:00",
-      status: "break" as const,
-      lastReport: "Работаю над новой функцией"
-    },
-    {
-      employeeName: "Елена Козлова",
-      position: "Дизайнер",
-      shiftStart: "09:30",
-      shiftEnd: "18:30", 
-      status: "late" as const,
-      location: "Удаленно"
-    },
-    {
-      employeeName: "Дмитрий Волков",
-      position: "Аналитик",
-      shiftStart: "09:00",
-      shiftEnd: "18:00",
-      status: "done" as const,
-      location: "Офис СПб"
-    }
-  ];
-
-  const mockActivities: ActivityItem[] = [
-    {
-      id: '1',
-      employeeName: 'Анна Петрова',
-      employeeImage: employeeImage,
-      type: 'shift_start',
-      description: 'Начала рабочую смену',
-      timestamp: '09:15'
-    },
-    {
-      id: '2', 
-      employeeName: 'Михаил Сидоров',
-      type: 'report_submitted',
-      description: 'Отправил ежедневный отчет',
-      timestamp: '18:30'
-    },
-    {
-      id: '3',
-      employeeName: 'Елена Козлова',
-      type: 'break_start',
-      description: 'Начала обеденный перерыв',
-      timestamp: '13:00'
-    }
-  ];
+  const { data: activeShifts = [], isLoading: shiftsLoading } = useQuery<ActiveShift[]>({
+    queryKey: ['/api/companies', companyId, 'shifts', 'active'],
+    enabled: !!companyId,
+  });
 
   const handleSearch = (value: string) => {
     setSearchQuery(value);
@@ -101,6 +71,15 @@ export default function Dashboard() {
   };
 
   const handleExport = () => {
+    if (!transformedShifts.length) {
+      toast({
+        title: "Нет данных",
+        description: "Нет активных смен для экспорта",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const data = filteredShifts.map(shift => ({
       Сотрудник: shift.employeeName,
       Должность: shift.position,
@@ -127,10 +106,45 @@ export default function Dashboard() {
     });
   };
 
-  const filteredShifts = mockShifts.filter(shift =>
+  const getShiftStatus = (shift: ActiveShift): "active" | "break" | "late" | "done" => {
+    if (shift.status === 'completed') return 'done';
+    if (shift.current_break_interval) return 'break';
+    if (shift.current_work_interval) return 'active';
+    return 'late';
+  };
+
+  const transformedShifts = activeShifts.map(shift => ({
+    employeeName: shift.employee.full_name,
+    position: shift.employee.position,
+    shiftStart: new Date(shift.shift_start).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+    shiftEnd: new Date(shift.shift_end).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+    status: getShiftStatus(shift),
+    lastReport: shift.daily_report?.summary || undefined,
+    location: undefined
+  }));
+
+  const filteredShifts = transformedShifts.filter(shift =>
     shift.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     shift.position.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const mockActivities: ActivityItem[] = [];
+
+  if (authLoading || statsLoading || shiftsLoading) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!companyId) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
+        <p className="text-muted-foreground">Необходимо войти в систему</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6" data-testid="page-dashboard">
@@ -157,7 +171,12 @@ export default function Dashboard() {
       </div>
 
       {/* Stats */}
-      <DashboardStats {...mockStats} />
+      <DashboardStats 
+        totalEmployees={stats?.totalEmployees || 0}
+        activeShifts={stats?.activeShifts || 0}
+        completedShifts={stats?.completedShifts || 0}
+        exceptions={stats?.exceptions || 0}
+      />
 
       {/* Search */}
       <div className="relative">
@@ -185,7 +204,7 @@ export default function Dashboard() {
 
         {/* Recent Activity */}
         <div className="space-y-4">
-          <RecentActivity activities={mockActivities} />
+          <RecentActivity activities={[]} />
         </div>
       </div>
     </div>

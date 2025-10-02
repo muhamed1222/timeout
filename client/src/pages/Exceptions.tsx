@@ -2,54 +2,32 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, X } from "lucide-react";
+import { Search, Filter, X, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
 import ExceptionCard, { type ExceptionType } from "@/components/ExceptionCard";
-import employeeImage from '@assets/generated_images/Professional_employee_avatar_7b6fbe18.png';
+
+type ExceptionData = {
+  id: string;
+  employee: {
+    full_name: string;
+  };
+  exception_type: string;
+  description: string;
+  detected_at: string;
+  severity: 1 | 2 | 3;
+};
 
 export default function Exceptions() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState<number | null>(null);
   const [selectedType, setSelectedType] = useState<ExceptionType | null>(null);
+  const { companyId, loading: authLoading } = useAuth();
 
-  //todo: remove mock functionality
-  const mockExceptions = [
-    {
-      employeeName: "Анна Петрова",
-      employeeImage: employeeImage,
-      type: "late" as const,
-      description: "Опоздание на 25 минут. Смена должна была начаться в 09:00",
-      timestamp: "09:25",
-      severity: 2 as const
-    },
-    {
-      employeeName: "Михаил Сидоров", 
-      type: "no_report" as const,
-      description: "Не подал ежедневный отчет за вчера",
-      timestamp: "Вчера",
-      severity: 1 as const
-    },
-    {
-      employeeName: "Елена Козлова",
-      type: "no_show" as const, 
-      description: "Не вышел на работу, не предупредил заранее",
-      timestamp: "08:00",
-      severity: 3 as const
-    },
-    {
-      employeeName: "Дмитрий Волков",
-      type: "long_break" as const,
-      description: "Перерыв длится уже 1 час 15 минут",
-      timestamp: "14:15",
-      severity: 2 as const
-    },
-    {
-      employeeName: "Ольга Морозова",
-      type: "short_day" as const,
-      description: "Смена завершена на 2 часа раньше без согласования",
-      timestamp: "16:00",
-      severity: 1 as const
-    }
-  ];
+  const { data: exceptions = [], isLoading } = useQuery<ExceptionData[]>({
+    queryKey: ['/api/companies', companyId, 'exceptions'],
+    enabled: !!companyId,
+  });
 
   const severityLabels = {
     1: { label: "Низкая", color: "bg-yellow-100 text-yellow-800" },
@@ -86,7 +64,31 @@ export default function Exceptions() {
     setSearchQuery('');
   };
 
-  const filteredExceptions = mockExceptions.filter(exception => {
+  const mapExceptionType = (type: string): ExceptionType => {
+    const typeMap: Record<string, ExceptionType> = {
+      'late_arrival': 'late',
+      'early_departure': 'short_day',
+      'extended_break': 'long_break',
+      'no_report': 'no_report',
+      'no_show': 'no_show'
+    };
+    return typeMap[type] || 'no_show';
+  };
+
+  const transformedExceptions = exceptions.map(exc => ({
+    employeeName: exc.employee.full_name,
+    type: mapExceptionType(exc.exception_type),
+    description: exc.description,
+    timestamp: new Date(exc.detected_at).toLocaleString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit'
+    }),
+    severity: exc.severity
+  }));
+
+  const filteredExceptions = transformedExceptions.filter(exception => {
     const matchesSearch = exception.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          exception.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSeverity = selectedSeverity === null || exception.severity === selectedSeverity;
@@ -97,6 +99,22 @@ export default function Exceptions() {
 
   const hasFilters = selectedSeverity !== null || selectedType !== null || searchQuery.length > 0;
 
+  if (authLoading || isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!companyId) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
+        <p className="text-muted-foreground">Необходимо войти в систему</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6" data-testid="page-exceptions">
       {/* Header */}
@@ -105,8 +123,8 @@ export default function Exceptions() {
           <h1 className="text-3xl font-bold">Исключения</h1>
           <p className="text-muted-foreground">Мониторинг нарушений и проблем</p>
         </div>
-        <Badge variant={mockExceptions.length > 0 ? "destructive" : "secondary"}>
-          {mockExceptions.length} активных
+        <Badge variant={exceptions.length > 0 ? "destructive" : "secondary"}>
+          {exceptions.length} активных
         </Badge>
       </div>
 
