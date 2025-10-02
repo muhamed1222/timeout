@@ -10,6 +10,9 @@ import Dashboard from "@/pages/Dashboard";
 import Exceptions from "@/pages/Exceptions";
 import Employees from "@/pages/Employees";
 import Reports from "@/pages/Reports";
+import Schedules from "@/pages/Schedules";
+import Settings from "@/pages/Settings";
+import CompanySettings from "@/pages/CompanySettings";
 import NotFound from "@/pages/NotFound";
 import WebAppPage from "@/pages/webapp";
 
@@ -20,9 +23,9 @@ function Router() {
       <Route path="/exceptions" component={Exceptions} />
       <Route path="/employees" component={Employees} />
       <Route path="/reports" component={Reports} />
-      <Route path="/schedules" component={() => <div className="p-8"><h1 className="text-2xl font-bold">Графики</h1><p className="text-muted-foreground">Раздел в разработке</p></div>} />
-      <Route path="/settings" component={() => <div className="p-8"><h1 className="text-2xl font-bold">Настройки</h1><p className="text-muted-foreground">Раздел в разработке</p></div>} />
-      <Route path="/company" component={() => <div className="p-8"><h1 className="text-2xl font-bold">Настройки компании</h1><p className="text-muted-foreground">Раздел в разработке</p></div>} />
+      <Route path="/schedules" component={Schedules} />
+      <Route path="/settings" component={Settings} />
+      <Route path="/company" component={CompanySettings} />
       <Route path="/webapp" component={WebAppPage} />
       <Route component={NotFound} />
     </Switch>
