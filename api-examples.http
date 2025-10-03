@@ -1,0 +1,113 @@
+# API Examples для тестирования ShiftManager после деплоя
+# Используйте в VS Code с расширением REST Client
+
+@baseUrl = https://your-app.vercel.app
+
+### Проверка работы API
+GET {{baseUrl}}/api/companies
+
+### Регистрация администратора компании
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "password123",
+  "company_name": "Тестовая Компания",
+  "full_name": "Администратор Тестов"
+}
+
+### Создание сотрудника
+POST {{baseUrl}}/api/employees
+Content-Type: application/json
+
+{
+  "company_id": "your-company-id",
+  "full_name": "Иван Петров",
+  "position": "Менеджер",
+  "status": "active"
+}
+
+### Получение списка сотрудников
+GET {{baseUrl}}/api/companies/your-company-id/employees
+
+### Создание смены
+POST {{baseUrl}}/api/shifts
+Content-Type: application/json
+
+{
+  "employee_id": "employee-id",
+  "planned_start_at": "2024-01-01T09:00:00Z",
+  "planned_end_at": "2024-01-01T18:00:00Z",
+  "status": "planned"
+}
+
+### Получение активных смен
+GET {{baseUrl}}/api/companies/your-company-id/shifts/active
+
+### Начало смены
+POST {{baseUrl}}/api/shifts/shift-id/start
+
+### Начало перерыва
+POST {{baseUrl}}/api/shifts/shift-id/break/start
+Content-Type: application/json
+
+{
+  "type": "lunch"
+}
+
+### Завершение перерыва
+POST {{baseUrl}}/api/shifts/shift-id/break/end
+
+### Завершение смены
+POST {{baseUrl}}/api/shifts/shift-id/end
+
+### Создание исключения
+POST {{baseUrl}}/api/exceptions
+Content-Type: application/json
+
+{
+  "employee_id": "employee-id",
+  "date": "2024-01-01",
+  "kind": "late_arrival",
+  "severity": 2,
+  "details": {
+    "planned_time": "09:00",
+    "actual_time": "09:15",
+    "delay_minutes": 15
+  }
+}
+
+### Получение исключений компании
+GET {{baseUrl}}/api/companies/your-company-id/exceptions
+
+### Разрешение исключения
+PUT {{baseUrl}}/api/exceptions/exception-id/resolve
+
+### Создание приглашения сотрудника
+POST {{baseUrl}}/api/employee-invites
+Content-Type: application/json
+
+{
+  "company_id": "your-company-id",
+  "full_name": "Новый Сотрудник",
+  "position": "Стажер"
+}
+
+### Получение ссылки для приглашения
+GET {{baseUrl}}/api/employee-invites/invite-code/link
+
+### Статистика компании
+GET {{baseUrl}}/api/companies/your-company-id/stats
+
+### Telegram WebApp - получение данных сотрудника
+GET {{baseUrl}}/api/webapp/employee/telegram-user-id
+
+### Telegram WebApp - начало смены
+POST {{baseUrl}}/api/webapp/shift/start
+Content-Type: application/json
+X-Telegram-Init-Data: query_id=xxx&user=xxx
+
+{
+  "telegramId": "telegram-user-id"
+}
