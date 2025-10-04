@@ -2,26 +2,17 @@
 
 ## Пошаговое руководство
 
-### 1. 📋 Подготовка базы данных
+### 1. 📋 Настройка Supabase (база данных + аутентификация)
 
-#### Вариант A: Neon (рекомендуется)
-1. Зарегистрируйтесь на [neon.tech](https://neon.tech)
-2. Создайте новый проект PostgreSQL
-3. Скопируйте CONNECTION STRING из консоли
+Supabase предоставляет всё необходимое: PostgreSQL базу данных и систему аутентификации.
 
-#### Вариант B: Supabase
 1. Зарегистрируйтесь на [supabase.com](https://supabase.com)  
 2. Создайте новый проект
-3. Перейдите в Settings → Database → Connection string
+3. Перейдите в Settings → Database → Connection string и скопируйте DATABASE_URL
+4. Перейдите в Settings → API и скопируйте Project URL, anon key, service_role key
+5. В Authentication → Settings включите Email authentication
 
-### 2. 🔧 Настройка Supabase Auth
-
-1. В проекте Supabase перейдите в Authentication → Settings
-2. Включите Email authentication
-3. Скопируйте Project URL и anon key из Settings → API
-4. **ВАЖНО**: Скопируйте service_role key (нужен для регистрации админов)
-
-### 3. 📊 Выполнение миграций базы данных
+### 2. 📊 Выполнение миграций базы данных
 
 ```sql
 -- Выполните в Supabase SQL Editor или через psql:
@@ -29,7 +20,7 @@
 -- И выполните в вашей базе данных
 ```
 
-### 4. 🚀 Деплой на Vercel
+### 3. 🚀 Деплой на Vercel
 
 #### Способ 1: Через GitHub (рекомендуется)
 1. Загрузите код в GitHub репозиторий
@@ -44,12 +35,12 @@ vercel login
 vercel
 ```
 
-### 5. ⚙️ Настройка переменных окружения в Vercel
+### 4. ⚙️ Настройка переменных окружения в Vercel
 
 В настройках проекта Vercel (Settings → Environment Variables) добавьте:
 
 ```
-DATABASE_URL=postgresql://username:password@host:port/database
+DATABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -62,7 +53,7 @@ TELEGRAM_BOT_TOKEN=1234567890:ABCdefGhIjKlMnOpQrStUvWxYz
 TELEGRAM_BOT_USERNAME=your_bot_name
 ```
 
-### 6. 🤖 Настройка Telegram бота (опционально)
+### 5. 🤖 Настройка Telegram бота (опционально)
 
 1. Создайте бота через [@BotFather](https://t.me/BotFather)
 2. Получите токен бота
@@ -78,7 +69,7 @@ curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
   -d '{"url": "https://your-app.vercel.app/api/telegram/webhook"}'
 ```
 
-### 7. ✅ Проверка деплоя
+### 6. ✅ Проверка деплоя
 
 1. Откройте ваше приложение: `https://your-app.vercel.app`
 2. Попробуйте зарегистрироваться как администратор
