@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import DashboardStats from "@/components/DashboardStats";
 import ShiftCard from "@/components/ShiftCard";
 import RecentActivity, { type ActivityItem } from "@/components/RecentActivity";
+import { AddEmployeeModal } from "@/components/AddEmployeeModal";
 
 type DashboardStats = {
   totalEmployees: number;
@@ -39,6 +40,7 @@ type ActiveShift = {
 
 export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const { toast } = useToast();
   const { companyId, loading: authLoading } = useAuth();
 
@@ -57,10 +59,7 @@ export default function Dashboard() {
   };
 
   const handleAddEmployee = () => {
-    toast({
-      title: "Добавление сотрудника",
-      description: "Функция добавления сотрудника будет доступна в следующей версии",
-    });
+    setShowAddEmployeeModal(true);
   };
 
   const handleFilter = () => {
@@ -207,6 +206,12 @@ export default function Dashboard() {
           <RecentActivity activities={[]} />
         </div>
       </div>
+
+      {/* Add Employee Modal */}
+      <AddEmployeeModal 
+        open={showAddEmployeeModal} 
+        onOpenChange={setShowAddEmployeeModal} 
+      />
     </div>
   );
 }

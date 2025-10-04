@@ -1,0 +1,53 @@
+#!/usr/bin/env node
+
+// Script to run frontend and backend simultaneously in development mode
+
+const { spawn } = require('child_process');
+const dotenv = require('dotenv');
+dotenv.config();
+
+console.log('🚀 Starting project in development mode...\n');
+
+// Start backend
+console.log('🔧 Starting backend on port 3001...');
+const backend = spawn('npx', ['tsx', '-r', 'dotenv/config', 'server/index.ts'], {
+  env: { ...process.env, PORT: '3001' },
+  stdio: 'inherit'
+});
+
+// Start frontend
+console.log('🎨 Starting frontend on port 5173...');
+const frontend = spawn('npx', ['vite'], {
+  stdio: 'inherit'
+});
+
+// Handle process termination
+backend.on('close', (code) => {
+  console.log(`🔧 Backend exited with code ${code}`);
+  frontend.kill();
+});
+
+frontend.on('close', (code) => {
+  console.log(`🎨 Frontend exited with code ${code}`);
+  backend.kill();
+});
+
+// Handle exit signals
+process.on('SIGINT', () => {
+  console.log('\n🛑 Received termination signal, stopping processes...');
+  backend.kill();
+  frontend.kill();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n🛑 Received termination signal, stopping processes...');
+  backend.kill();
+  frontend.kill();
+  process.exit(0);
+});
+
+console.log('\n✅ Project started!');
+console.log('   Frontend: http://localhost:5173');
+console.log('   Backend API: http://localhost:3001/api/*');
+console.log('\nPress Ctrl+C to stop.');

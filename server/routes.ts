@@ -52,6 +52,7 @@ import { randomBytes } from "crypto";
 import { shiftMonitor } from "./services/shiftMonitor";
 import { validateTelegramWebAppData, type TelegramUser } from "./services/telegramAuth";
 import { handleTelegramMessage } from "./handlers/telegramHandlers";
+import { handleTelegramWebhook } from "./telegram/webhook";
 import { supabaseAdmin, hasServiceRoleKey } from "./lib/supabase";
 
 // Extend Express Request type to include Telegram user
@@ -912,12 +913,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const update = req.body;
       
-      // Handle different types of Telegram updates
-      if (update.message) {
-        await handleTelegramMessage(update.message);
-      } else if (update.callback_query) {
-        await handleTelegramCallback(update.callback_query);
-      }
+      // Use the new bot handler
+      await handleTelegramWebhook(update);
       
       res.status(200).json({ ok: true });
     } catch (error) {
