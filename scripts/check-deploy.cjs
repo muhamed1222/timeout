@@ -14,6 +14,19 @@ const checks = [
     fix: 'Файл vercel.json уже создан'
   },
   {
+    name: 'Проверка vercel.json на корректность',
+    check: () => {
+      try {
+        const vercelConfig = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
+        // Проверяем что нет секции functions с runtime
+        return !vercelConfig.functions || !vercelConfig.functions['api/**/*.js'] || !vercelConfig.functions['api/**/*.js'].runtime;
+      } catch (e) {
+        return false;
+      }
+    },
+    fix: 'Удалите секцию "functions" из vercel.json или см. VERCEL_FIX.md'
+  },
+  {
     name: 'Проверка API функции',
     check: () => fs.existsSync('api/index.js'),
     fix: 'API функция уже создана в api/index.js'
