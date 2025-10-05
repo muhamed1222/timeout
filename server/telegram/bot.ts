@@ -10,7 +10,9 @@ import { storage } from '../storage';
 const bot = new Telegraf<Context & { session: SessionData }>(process.env.TELEGRAM_BOT_TOKEN!);
 
 // Настройка сессий
-bot.use(session());
+bot.use(session({
+  defaultSession: () => ({})
+}));
 
 // Middleware для логирования
 bot.use((ctx, next) => {

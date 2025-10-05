@@ -3,10 +3,17 @@ import { SessionData } from '../types';
 import { storage } from '../../storage';
 
 export async function handleStart(ctx: Context & { session: SessionData }) {
+  console.log('Start command received:', {
+    userId: ctx.from?.id,
+    username: ctx.from?.username,
+    messageText: ctx.message && 'text' in ctx.message ? ctx.message.text : 'No text'
+  });
+
   const startParam = ctx.message && 'text' in ctx.message ? 
     ctx.message.text.split(' ')[1] : null;
   
   if (!startParam) {
+    console.log('No start parameter provided, showing access denied message');
     return ctx.reply(`
 ❌ *Доступ запрещён*
 
@@ -16,11 +23,23 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
     `, { parse_mode: 'Markdown' });
   }
 
+  if (!ctx.from?.id) {
+    console.error('No user ID in context');
+    return ctx.reply(`
+❌ *Ошибка аутентификации*
+
+Не удалось определить пользователя Telegram.
+Попробуйте позже или обратитесь к администратору.
+    `, { parse_mode: 'Markdown' });
+  }
+
   try {
+    console.log('Processing invite code:', startParam);
     // Проверяем инвайт-код
     const invite = await storage.getEmployeeInviteByCode(startParam);
     
     if (!invite) {
+      console.log('Invite not found:', startParam);
       return ctx.reply(`
 ❌ *Неверный код приглашения*
 
@@ -30,6 +49,7 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
     }
 
     if (invite.used_at) {
+      console.log('Invite already used:', startParam);
       return ctx.reply(`
 ❌ *Код уже использован*
 
@@ -38,8 +58,9 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
       `, { parse_mode: 'Markdown' });
     }
 
+    console.log('Creating/updating employee for Telegram ID:', ctx.from.id);
     // Создаем или обновляем сотрудника
-    let employee = await storage.getEmployeeByTelegramId(ctx.from!.id.toString());
+    let employee = await storage.getEmployeeByTelegramId(ctx.from.id.toString());
     
     if (!employee) {
       // Создаем нового сотрудника
@@ -47,27 +68,34 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
         company_id: invite.company_id,
         full_name: invite.full_name || 'Сотрудник',
         position: invite.position,
-        telegram_user_id: ctx.from!.id.toString(),
+        telegram_user_id: ctx.from.id.toString(),
         status: 'active'
       });
+      console.log('Created new employee:', employee.id);
     } else {
       // Обновляем существующего сотрудника
       employee = await storage.updateEmployee(employee.id, {
-        telegram_user_id: ctx.from!.id.toString(),
+        telegram_user_id: ctx.from.id.toString(),
         status: 'active'
       });
+      console.log('Updated existing employee:', employee.id);
     }
 
     // Отмечаем инвайт как использованный
     await storage.useEmployeeInvite(startParam, employee.id);
+    console.log('Marked invite as used:', startParam);
 
     // Сохраняем данные в сессию
+    if (!ctx.session) {
+      ctx.session = {};
+    }
     ctx.session.employeeId = employee.id;
     ctx.session.companyId = employee.company_id;
 
     // Получаем информацию о компании
     const company = await storage.getCompany(employee.company_id);
 
+    console.log('Sending welcome message to user:', ctx.from.id);
     await ctx.reply(`
 🎉 *Добро пожаловать!*
 
@@ -94,13 +122,23 @@ ${employee.position ? `💼 *Должность:* ${employee.position}` : ''}
 
 Произошла ошибка при подключении к системе.
 Попробуйте позже или обратитесь к администратору.
+
+Ошибка: ${error.message || 'Неизвестная ошибка'}
     `, { parse_mode: 'Markdown' });
   }
 }
 
 async function showMainMenu(ctx: Context & { session: SessionData }) {
+  if (!ctx.session) {
+    console.error('No session available in showMainMenu');
+    return;
+  }
+  
   const employeeId = ctx.session.employeeId;
-  if (!employeeId) return;
+  if (!employeeId) {
+    console.error('No employeeId in session');
+    return;
+  }
 
   try {
     // Получаем текущую смену
