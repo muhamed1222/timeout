@@ -1,5 +1,5 @@
 // Vercel Serverless Function для ShiftManager API
-const express = require('express');
+import express from 'express';
 
 let app;
 let initialized = false;
@@ -46,7 +46,7 @@ async function initializeApp() {
   return app;
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   try {
     const expressApp = await initializeApp();
     
