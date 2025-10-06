@@ -9,7 +9,7 @@ export async function handleReport(ctx: Context & { session: SessionData }, shif
     return ctx.reply('❌ Ошибка: смена для отчёта не найдена');
   }
 
-  const text = 'text' in ctx.message! ? ctx.message.text : '';
+  const text = (ctx as any)?.message?.text as string | undefined;
   
   if (!text || text.trim().length < 10) {
     return ctx.reply(`
@@ -34,7 +34,7 @@ export async function handleReport(ctx: Context & { session: SessionData }, shif
     });
 
     // Очищаем сессию
-    ctx.session.waitingForReport = null;
+    ctx.session.waitingForReport = undefined;
 
     await ctx.reply(`
 ✅ *Отчёт сохранён*
