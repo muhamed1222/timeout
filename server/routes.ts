@@ -10,7 +10,7 @@ import {
   insertCompanyViolationRulesSchema,
   insertViolationsSchema,
   insertEmployeeRatingSchema
-} from "@shared/schema";
+} from "../shared/schema.js";
 import { z } from "zod";
 
 // Create request schemas with date coercion for JSON clients

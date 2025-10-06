@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { eq, and, or, sql, gte, lte, desc } from "drizzle-orm";
-import * as schema from "@shared/schema";
+import * as schema from "../shared/schema.js";
 import {
   type Company, type InsertCompany,
   type Employee, type InsertEmployee,

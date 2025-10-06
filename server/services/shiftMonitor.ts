@@ -1,5 +1,5 @@
-import { storage } from "../storage";
-import { type InsertException, type Shift, type Employee } from "@shared/schema";
+import { storage } from "../storage.js";
+import { type InsertException, type Shift, type Employee } from "../../shared/schema.js";
 
 export interface ShiftViolation {
   type: 'late_start' | 'early_end' | 'missed_shift' | 'long_break' | 'no_break_end';
