@@ -1230,10 +1230,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Request schemas with relaxed/coerced types for penalty_percent
+  const requestCreateViolationRuleSchema = insertCompanyViolationRulesSchema.extend({
+    penalty_percent: z.union([z.string(), z.number()]).transform((v) =>
+      typeof v === 'number' ? v.toString() : v
+    ),
+  });
+
+  const requestUpdateViolationRuleSchema = insertCompanyViolationRulesSchema.partial().extend({
+    penalty_percent: z.union([z.string(), z.number()]).optional().transform((v) =>
+      v === undefined ? v : (typeof v === 'number' ? v.toString() : v)
+    ),
+  });
+
   // Создать правило нарушения
   app.post("/api/violation-rules", async (req, res) => {
     try {
-      const validatedData = insertCompanyViolationRulesSchema.parse(req.body);
+      const validatedData = requestCreateViolationRuleSchema.parse(req.body);
       // Проверяем, что компания существует
       const company = await storage.getCompany(validatedData.company_id);
       if (!company) {
@@ -1245,13 +1258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (duplicate) {
         return res.status(409).json({ error: "Rule code must be unique within the company" });
       }
-      // Приводим numeric к строке, если пришло числом
-      const penaltyVal: any = (validatedData as any).penalty_percent;
-      const penaltyStr = typeof penaltyVal === 'number' ? penaltyVal.toString() : penaltyVal;
-      const rule = await storage.createViolationRule({
-        ...validatedData,
-        penalty_percent: penaltyStr,
-      } as any);
+      const rule = await storage.createViolationRule(validatedData as any);
       res.json(rule);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1266,7 +1273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/violation-rules/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const validatedData = insertCompanyViolationRulesSchema.partial().parse(req.body);
+      const validatedData = requestUpdateViolationRuleSchema.parse(req.body);
       // If code or company_id provided, enforce uniqueness
       if (validatedData.code || validatedData.company_id) {
         const current = await storage.getViolationRule(id);
@@ -1284,14 +1291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(409).json({ error: "Rule code must be unique within the company" });
         }
       }
-      // Коэрция penalty_percent при апдейте
-      let updates: any = { ...validatedData };
-      if (updates.penalty_percent !== undefined) {
-        updates.penalty_percent = typeof updates.penalty_percent === 'number'
-          ? updates.penalty_percent.toString()
-          : updates.penalty_percent;
-      }
-      const rule = await storage.updateViolationRule(id, updates);
+      const rule = await storage.updateViolationRule(id, validatedData as any);
       if (!rule) {
         return res.status(404).json({ error: "Violation rule not found" });
       }

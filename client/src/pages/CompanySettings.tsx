@@ -9,7 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Building2, Globe, Clock, AlertTriangle, Plus, Edit, Trash2 } from "lucide-react";
+import { Loader2, Building2, Globe, Clock, AlertTriangle, Plus, Edit, Trash2, LogOut } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -55,6 +57,7 @@ type ViolationRuleFormValues = z.infer<typeof violationRuleSchema>;
 export default function CompanySettings() {
   const { companyId, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [isViolationModalOpen, setIsViolationModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ViolationRule | null>(null);
 
@@ -96,7 +99,11 @@ export default function CompanySettings() {
   const createViolationRuleMutation = useMutation({
     mutationFn: async (data: ViolationRuleFormValues) => {
       if (!companyId) throw new Error('Не определена компания');
-      const response = await apiRequest('POST', `/api/violation-rules`, { ...data, company_id: companyId });
+      const response = await apiRequest('POST', `/api/violation-rules`, { 
+        ...data, 
+        penalty_percent: String(data.penalty_percent),
+        company_id: companyId 
+      });
       const payload = await response.json();
       if (!response.ok) {
         const message = payload?.error || 'Не удалось создать правило';
@@ -112,18 +119,19 @@ export default function CompanySettings() {
       });
       setIsViolationModalOpen(false);
     },
-    onError: () => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось создать правило нарушения",
-        variant: "destructive"
-      });
+    onError: (err: any) => {
+      const message = err?.message || 'Не удалось создать правило нарушения';
+      toast({ title: 'Ошибка', description: message, variant: 'destructive' });
+      console.error('Create rule error:', err);
     }
   });
 
   const updateViolationRuleMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: ViolationRuleFormValues }) => {
-      const response = await apiRequest('PUT', `/api/violation-rules/${id}`, data);
+      const response = await apiRequest('PUT', `/api/violation-rules/${id}`, {
+        ...data,
+        penalty_percent: String(data.penalty_percent)
+      });
       const payload = await response.json();
       if (!response.ok) {
         const message = payload?.error || 'Не удалось обновить правило';
@@ -140,12 +148,10 @@ export default function CompanySettings() {
       setIsViolationModalOpen(false);
       setEditingRule(null);
     },
-    onError: () => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось обновить правило нарушения",
-        variant: "destructive"
-      });
+    onError: (err: any) => {
+      const message = err?.message || 'Не удалось обновить правило нарушения';
+      toast({ title: 'Ошибка', description: message, variant: 'destructive' });
+      console.error('Update rule error:', err);
     }
   });
 
@@ -166,12 +172,10 @@ export default function CompanySettings() {
         description: "Правило нарушения успешно удалено"
       });
     },
-    onError: () => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось удалить правило нарушения",
-        variant: "destructive"
-      });
+    onError: (err: any) => {
+      const message = err?.message || 'Не удалось удалить правило нарушения';
+      toast({ title: 'Ошибка', description: message, variant: 'destructive' });
+      console.error('Delete rule error:', err);
     }
   });
 
@@ -265,9 +269,27 @@ export default function CompanySettings() {
 
   return (
     <div className="space-y-6 max-w-4xl" data-testid="page-company-settings">
-      <div>
-        <h1 className="text-3xl font-bold">Настройки компании</h1>
-        <p className="text-muted-foreground">Управление параметрами организации</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Настройки компании</h1>
+          <p className="text-muted-foreground">Управление параметрами организации</p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            try {
+              await supabase.auth.signOut();
+              queryClient.clear();
+              setLocation('/login');
+              toast({ title: 'Вы вышли из аккаунта' });
+            } catch (e) {
+              toast({ title: 'Ошибка', description: 'Не удалось выйти из аккаунта', variant: 'destructive' });
+            }
+          }}
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Выйти
+        </Button>
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
