@@ -183,7 +183,7 @@ export const employee_rating = pgTable("employee_rating", {
   company_id: uuid("company_id").notNull().references(() => company.id, { onDelete: "cascade" }),
   period_start: date("period_start").notNull(), // Начало периода
   period_end: date("period_end").notNull(), // Конец периода
-  rating: numeric("rating", { precision: 5, scale: 2 }).notNull().default(100), // Текущий рейтинг (0–100)
+  rating: numeric("rating", { precision: 5, scale: 2 }).notNull().default("100"), // Текущий рейтинг (0–100)
   status: text("status").notNull().default("active"), // active, warning, terminated
   updated_at: timestamp("updated_at").defaultNow(),
 });
