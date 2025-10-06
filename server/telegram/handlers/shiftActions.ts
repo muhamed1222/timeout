@@ -3,7 +3,7 @@ import { SessionData } from '../types';
 import { storage } from '../../storage';
 
 export async function handleShiftActions(ctx: Context & { session: SessionData }) {
-  const action = ctx.callbackQuery?.data;
+  const action = (ctx as any)?.callbackQuery?.data as string | undefined;
   const employeeId = ctx.session.employeeId;
   
   if (!action || !employeeId) {
