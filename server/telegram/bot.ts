@@ -1,5 +1,4 @@
 import { Telegraf, Context, session } from 'telegraf';
-import type { Update, CallbackQuery } from 'telegraf/typings/core/types/typegram';
 import { SessionData } from './types';
 import { handleStart } from './handlers/start';
 import { handleShiftActions } from './handlers/shiftActions';
@@ -17,7 +16,7 @@ bot.use(session({
 
 // Middleware для логирования
 bot.use((ctx, next) => {
-  const text = 'message' in ctx && 'text' in (ctx as any).message ? (ctx as any).message.text : undefined;
+  const text = (ctx as any)?.message?.text as string | undefined;
   console.log(`[${new Date().toISOString()}] ${ctx.from?.username || 'Unknown'}: ${text || 'Callback'}`);
   return next();
 });
@@ -113,7 +112,7 @@ bot.on('text', async (ctx) => {
     
     if (session?.waitingForReport) {
       await handleReport(ctx, session.waitingForReport);
-      session.waitingForReport = null;
+      session.waitingForReport = undefined;
     } else {
       await ctx.reply('Используйте кнопки для управления сменой или команду /help для справки.');
     }
