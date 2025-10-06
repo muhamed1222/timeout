@@ -74,26 +74,27 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
       console.log('Created new employee:', employee.id);
     } else {
       // Обновляем существующего сотрудника
-      employee = await storage.updateEmployee(employee.id, {
+      const updated = await storage.updateEmployee(employee.id, {
         telegram_user_id: ctx.from.id.toString(),
         status: 'active'
       });
-      console.log('Updated existing employee:', employee.id);
+      console.log('Updated existing employee:', updated?.id);
+      employee = updated || employee;
     }
 
     // Отмечаем инвайт как использованный
-    await storage.useEmployeeInvite(startParam, employee.id);
+    await storage.useEmployeeInvite(startParam, employee!.id);
     console.log('Marked invite as used:', startParam);
 
     // Сохраняем данные в сессию
     if (!ctx.session) {
       ctx.session = {};
     }
-    ctx.session.employeeId = employee.id;
-    ctx.session.companyId = employee.company_id;
+    ctx.session.employeeId = employee!.id;
+    ctx.session.companyId = employee!.company_id;
 
     // Получаем информацию о компании
-    const company = await storage.getCompany(employee.company_id);
+    const company = await storage.getCompany(employee!.company_id);
 
     console.log('Sending welcome message to user:', ctx.from.id);
     await ctx.reply(`
@@ -115,15 +116,15 @@ ${employee.position ? `💼 *Должность:* ${employee.position}` : ''}
     // Показываем главное меню
     await showMainMenu(ctx);
 
-  } catch (error) {
-    console.error('Error in start handler:', error);
+  } catch (error: unknown) {
+    console.error('Error in start handler:', error as any);
     ctx.reply(`
 ❌ *Ошибка подключения*
 
 Произошла ошибка при подключении к системе.
 Попробуйте позже или обратитесь к администратору.
 
-Ошибка: ${error.message || 'Неизвестная ошибка'}
+Ошибка: ${(error as any)?.message || 'Неизвестная ошибка'}
     `, { parse_mode: 'Markdown' });
   }
 }
