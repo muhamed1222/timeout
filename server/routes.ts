@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage } from "./storage.js";
 import {
   insertCompanySchema, insertEmployeeSchema, insertShiftSchema,
   insertWorkIntervalSchema, insertBreakIntervalSchema,
@@ -52,11 +52,11 @@ const registerAdminSchema = z.object({
 });
 
 import { randomBytes } from "crypto";
-import { shiftMonitor } from "./services/shiftMonitor";
-import { validateTelegramWebAppData, type TelegramUser } from "./services/telegramAuth";
-import { handleTelegramMessage } from "./handlers/telegramHandlers";
-import { handleTelegramWebhook } from "./telegram/webhook";
-import { supabaseAdmin, hasServiceRoleKey } from "./lib/supabase";
+import { shiftMonitor } from "./services/shiftMonitor.js";
+import { validateTelegramWebAppData, type TelegramUser } from "./services/telegramAuth.js";
+import { handleTelegramMessage } from "./handlers/telegramHandlers.js";
+import { handleTelegramWebhook } from "./telegram/webhook.js";
+import { supabaseAdmin, hasServiceRoleKey } from "./lib/supabase.js";
 import { sendTelegramMessage } from "./handlers/telegramHandlers";
 
 // Extend Express Request type to include Telegram user
