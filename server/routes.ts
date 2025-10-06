@@ -189,6 +189,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Периоды рейтинга для UI (текущий месяц, прошлый, квартал, год)
+  app.get("/api/rating/periods", async (_req, res) => {
+    try {
+      const now = new Date();
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+      const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+      const quarterStart = new Date(now.getFullYear(), quarterStartMonth, 1);
+      const quarterEnd = new Date(now.getFullYear(), quarterStartMonth + 3, 0);
+
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      const yearEnd = new Date(now.getFullYear(), 12, 0);
+
+      const toYmd = (d: Date) => d.toISOString().split('T')[0];
+
+      const periods = [
+        { id: 'current', name: 'Текущий месяц', start_date: toYmd(currentMonthStart), end_date: toYmd(currentMonthEnd) },
+        { id: 'last', name: 'Прошлый месяц', start_date: toYmd(lastMonthStart), end_date: toYmd(lastMonthEnd) },
+        { id: 'quarter', name: 'Квартал', start_date: toYmd(quarterStart), end_date: toYmd(quarterEnd) },
+        { id: 'year', name: 'Год', start_date: toYmd(yearStart), end_date: toYmd(yearEnd) },
+      ];
+
+      res.json(periods);
+    } catch (error) {
+      console.error('Error building rating periods:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   app.get("/api/companies/:id", async (req, res) => {
     try {
       const { id } = req.params;
