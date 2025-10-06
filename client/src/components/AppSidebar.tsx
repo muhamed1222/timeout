@@ -5,7 +5,8 @@ import {
   AlertTriangle, 
   Calendar, 
   Settings,
-  Building2
+  Building2,
+  Trophy
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -31,6 +32,11 @@ const menuItems = [
     title: "Исключения",
     url: "/exceptions",
     icon: AlertTriangle,
+  },
+  {
+    title: "Рейтинг",
+    url: "/rating",
+    icon: Trophy,
   },
   {
     title: "Сотрудники",

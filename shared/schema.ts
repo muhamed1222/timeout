@@ -8,7 +8,9 @@ import {
   date,
   jsonb,
   bigserial,
-  unique
+  unique,
+  numeric,
+  boolean
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -149,6 +151,43 @@ export const audit_log = pgTable("audit_log", {
 });
 
 // Insert Schemas
+// Система рейтинга - Правила нарушений для компании
+export const company_violation_rules = pgTable("company_violation_rules", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  company_id: uuid("company_id").notNull().references(() => company.id, { onDelete: "cascade" }),
+  code: text("code").notNull(), // Уникальный код (late, no_report, long_break, custom)
+  name: text("name").notNull(), // Название нарушения
+  penalty_percent: numeric("penalty_percent", { precision: 5, scale: 2 }).notNull(), // Процент штрафа
+  auto_detectable: boolean("auto_detectable").notNull().default(false), // Может ли бот определить автоматически
+  is_active: boolean("is_active").notNull().default(true), // Включено ли правило
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// Система рейтинга - Конкретные нарушения сотрудников
+export const violations = pgTable("violations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  employee_id: uuid("employee_id").notNull().references(() => employee.id, { onDelete: "cascade" }),
+  company_id: uuid("company_id").notNull().references(() => company.id, { onDelete: "cascade" }),
+  rule_id: uuid("rule_id").notNull().references(() => company_violation_rules.id, { onDelete: "cascade" }),
+  source: text("source").notNull(), // auto или manual
+  reason: text("reason"), // Комментарий (если вручную)
+  penalty: numeric("penalty", { precision: 5, scale: 2 }).notNull(), // Зафиксированное значение штрафа
+  created_by: uuid("created_by"), // Кто добавил (руководитель / система)
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// Система рейтинга - Итоговый рейтинг сотрудника за период
+export const employee_rating = pgTable("employee_rating", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  employee_id: uuid("employee_id").notNull().references(() => employee.id, { onDelete: "cascade" }),
+  company_id: uuid("company_id").notNull().references(() => company.id, { onDelete: "cascade" }),
+  period_start: date("period_start").notNull(), // Начало периода
+  period_end: date("period_end").notNull(), // Конец периода
+  rating: numeric("rating", { precision: 5, scale: 2 }).notNull().default(100), // Текущий рейтинг (0–100)
+  status: text("status").notNull().default("active"), // active, warning, terminated
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
 export const insertCompanySchema = createInsertSchema(company).omit({
   id: true,
   created_at: true,
@@ -195,6 +234,22 @@ export const insertReminderSchema = createInsertSchema(reminder);
 
 export const insertAuditLogSchema = createInsertSchema(audit_log);
 
+// Система рейтинга - Схемы вставки
+export const insertCompanyViolationRulesSchema = createInsertSchema(company_violation_rules).omit({
+  id: true,
+  created_at: true,
+});
+
+export const insertViolationsSchema = createInsertSchema(violations).omit({
+  id: true,
+  created_at: true,
+});
+
+export const insertEmployeeRatingSchema = createInsertSchema(employee_rating).omit({
+  id: true,
+  updated_at: true,
+});
+
 // Type definitions
 export type Company = typeof company.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
@@ -234,3 +289,13 @@ export type InsertReminder = z.infer<typeof insertReminderSchema>;
 
 export type AuditLog = typeof audit_log.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+
+// Система рейтинга - Типы
+export type CompanyViolationRules = typeof company_violation_rules.$inferSelect;
+export type InsertCompanyViolationRules = z.infer<typeof insertCompanyViolationRulesSchema>;
+
+export type Violations = typeof violations.$inferSelect;
+export type InsertViolations = z.infer<typeof insertViolationsSchema>;
+
+export type EmployeeRating = typeof employee_rating.$inferSelect;
+export type InsertEmployeeRating = z.infer<typeof insertEmployeeRatingSchema>;

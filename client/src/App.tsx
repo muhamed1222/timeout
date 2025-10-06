@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import Dashboard from "@/pages/Dashboard";
 import Exceptions from "@/pages/Exceptions";
+import Rating from "@/pages/Rating";
 import Employees from "@/pages/Employees";
 import Reports from "@/pages/Reports";
 import Schedules from "@/pages/Schedules";
@@ -25,6 +26,7 @@ function MainRouter() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/exceptions" component={Exceptions} />
+      <Route path="/rating" component={Rating} />
       <Route path="/employees" component={Employees} />
       <Route path="/reports" component={Reports} />
       <Route path="/schedules" component={Schedules} />

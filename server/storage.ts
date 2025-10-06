@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq, and, or, sql } from "drizzle-orm";
+import { eq, and, or, sql, gte, lte, desc } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import {
   type Company, type InsertCompany,
@@ -13,7 +13,10 @@ import {
   type Reminder, type InsertReminder,
   type EmployeeInvite, type InsertEmployeeInvite,
   type ScheduleTemplate, type InsertScheduleTemplate,
-  type AuditLog, type InsertAuditLog
+  type AuditLog, type InsertAuditLog,
+  type CompanyViolationRules, type InsertCompanyViolationRules,
+  type Violations, type InsertViolations,
+  type EmployeeRating, type InsertEmployeeRating
 } from "@shared/schema";
 
 // Initialize database connection
@@ -508,6 +511,151 @@ export class PostgresStorage implements IStorage {
     .orderBy(sql`${schema.employee_schedule.valid_from} DESC`)
     .limit(1);
     return result;
+  }
+
+  // Система рейтинга - Правила нарушений
+  async createViolationRule(rule: InsertCompanyViolationRules): Promise<CompanyViolationRules> {
+    const [result] = await db.insert(schema.company_violation_rules).values(rule).returning();
+    return result;
+  }
+
+  async getViolationRulesByCompany(companyId: string): Promise<CompanyViolationRules[]> {
+    return db.select().from(schema.company_violation_rules)
+      .where(eq(schema.company_violation_rules.company_id, companyId))
+      .orderBy(schema.company_violation_rules.name);
+  }
+
+  async getViolationRule(id: string): Promise<CompanyViolationRules | undefined> {
+    const [result] = await db.select().from(schema.company_violation_rules)
+      .where(eq(schema.company_violation_rules.id, id));
+    return result;
+  }
+
+  async updateViolationRule(id: string, updates: Partial<InsertCompanyViolationRules>): Promise<CompanyViolationRules | undefined> {
+    const [result] = await db.update(schema.company_violation_rules)
+      .set(updates)
+      .where(eq(schema.company_violation_rules.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteViolationRule(id: string): Promise<void> {
+    await db.delete(schema.company_violation_rules)
+      .where(eq(schema.company_violation_rules.id, id));
+  }
+
+  // Система рейтинга - Нарушения
+  async createViolation(violation: InsertViolations): Promise<Violations> {
+    const [result] = await db.insert(schema.violations).values(violation).returning();
+    return result;
+  }
+
+  async getViolationsByEmployee(employeeId: string, periodStart?: Date, periodEnd?: Date): Promise<Violations[]> {
+    let query = db.select().from(schema.violations)
+      .where(eq(schema.violations.employee_id, employeeId));
+
+    if (periodStart && periodEnd) {
+      query = query.where(and(
+        gte(schema.violations.created_at, periodStart),
+        lte(schema.violations.created_at, periodEnd)
+      ));
+    }
+
+    return query.orderBy(desc(schema.violations.created_at));
+  }
+
+  async getViolationsByCompany(companyId: string, periodStart?: Date, periodEnd?: Date): Promise<Violations[]> {
+    let query = db.select().from(schema.violations)
+      .where(eq(schema.violations.company_id, companyId));
+
+    if (periodStart && periodEnd) {
+      query = query.where(and(
+        gte(schema.violations.created_at, periodStart),
+        lte(schema.violations.created_at, periodEnd)
+      ));
+    }
+
+    return query.orderBy(desc(schema.violations.created_at));
+  }
+
+  // Система рейтинга - Рейтинги сотрудников
+  async createEmployeeRating(rating: InsertEmployeeRating): Promise<EmployeeRating> {
+    const [result] = await db.insert(schema.employee_rating).values(rating).returning();
+    return result;
+  }
+
+  async getEmployeeRating(employeeId: string, periodStart: Date, periodEnd: Date): Promise<EmployeeRating | undefined> {
+    const [result] = await db.select().from(schema.employee_rating)
+      .where(and(
+        eq(schema.employee_rating.employee_id, employeeId),
+        eq(schema.employee_rating.period_start, periodStart.toISOString().split('T')[0]),
+        eq(schema.employee_rating.period_end, periodEnd.toISOString().split('T')[0])
+      ));
+    return result;
+  }
+
+  async updateEmployeeRating(id: string, updates: Partial<InsertEmployeeRating>): Promise<EmployeeRating | undefined> {
+    const [result] = await db.update(schema.employee_rating)
+      .set({ ...updates, updated_at: sql`now()` })
+      .where(eq(schema.employee_rating.id, id))
+      .returning();
+    return result;
+  }
+
+  async getEmployeeRatingsByCompany(companyId: string, periodStart?: Date, periodEnd?: Date): Promise<EmployeeRating[]> {
+    let query = db.select().from(schema.employee_rating)
+      .where(eq(schema.employee_rating.company_id, companyId));
+
+    if (periodStart && periodEnd) {
+      query = query.where(and(
+        eq(schema.employee_rating.period_start, periodStart.toISOString().split('T')[0]),
+        eq(schema.employee_rating.period_end, periodEnd.toISOString().split('T')[0])
+      ));
+    }
+
+    return query.orderBy(desc(schema.employee_rating.rating));
+  }
+
+  // Система рейтинга - Расчет рейтинга
+  async calculateEmployeeRating(employeeId: string, periodStart: Date, periodEnd: Date): Promise<number> {
+    const violations = await this.getViolationsByEmployee(employeeId, periodStart, periodEnd);
+    const totalPenalty = violations.reduce((sum, violation) => sum + Number(violation.penalty), 0);
+    return Math.max(0, 100 - totalPenalty);
+  }
+
+  async updateEmployeeRatingFromViolations(employeeId: string, periodStart: Date, periodEnd: Date): Promise<EmployeeRating> {
+    const rating = await this.calculateEmployeeRating(employeeId, periodStart, periodEnd);
+    
+    // Получаем или создаем запись рейтинга
+    let employeeRating = await this.getEmployeeRating(employeeId, periodStart, periodEnd);
+    
+    if (employeeRating) {
+      employeeRating = await this.updateEmployeeRating(employeeRating.id, { rating: rating.toString() });
+    } else {
+      // Получаем company_id из сотрудника
+      const employee = await this.getEmployee(employeeId);
+      if (!employee) {
+        throw new Error('Employee not found');
+      }
+      
+      employeeRating = await this.createEmployeeRating({
+        employee_id: employeeId,
+        company_id: employee.company_id,
+        period_start: periodStart.toISOString().split('T')[0],
+        period_end: periodEnd.toISOString().split('T')[0],
+        rating: rating.toString(),
+        status: rating <= 30 ? 'terminated' : rating <= 50 ? 'warning' : 'active'
+      });
+    }
+
+    // Проверяем порог увольнения
+    if (rating <= 30) {
+      await this.updateEmployee(employeeId, { 
+        status: 'terminated'
+      });
+    }
+
+    return employeeRating!;
   }
 }
 

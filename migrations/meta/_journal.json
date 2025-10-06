@@ -8,6 +8,13 @@
       "when": 1759415133463,
       "tag": "0000_silly_iron_monger",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1759691642647,
+      "tag": "0001_thin_spectrum",
+      "breakpoints": true
     }
   ]
 }

@@ -6,7 +6,10 @@ import {
   insertWorkIntervalSchema, insertBreakIntervalSchema,
   insertDailyReportSchema, insertExceptionSchema,
   insertEmployeeInviteSchema, insertReminderSchema,
-  insertScheduleTemplateSchema
+  insertScheduleTemplateSchema,
+  insertCompanyViolationRulesSchema,
+  insertViolationsSchema,
+  insertEmployeeRatingSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -1158,6 +1161,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error ending break:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Система рейтинга - API endpoints
+  
+  // Получить правила нарушений компании
+  app.get("/api/companies/:companyId/violation-rules", async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const rules = await storage.getViolationRulesByCompany(companyId);
+      res.json(rules);
+    } catch (error) {
+      console.error("Error fetching violation rules:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Создать правило нарушения
+  app.post("/api/violation-rules", async (req, res) => {
+    try {
+      const validatedData = insertCompanyViolationRulesSchema.parse(req.body);
+      const rule = await storage.createViolationRule(validatedData);
+      res.json(rule);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      console.error("Error creating violation rule:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Обновить правило нарушения
+  app.put("/api/violation-rules/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertCompanyViolationRulesSchema.partial().parse(req.body);
+      const rule = await storage.updateViolationRule(id, validatedData);
+      if (!rule) {
+        return res.status(404).json({ error: "Violation rule not found" });
+      }
+      res.json(rule);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      console.error("Error updating violation rule:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Удалить правило нарушения
+  app.delete("/api/violation-rules/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteViolationRule(id);
+      res.json({ message: "Violation rule deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting violation rule:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Получить нарушения сотрудника
+  app.get("/api/employees/:employeeId/violations", async (req, res) => {
+    try {
+      const { employeeId } = req.params;
+      const { periodStart, periodEnd } = req.query;
+      
+      let startDate: Date | undefined;
+      let endDate: Date | undefined;
+      
+      if (periodStart && periodEnd) {
+        startDate = new Date(periodStart as string);
+        endDate = new Date(periodEnd as string);
+      }
+      
+      const violations = await storage.getViolationsByEmployee(employeeId, startDate, endDate);
+      res.json(violations);
+    } catch (error) {
+      console.error("Error fetching violations:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Создать нарушение
+  app.post("/api/violations", async (req, res) => {
+    try {
+      const validatedData = insertViolationsSchema.parse(req.body);
+      const violation = await storage.createViolation(validatedData);
+      
+      // Пересчитываем рейтинг сотрудника
+      const employee = await storage.getEmployee(violation.employee_id);
+      if (employee) {
+        const now = new Date();
+        const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        
+        await storage.updateEmployeeRatingFromViolations(
+          violation.employee_id, 
+          periodStart, 
+          periodEnd
+        );
+      }
+      
+      res.json(violation);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      console.error("Error creating violation:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Получить рейтинги сотрудников компании
+  app.get("/api/companies/:companyId/ratings", async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const { periodStart, periodEnd } = req.query;
+      
+      let startDate: Date | undefined;
+      let endDate: Date | undefined;
+      
+      if (periodStart && periodEnd) {
+        startDate = new Date(periodStart as string);
+        endDate = new Date(periodEnd as string);
+      }
+      
+      const ratings = await storage.getEmployeeRatingsByCompany(companyId, startDate, endDate);
+      res.json(ratings);
+    } catch (error) {
+      console.error("Error fetching ratings:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Получить рейтинг конкретного сотрудника
+  app.get("/api/employees/:employeeId/rating", async (req, res) => {
+    try {
+      const { employeeId } = req.params;
+      const { periodStart, periodEnd } = req.query;
+      
+      if (!periodStart || !periodEnd) {
+        return res.status(400).json({ error: "periodStart and periodEnd are required" });
+      }
+      
+      const startDate = new Date(periodStart as string);
+      const endDate = new Date(periodEnd as string);
+      
+      const rating = await storage.getEmployeeRating(employeeId, startDate, endDate);
+      if (!rating) {
+        return res.status(404).json({ error: "Rating not found" });
+      }
+      
+      res.json(rating);
+    } catch (error) {
+      console.error("Error fetching employee rating:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Пересчитать рейтинг сотрудника
+  app.post("/api/employees/:employeeId/rating/recalculate", async (req, res) => {
+    try {
+      const { employeeId } = req.params;
+      const { periodStart, periodEnd } = req.body;
+      
+      if (!periodStart || !periodEnd) {
+        return res.status(400).json({ error: "periodStart and periodEnd are required" });
+      }
+      
+      const startDate = new Date(periodStart);
+      const endDate = new Date(periodEnd);
+      
+      const rating = await storage.updateEmployeeRatingFromViolations(employeeId, startDate, endDate);
+      res.json(rating);
+    } catch (error) {
+      console.error("Error recalculating rating:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
