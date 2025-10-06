@@ -551,31 +551,31 @@ export class PostgresStorage implements IStorage {
   }
 
   async getViolationsByEmployee(employeeId: string, periodStart?: Date, periodEnd?: Date): Promise<Violations[]> {
-    let query = db.select().from(schema.violations)
-      .where(eq(schema.violations.employee_id, employeeId));
+    const whereExpr = (periodStart && periodEnd)
+      ? and(
+          eq(schema.violations.employee_id, employeeId),
+          gte(schema.violations.created_at, periodStart),
+          lte(schema.violations.created_at, periodEnd)
+        )
+      : eq(schema.violations.employee_id, employeeId);
 
-    if (periodStart && periodEnd) {
-      query = query.where(and(
-        gte(schema.violations.created_at, periodStart),
-        lte(schema.violations.created_at, periodEnd)
-      ));
-    }
-
-    return query.orderBy(desc(schema.violations.created_at));
+    return db.select().from(schema.violations)
+      .where(whereExpr)
+      .orderBy(desc(schema.violations.created_at));
   }
 
   async getViolationsByCompany(companyId: string, periodStart?: Date, periodEnd?: Date): Promise<Violations[]> {
-    let query = db.select().from(schema.violations)
-      .where(eq(schema.violations.company_id, companyId));
+    const whereExpr = (periodStart && periodEnd)
+      ? and(
+          eq(schema.violations.company_id, companyId),
+          gte(schema.violations.created_at, periodStart),
+          lte(schema.violations.created_at, periodEnd)
+        )
+      : eq(schema.violations.company_id, companyId);
 
-    if (periodStart && periodEnd) {
-      query = query.where(and(
-        gte(schema.violations.created_at, periodStart),
-        lte(schema.violations.created_at, periodEnd)
-      ));
-    }
-
-    return query.orderBy(desc(schema.violations.created_at));
+    return db.select().from(schema.violations)
+      .where(whereExpr)
+      .orderBy(desc(schema.violations.created_at));
   }
 
   // Система рейтинга - Рейтинги сотрудников
@@ -603,17 +603,17 @@ export class PostgresStorage implements IStorage {
   }
 
   async getEmployeeRatingsByCompany(companyId: string, periodStart?: Date, periodEnd?: Date): Promise<EmployeeRating[]> {
-    let query = db.select().from(schema.employee_rating)
-      .where(eq(schema.employee_rating.company_id, companyId));
+    const whereExpr = (periodStart && periodEnd)
+      ? and(
+          eq(schema.employee_rating.company_id, companyId),
+          eq(schema.employee_rating.period_start, periodStart.toISOString().split('T')[0]),
+          eq(schema.employee_rating.period_end, periodEnd.toISOString().split('T')[0])
+        )
+      : eq(schema.employee_rating.company_id, companyId);
 
-    if (periodStart && periodEnd) {
-      query = query.where(and(
-        eq(schema.employee_rating.period_start, periodStart.toISOString().split('T')[0]),
-        eq(schema.employee_rating.period_end, periodEnd.toISOString().split('T')[0])
-      ));
-    }
-
-    return query.orderBy(desc(schema.employee_rating.rating));
+    return db.select().from(schema.employee_rating)
+      .where(whereExpr)
+      .orderBy(desc(schema.employee_rating.rating));
   }
 
   // Система рейтинга - Расчет рейтинга

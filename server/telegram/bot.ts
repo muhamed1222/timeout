@@ -1,4 +1,5 @@
 import { Telegraf, Context, session } from 'telegraf';
+import type { Update, CallbackQuery } from 'telegraf/typings/core/types/typegram';
 import { SessionData } from './types';
 import { handleStart } from './handlers/start';
 import { handleShiftActions } from './handlers/shiftActions';
@@ -16,7 +17,8 @@ bot.use(session({
 
 // Middleware для логирования
 bot.use((ctx, next) => {
-  console.log(`[${new Date().toISOString()}] ${ctx.from?.username || 'Unknown'}: ${ctx.message?.text || 'Callback'}`);
+  const text = 'message' in ctx && 'text' in (ctx as any).message ? (ctx as any).message.text : undefined;
+  console.log(`[${new Date().toISOString()}] ${ctx.from?.username || 'Unknown'}: ${text || 'Callback'}`);
   return next();
 });
 
@@ -100,9 +102,9 @@ ${activeBreak ? `🍽 Перерыв с: ${new Date(activeBreak.start_at).toLoca
 });
 
 // Обработчики callback-кнопок
-bot.action(/^(start_shift|start_break|end_break|end_shift|report_shift)$/, handleShiftActions);
-bot.action(/^absence_(.+)$/, handleAbsence);
-bot.action(/^report_(.+)$/, handleReport);
+bot.action(/^(start_shift|start_break|end_break|end_shift|report_shift)$/, (ctx) => handleShiftActions(ctx as any));
+bot.action(/^absence_(.+)$/, (ctx) => handleAbsence(ctx as any));
+bot.action(/^report_(.+)$/, (ctx) => handleReport(ctx as any));
 
 // Обработчик текстовых сообщений (для отчётов)
 bot.on('text', async (ctx) => {
@@ -122,11 +124,11 @@ bot.on('text', async (ctx) => {
 });
 
 // Обработка ошибок
-bot.catch((err, ctx) => {
-  console.error('Bot error:', err);
+bot.catch((err: unknown, ctx) => {
+  console.error('Bot error:', err as any);
   
   // Не пытаемся отвечать, если чат не найден
-  if (err.description && err.description.includes('chat not found')) {
+  if ((err as any).description && (err as any).description.includes('chat not found')) {
     console.log('Chat not found, skipping reply');
     return;
   }
