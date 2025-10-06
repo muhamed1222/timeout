@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Search, Trophy, Medal, Award, Star, AlertTriangle } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 interface EmployeeRating {
   id: string;
@@ -30,9 +32,12 @@ export default function Rating() {
   const [sortBy, setSortBy] = useState('rating');
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRating | null>(null);
   const [isViolationModalOpen, setIsViolationModalOpen] = useState(false);
+  const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
+  const [violationComment, setViolationComment] = useState<string>('');
   const { companyId, loading: authLoading } = useAuth();
+  const { toast } = useToast();
 
-  const { data: employees, isLoading: employeesLoading } = useQuery({
+  const { data: employees, isLoading: employeesLoading, isError: employeesError } = useQuery({
     queryKey: ['/api/companies', companyId, 'employees'],
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/companies/${companyId}/employees`);
@@ -41,10 +46,14 @@ export default function Rating() {
     enabled: !!companyId,
   });
 
-  const { data: ratingData, isLoading: ratingLoading } = useQuery({
+  const { data: ratingData, isLoading: ratingLoading, isError: ratingError } = useQuery({
     queryKey: ['/api/companies', companyId, 'ratings', selectedPeriod],
     queryFn: async () => {
-      const response = await apiRequest('GET', `/api/companies/${companyId}/ratings?period=${selectedPeriod}`);
+      // For now, request current month periodStart/periodEnd to match backend shape
+      const now = new Date();
+      const periodStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      const response = await apiRequest('GET', `/api/companies/${companyId}/ratings?periodStart=${periodStart}&periodEnd=${periodEnd}`);
       return response.json();
     },
     enabled: !!companyId,
@@ -56,6 +65,15 @@ export default function Rating() {
       const response = await apiRequest('GET', '/api/rating/periods');
       return response.json();
     },
+  });
+
+  const { data: violationRules = [], isLoading: rulesLoading } = useQuery({
+    queryKey: ['/api/companies', companyId, 'violation-rules'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/companies/${companyId}/violation-rules`);
+      return response.json();
+    },
+    enabled: !!companyId,
   });
 
   const getRatingIcon = (position: number) => {
@@ -83,15 +101,59 @@ export default function Rating() {
   const handleAddViolation = (employee: EmployeeRating) => {
     setSelectedEmployee(employee);
     setIsViolationModalOpen(true);
+    setSelectedRuleId(null);
+    setViolationComment('');
+    // Если нет активных правил — предупредим
+    const hasActiveRules = (violationRules || []).some((r: any) => r.is_active);
+    if (!hasActiveRules) {
+      toast({
+        title: 'Нет активных правил',
+        description: 'Сначала добавьте правило в Настройки → Нарушения',
+        variant: 'destructive'
+      });
+    }
   };
 
-  // Создаем данные рейтинга на основе сотрудников, если нет реальных данных
-  const employeesWithRating = employees?.map((emp: any, index: number) => ({
+  const createViolationMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedEmployee || !companyId || !selectedRuleId) throw new Error('Не выбрано правило');
+      const payload = {
+        employee_id: selectedEmployee.id,
+        company_id: companyId,
+        rule_id: selectedRuleId,
+        source: 'manual',
+        reason: violationComment || '',
+      } as const;
+      const res = await apiRequest('POST', '/api/violations', payload);
+      const body = await res.json();
+      if (!res.ok) {
+        throw new Error(body?.error || 'Не удалось добавить нарушение');
+      }
+      return body;
+    },
+    onSuccess: () => {
+      toast({ title: 'Нарушение добавлено', description: 'Рейтинг будет пересчитан.' });
+      setIsViolationModalOpen(false);
+      setSelectedEmployee(null);
+      setSelectedRuleId(null);
+      setViolationComment('');
+      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'ratings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'employees'] });
+    },
+    onError: async (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Не удалось добавить нарушение';
+      toast({ title: 'Ошибка', description: message, variant: 'destructive' });
+    },
+  });
+
+  // Сливаем сотрудников с реальными рейтингами; по умолчанию 100%
+  const ratingsMap = new Map<string, number>((ratingData || []).map((r: any) => [r.employee_id, Number(r.rating)]));
+  const employeesWithRating = (employees || []).map((emp: any) => ({
     id: emp.id,
     full_name: emp.full_name,
     position: emp.position,
-    rating: 100 // Базовый рейтинг
-  })) || [];
+    rating: ratingsMap.has(emp.id) ? Math.round(Number(ratingsMap.get(emp.id))) : 100
+  }));
 
   const filteredEmployees = employeesWithRating.filter((emp: any) =>
     emp.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -109,7 +171,7 @@ export default function Rating() {
     }
   });
 
-  if (authLoading || employeesLoading) {
+  if (authLoading || employeesLoading || ratingLoading) {
     return (
       <div className="flex items-center justify-center h-[50vh]">
         <div className="text-center">
@@ -122,6 +184,14 @@ export default function Rating() {
 
   return (
     <div className="space-y-6">
+      {(employeesError || ratingError) && (
+        <Alert variant="destructive">
+          <AlertTitle>Ошибка загрузки</AlertTitle>
+          <AlertDescription>
+            Не удалось загрузить данные рейтинга. Попробуйте обновить страницу позже.
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Рейтинг сотрудников</h1>
@@ -283,24 +353,28 @@ export default function Rating() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Тип нарушения</label>
-                <Select>
+                <Select value={selectedRuleId ?? undefined} onValueChange={setSelectedRuleId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Выберите тип нарушения" />
+                    <SelectValue placeholder={rulesLoading ? 'Загрузка...' : 'Выберите тип нарушения'} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="late">Опоздание</SelectItem>
-                    <SelectItem value="no_report">Отсутствие отчёта</SelectItem>
-                    <SelectItem value="missed_shift">Пропуск смены</SelectItem>
-                    <SelectItem value="incorrect_report">Некорректный отчёт</SelectItem>
-                    <SelectItem value="discipline_violation">Нарушение дисциплины</SelectItem>
-                    <SelectItem value="long_break">Превышение времени перерыва</SelectItem>
-                    <SelectItem value="early_leave">Преждевременное завершение смены</SelectItem>
+                    {violationRules
+                      .filter((r: any) => r.is_active)
+                      .map((rule: any) => (
+                        <SelectItem key={rule.id} value={rule.id}>
+                          {rule.name} ({rule.penalty_percent}%)
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Комментарий</label>
-                <Input placeholder="Описание нарушения (необязательно)" />
+                <Input
+                  placeholder="Описание нарушения (необязательно)"
+                  value={violationComment}
+                  onChange={(e) => setViolationComment(e.target.value)}
+                />
               </div>
               <div className="flex gap-2 justify-end">
                 <Button
@@ -308,18 +382,17 @@ export default function Rating() {
                   onClick={() => {
                     setIsViolationModalOpen(false);
                     setSelectedEmployee(null);
+                    setSelectedRuleId(null);
+                    setViolationComment('');
                   }}
                 >
                   Отмена
                 </Button>
                 <Button
-                  onClick={() => {
-                    // TODO: Реализовать добавление нарушения
-                    setIsViolationModalOpen(false);
-                    setSelectedEmployee(null);
-                  }}
+                  disabled={!selectedRuleId || createViolationMutation.isPending || !(violationRules || []).some((r: any) => r.is_active)}
+                  onClick={() => createViolationMutation.mutate()}
                 >
-                  Добавить нарушение
+                  {createViolationMutation.isPending ? 'Сохранение...' : 'Добавить нарушение'}
                 </Button>
               </div>
             </div>

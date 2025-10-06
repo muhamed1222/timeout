@@ -57,6 +57,7 @@ import { validateTelegramWebAppData, type TelegramUser } from "./services/telegr
 import { handleTelegramMessage } from "./handlers/telegramHandlers";
 import { handleTelegramWebhook } from "./telegram/webhook";
 import { supabaseAdmin, hasServiceRoleKey } from "./lib/supabase";
+import { sendTelegramMessage } from "./handlers/telegramHandlers";
 
 // Extend Express Request type to include Telegram user
 declare global {
@@ -1171,6 +1172,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/companies/:companyId/violation-rules", async (req, res) => {
     try {
       const { companyId } = req.params;
+      // Проверяем, что компания существует
+      const company = await storage.getCompany(companyId);
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+      const rules = await storage.getViolationRulesByCompany(companyId);
+      res.json(rules);
+    } catch (error) {
+      console.error("Error fetching violation rules:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Получить правила нарушений компании
+  app.get("/api/companies/:companyId/violation-rules", async (req, res) => {
+    try {
+      const { companyId } = req.params;
       const rules = await storage.getViolationRulesByCompany(companyId);
       res.json(rules);
     } catch (error) {
@@ -1183,7 +1201,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/violation-rules", async (req, res) => {
     try {
       const validatedData = insertCompanyViolationRulesSchema.parse(req.body);
-      const rule = await storage.createViolationRule(validatedData);
+      // Проверяем, что компания существует
+      const company = await storage.getCompany(validatedData.company_id);
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+      // Ensure unique code within the company (case-insensitive)
+      const existing = await storage.getViolationRulesByCompany(validatedData.company_id);
+      const duplicate = existing.find(r => r.code.trim().toLowerCase() === validatedData.code.trim().toLowerCase());
+      if (duplicate) {
+        return res.status(409).json({ error: "Rule code must be unique within the company" });
+      }
+      // Приводим numeric к строке, если пришло числом
+      const penaltyVal: any = (validatedData as any).penalty_percent;
+      const penaltyStr = typeof penaltyVal === 'number' ? penaltyVal.toString() : penaltyVal;
+      const rule = await storage.createViolationRule({
+        ...validatedData,
+        penalty_percent: penaltyStr,
+      } as any);
       res.json(rule);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1199,7 +1234,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const validatedData = insertCompanyViolationRulesSchema.partial().parse(req.body);
-      const rule = await storage.updateViolationRule(id, validatedData);
+      // If code or company_id provided, enforce uniqueness
+      if (validatedData.code || validatedData.company_id) {
+        const current = await storage.getViolationRule(id);
+        if (!current) return res.status(404).json({ error: "Violation rule not found" });
+        const companyId = validatedData.company_id || current.company_id;
+        // Проверяем, что компания существует
+        const company = await storage.getCompany(companyId);
+        if (!company) {
+          return res.status(404).json({ error: "Company not found" });
+        }
+        const codeToCheck = (validatedData.code || current.code).trim().toLowerCase();
+        const existing = await storage.getViolationRulesByCompany(companyId);
+        const duplicate = existing.find(r => r.id !== id && r.code.trim().toLowerCase() === codeToCheck);
+        if (duplicate) {
+          return res.status(409).json({ error: "Rule code must be unique within the company" });
+        }
+      }
+      // Коэрция penalty_percent при апдейте
+      let updates: any = { ...validatedData };
+      if (updates.penalty_percent !== undefined) {
+        updates.penalty_percent = typeof updates.penalty_percent === 'number'
+          ? updates.penalty_percent.toString()
+          : updates.penalty_percent;
+      }
+      const rule = await storage.updateViolationRule(id, updates);
       if (!rule) {
         return res.status(404).json({ error: "Violation rule not found" });
       }
@@ -1217,6 +1276,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/violation-rules/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      const current = await storage.getViolationRule(id);
+      if (!current) {
+        return res.status(404).json({ error: "Violation rule not found" });
+      }
       await storage.deleteViolationRule(id);
       res.json({ message: "Violation rule deleted successfully" });
     } catch (error) {
@@ -1248,23 +1311,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Создать нарушение
+  // Создать нарушение (штраф вычисляется по правилу)
   app.post("/api/violations", async (req, res) => {
     try {
-      const validatedData = insertViolationsSchema.parse(req.body);
-      const violation = await storage.createViolation(validatedData);
+      // Прием только базовых полей, без penalty/created_at
+      const createViolationRequest = z.object({
+        employee_id: z.string().uuid(),
+        company_id: z.string().uuid(),
+        rule_id: z.string().uuid(),
+        source: z.enum(['manual', 'auto']).default('manual'),
+        reason: z.string().optional(),
+        created_by: z.string().uuid().optional()
+      });
+      const validatedData = createViolationRequest.parse(req.body);
+      // Интегритет: проверяем сотрудника и правило относятся к company_id
+      const employee = await storage.getEmployee(validatedData.employee_id);
+      if (!employee) return res.status(404).json({ error: 'Employee not found' });
+      const rule = await storage.getViolationRule(validatedData.rule_id);
+      if (!rule) return res.status(404).json({ error: 'Violation rule not found' });
+      if (employee.company_id !== validatedData.company_id || rule.company_id !== validatedData.company_id) {
+        return res.status(403).json({ error: 'Company scope mismatch' });
+      }
+      // Компания должна существовать
+      const company = await storage.getCompany(validatedData.company_id);
+      if (!company) return res.status(404).json({ error: 'Company not found' });
+      // penalty берём из правила
+      const violation = await storage.createViolation({
+        employee_id: validatedData.employee_id,
+        company_id: validatedData.company_id,
+        rule_id: validatedData.rule_id,
+        source: validatedData.source,
+        reason: validatedData.reason,
+        created_by: validatedData.created_by,
+        penalty: rule.penalty_percent, // numeric в БД, строка тоже ок для drizzle
+      } as any);
       
       // Пересчитываем рейтинг сотрудника
-      const employee = await storage.getEmployee(violation.employee_id);
-      if (employee) {
+      const employeeAfter = await storage.getEmployee(violation.employee_id);
+      if (employeeAfter) {
         const now = new Date();
         const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
         
-        await storage.updateEmployeeRatingFromViolations(
+        const updatedRating = await storage.updateEmployeeRatingFromViolations(
           violation.employee_id, 
           periodStart, 
           periodEnd
         );
+
+        // Уведомления в Telegram
+        const chatId = employeeAfter.telegram_user_id ? Number(employeeAfter.telegram_user_id) : undefined;
+        const ratingNum = Number(updatedRating.rating);
+        if (chatId && !Number.isNaN(ratingNum)) {
+          // Сообщение о нарушении
+          const reason = violation.reason ? ` Причина: ${violation.reason}.` : '';
+          await sendTelegramMessage(
+            chatId,
+            `❗ Зафиксировано нарушение. Рейтинг −${violation.penalty}%.
+Текущий рейтинг: ${Math.max(0, Math.round(ratingNum))}%.${reason}`
+          );
+
+          if (ratingNum <= 30) {
+            // Уведомление о блокировке
+            await sendTelegramMessage(
+              chatId,
+              `🚫 Ваш аккаунт заблокирован. Рейтинг опустился до ${Math.max(0, Math.round(ratingNum))}%.
+Обратитесь к руководителю.`
+            );
+          } else if (ratingNum <= 35) {
+            // Предупреждение о критическом уровне
+            await sendTelegramMessage(
+              chatId,
+              `⚠️ Критический уровень. Ваш рейтинг ${Math.max(0, Math.round(ratingNum))}%. Ещё одно нарушение может привести к блокировке.`
+            );
+          }
+        }
       }
       
       res.json(violation);
@@ -1295,6 +1416,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(ratings);
     } catch (error) {
       console.error("Error fetching ratings:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Пересчитать рейтинги всех сотрудников компании за текущий месяц
+  app.post("/api/companies/:companyId/ratings/recalculate", async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const employees = await storage.getEmployeesByCompany(companyId);
+      const now = new Date();
+      const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      const results = [] as any[];
+      for (const emp of employees) {
+        const rating = await storage.updateEmployeeRatingFromViolations(emp.id, periodStart, periodEnd);
+        results.push({ employee_id: emp.id, rating });
+      }
+
+      res.json({ message: 'Пересчет завершен', count: results.length });
+    } catch (error) {
+      console.error("Error recalculating ratings:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Глобальный пересчет рейтингов за указанный или текущий период по всем компаниям
+  app.post("/api/ratings/recalculate", async (req, res) => {
+    try {
+      const { periodStart, periodEnd } = req.body || {};
+      const now = new Date();
+      const start = periodStart ? new Date(periodStart) : new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = periodEnd ? new Date(periodEnd) : new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      const companies = await storage.getAllCompanies();
+      let processed = 0;
+      for (const company of companies) {
+        const employees = await storage.getEmployeesByCompany(company.id);
+        for (const emp of employees) {
+          await storage.updateEmployeeRatingFromViolations(emp.id, start, end);
+          processed += 1;
+        }
+      }
+
+      res.json({ message: 'Глобальный пересчет завершен', processed, periodStart: start.toISOString().split('T')[0], periodEnd: end.toISOString().split('T')[0] });
+    } catch (error) {
+      console.error("Error recalculating ratings globally:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

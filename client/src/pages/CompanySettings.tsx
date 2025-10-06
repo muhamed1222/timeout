@@ -8,6 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Loader2, Building2, Globe, Clock, AlertTriangle, Plus, Edit, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -94,8 +95,14 @@ export default function CompanySettings() {
 
   const createViolationRuleMutation = useMutation({
     mutationFn: async (data: ViolationRuleFormValues) => {
-      const response = await apiRequest('POST', `/api/companies/${companyId}/violation-rules`, data);
-      return response.json();
+      if (!companyId) throw new Error('Не определена компания');
+      const response = await apiRequest('POST', `/api/violation-rules`, { ...data, company_id: companyId });
+      const payload = await response.json();
+      if (!response.ok) {
+        const message = payload?.error || 'Не удалось создать правило';
+        throw new Error(message);
+      }
+      return payload;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'violation-rules'] });
@@ -116,8 +123,13 @@ export default function CompanySettings() {
 
   const updateViolationRuleMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: ViolationRuleFormValues }) => {
-      const response = await apiRequest('PUT', `/api/companies/${companyId}/violation-rules/${id}`, data);
-      return response.json();
+      const response = await apiRequest('PUT', `/api/violation-rules/${id}`, data);
+      const payload = await response.json();
+      if (!response.ok) {
+        const message = payload?.error || 'Не удалось обновить правило';
+        throw new Error(message);
+      }
+      return payload;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'violation-rules'] });
@@ -139,8 +151,13 @@ export default function CompanySettings() {
 
   const deleteViolationRuleMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest('DELETE', `/api/companies/${companyId}/violation-rules/${id}`);
-      return response.json();
+      const response = await apiRequest('DELETE', `/api/violation-rules/${id}`);
+      const payload = await response.json();
+      if (!response.ok) {
+        const message = payload?.error || 'Не удалось удалить правило';
+        throw new Error(message);
+      }
+      return payload;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'violation-rules'] });
@@ -182,6 +199,17 @@ export default function CompanySettings() {
   });
 
   const onViolationSubmit = (data: ViolationRuleFormValues) => {
+    // Проверка уникальности кода (без учета регистра)
+    const normalized = data.code.trim().toLowerCase();
+    const exists = violationRules.some((r) => {
+      if (editingRule && r.id === editingRule.id) return false;
+      return r.code.trim().toLowerCase() === normalized;
+    });
+    if (exists) {
+      violationForm.setError('code', { type: 'manual', message: 'Код уже используется' });
+      toast({ title: 'Ошибка', description: 'Код правила должен быть уникальным', variant: 'destructive' });
+      return;
+    }
     if (editingRule) {
       updateViolationRuleMutation.mutate({ id: editingRule.id, data });
     } else {
@@ -336,7 +364,7 @@ export default function CompanySettings() {
                     <CardDescription>Настройка штрафов за нарушения дисциплины</CardDescription>
                   </div>
                 </div>
-                <Button onClick={handleAddRule} size="sm">
+                <Button onClick={handleAddRule} size="sm" disabled={rulesLoading}>
                   <Plus className="w-4 h-4 mr-2" />
                   Добавить правило
                 </Button>
@@ -347,6 +375,16 @@ export default function CompanySettings() {
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin" />
                 </div>
+              ) : violationRules.length === 0 ? (
+                <div className="text-center py-12">
+                  <AlertTriangle className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                  <div className="text-lg font-semibold mb-1">Правила нарушений не настроены</div>
+                  <div className="text-sm text-muted-foreground mb-4">Добавьте первые правила, чтобы система могла снижать рейтинг сотрудников</div>
+                  <Button onClick={handleAddRule} size="sm">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Добавить правило
+                  </Button>
+                </div>
               ) : (
                 <Table>
                   <TableHeader>
@@ -354,7 +392,7 @@ export default function CompanySettings() {
                       <TableHead>Нарушение</TableHead>
                       <TableHead>Автоопределение</TableHead>
                       <TableHead>Штраф (%)</TableHead>
-                      <TableHead>Статус</TableHead>
+                      <TableHead className="whitespace-nowrap">Активно</TableHead>
                       <TableHead className="text-right">Действия</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -376,9 +414,27 @@ export default function CompanySettings() {
                           <Badge variant="outline">{rule.penalty_percent}%</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={rule.is_active ? "default" : "secondary"}>
-                            {rule.is_active ? "✅ Активно" : "❌ Отключено"}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={rule.is_active}
+                              onCheckedChange={(checked) =>
+                                updateViolationRuleMutation.mutate({
+                                  id: rule.id,
+                                  data: {
+                                    code: rule.code,
+                                    name: rule.name,
+                                    penalty_percent: rule.penalty_percent,
+                                    auto_detectable: rule.auto_detectable,
+                                    is_active: checked,
+                                  },
+                                })
+                              }
+                              aria-label="Переключить активность правила"
+                            />
+                            <span className="text-sm text-muted-foreground">
+                              {rule.is_active ? 'Включено' : 'Выключено'}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
