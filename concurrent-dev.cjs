@@ -11,7 +11,14 @@ console.log('🚀 Starting project in development mode...\n');
 // Start backend
 console.log('🔧 Starting backend on port 3001...');
 const backend = spawn('npx', ['tsx', '-r', 'dotenv/config', 'server/index.ts'], {
-  env: { ...process.env, PORT: '3001' },
+  env: {
+    ...process.env,
+    PORT: '3001',
+    // Prefer IPv4 DNS results to avoid ENOTFOUND issues in some environments
+    NODE_OPTIONS: process.env.NODE_OPTIONS
+      ? `${process.env.NODE_OPTIONS} --dns-result-order=ipv4first`
+      : '--dns-result-order=ipv4first',
+  },
   stdio: 'inherit'
 });
 
