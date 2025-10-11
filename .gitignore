@@ -9,7 +9,7 @@ build
 .vercel
 
 # Environment variables
-.env
+# .env
 .env.local
 .env.production
 .env.staging
