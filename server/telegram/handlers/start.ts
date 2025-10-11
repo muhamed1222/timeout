@@ -50,6 +50,50 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
 
     if (invite.used_at) {
       console.log('Invite already used:', startParam);
+      // Если инвайт уже использован тем же сотрудником (тот же Telegram ID),
+      // делаем операцию идемпотентной: обновляем/переносим сотрудника и продолжаем
+      if (invite.used_by_employee) {
+        const existingEmployee = await storage.getEmployee(invite.used_by_employee);
+        const currentTelegramId = ctx.from.id.toString();
+
+        if (existingEmployee && existingEmployee.telegram_user_id === currentTelegramId) {
+          const needsCompanyTransfer = existingEmployee.company_id !== invite.company_id;
+          const updated = await storage.updateEmployee(existingEmployee.id, {
+            company_id: needsCompanyTransfer ? invite.company_id : existingEmployee.company_id,
+            full_name: invite.full_name || existingEmployee.full_name,
+            position: invite.position || existingEmployee.position,
+            telegram_user_id: currentTelegramId,
+            status: 'active'
+          });
+
+          // Сохраняем в сессию и продолжаем стандартный флоу
+          if (!ctx.session) ctx.session = {} as any;
+          ctx.session.employeeId = (updated || existingEmployee).id;
+          ctx.session.companyId = (updated || existingEmployee).company_id;
+
+          const company = await storage.getCompany((updated || existingEmployee).company_id);
+          await ctx.reply(`
+🎉 *Добро пожаловать!*
+
+👤 *Сотрудник:* ${(updated || existingEmployee).full_name}
+🏢 *Компания:* ${company?.name || 'Не указана'}
+${(updated || existingEmployee).position ? `💼 *Должность:* ${(updated || existingEmployee).position}` : ''}
+
+✅ Вы успешно подключены к системе учёта рабочего времени.
+
+*Доступные команды:*
+/status - Текущий статус смены
+/help - Справка по командам
+
+Используйте кнопки для управления сменой.
+          `, { parse_mode: 'Markdown' });
+
+          await showMainMenu(ctx);
+          return;
+        }
+      }
+
+      // Иначе для чужого/неподходящего инвайта — сообщение об ошибке
       return ctx.reply(`
 ❌ *Код уже использован*
 
@@ -73,12 +117,21 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
       });
       console.log('Created new employee:', employee.id);
     } else {
-      // Обновляем существующего сотрудника
+      // Перенос сотрудника в компанию из инвайта, если отличается
+      const needsCompanyTransfer = employee.company_id !== invite.company_id;
       const updated = await storage.updateEmployee(employee.id, {
+        company_id: needsCompanyTransfer ? invite.company_id : employee.company_id,
+        full_name: invite.full_name || employee.full_name,
+        position: invite.position || employee.position,
         telegram_user_id: ctx.from.id.toString(),
         status: 'active'
       });
-      console.log('Updated existing employee:', updated?.id);
+      console.log(
+        needsCompanyTransfer
+          ? `Transferred employee to company ${invite.company_id}`
+          : 'Updated existing employee',
+        updated?.id
+      );
       employee = updated || employee;
     }
 

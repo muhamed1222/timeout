@@ -58,14 +58,22 @@ export default function Employees() {
   const { toast } = useToast();
   const { companyId, loading: authLoading } = useAuth();
 
-  const { data: employees = [], isLoading: employeesLoading } = useQuery<Employee[]>({
+  const { data: employees = [], isLoading: employeesLoading, refetch: refetchEmployees } = useQuery<Employee[]>({
     queryKey: ['/api/companies', companyId, 'employees'],
     enabled: !!companyId,
+    // Регулярно обновляем список сотрудников, чтобы отобразить тех, кто подключился через Telegram
+    refetchInterval: 5000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
-  const { data: invites = [], isLoading: invitesLoading } = useQuery<EmployeeInvite[]>({
+  const { data: invites = [], isLoading: invitesLoading, refetch: refetchInvites } = useQuery<EmployeeInvite[]>({
     queryKey: ['/api/companies', companyId, 'employee-invites'],
     enabled: !!companyId,
+    // После использования инвайта через Telegram быстро подтягиваем изменения
+    refetchInterval: 5000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const createInviteMutation = useMutation({
