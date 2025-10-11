@@ -17,7 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Link } from 'wouter';
-import { LogIn } from 'lucide-react';
+import { LogIn, Copy, Check } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Введите корректный email'),
@@ -30,6 +30,39 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const demoCredentials = {
+    email: 'demo@timeout.app',
+    password: 'Demo1234!',
+  };
+
+  const copyToClipboard = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      toast({
+        title: 'Скопировано',
+        description: `${field === 'email' ? 'Email' : 'Пароль'} скопирован в буфер обмена`,
+      });
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Ошибка',
+        description: 'Не удалось скопировать в буфер обмена',
+      });
+    }
+  };
+
+  const fillDemoCredentials = () => {
+    form.setValue('email', demoCredentials.email);
+    form.setValue('password', demoCredentials.password);
+    toast({
+      title: 'Данные заполнены',
+      description: 'Демо-данные автоматически заполнены',
+    });
+  };
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -142,6 +175,60 @@ export default function Login() {
                 Зарегистрироваться
               </span>
             </Link>
+          </div>
+          
+          {/* Demo Credentials Block */}
+          <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-dashed">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+              <h3 className="text-sm font-medium text-muted-foreground">Демо-аккаунт</h3>
+            </div>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Email:</span>
+                <div className="flex items-center gap-1">
+                  <code className="bg-background px-2 py-1 rounded text-xs">{demoCredentials.email}</code>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0"
+                    onClick={() => copyToClipboard(demoCredentials.email, 'email')}
+                  >
+                    {copiedField === 'email' ? (
+                      <Check className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Пароль:</span>
+                <div className="flex items-center gap-1">
+                  <code className="bg-background px-2 py-1 rounded text-xs">{demoCredentials.password}</code>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0"
+                    onClick={() => copyToClipboard(demoCredentials.password, 'password')}
+                  >
+                    {copiedField === 'password' ? (
+                      <Check className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mt-3"
+              onClick={fillDemoCredentials}
+            >
+              Заполнить демо-данные
+            </Button>
           </div>
         </CardContent>
       </Card>

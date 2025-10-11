@@ -21,6 +21,33 @@ bot.use((ctx, next) => {
   return next();
 });
 
+// Middleware для авторизации сотрудников
+bot.use(async (ctx, next) => {
+  const telegramId = ctx.from?.id?.toString();
+  if (!telegramId) {
+    return next();
+  }
+
+  // Если сессия пустая, попробуем найти сотрудника по Telegram ID
+  if (!ctx.session?.employeeId) {
+    try {
+      const employee = await storage.getEmployeeByTelegramId(telegramId);
+      if (employee) {
+        console.log('Auto-restoring session for employee:', employee.id);
+        ctx.session = {
+          employeeId: employee.id,
+          companyId: employee.company_id,
+          ...ctx.session
+        };
+      }
+    } catch (error) {
+      console.error('Error auto-restoring session:', error);
+    }
+  }
+
+  return next();
+});
+
 // Обработчики команд
 bot.start(handleStart);
 bot.command('help', (ctx) => {

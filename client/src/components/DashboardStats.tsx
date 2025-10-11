@@ -49,7 +49,7 @@ export default function DashboardStats({
       <StatCard
         title="Всего сотрудников"
         value={totalEmployees}
-        change="+2 за месяц"
+        change={totalEmployees > 0 ? undefined : undefined}
         icon={Users}
       />
       <StatCard

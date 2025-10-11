@@ -54,10 +54,7 @@ const registerAdminSchema = z.object({
 import { randomBytes } from "crypto";
 import { shiftMonitor } from "./services/shiftMonitor.js";
 import { validateTelegramWebAppData, type TelegramUser } from "./services/telegramAuth.js";
-import { handleTelegramMessage } from "./handlers/telegramHandlers.js";
-import { handleTelegramWebhook } from "./telegram/webhook.js";
 import { supabaseAdmin, hasServiceRoleKey } from "./lib/supabase.js";
-import { sendTelegramMessage } from "./handlers/telegramHandlers";
 
 // Extend Express Request type to include Telegram user
 declare global {
@@ -119,6 +116,20 @@ function authenticateTelegramWebApp(req: any, res: any, next: any) {
   
   req.telegramUser = user;
   next();
+}
+
+// Функция для автоматической очистки приглашений
+async function startInviteCleanup() {
+  setInterval(async () => {
+    try {
+      const deletedCount = await storage.cleanupExpiredInvites();
+      if (deletedCount > 0) {
+        console.log(`🧹 Cleaned up ${deletedCount} expired invites`);
+      }
+    } catch (error) {
+      console.error('Error during invite cleanup:', error);
+    }
+  }, 30 * 1000); // Каждые 30 секунд
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -357,6 +368,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Удаление приглашения
+  app.delete("/api/employee-invites/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteEmployeeInvite(id);
+      res.json({ message: "Invite deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting employee invite:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Автоматическая очистка старых приглашений
+  app.post("/api/employee-invites/cleanup", async (req, res) => {
+    try {
+      const deletedCount = await storage.cleanupExpiredInvites();
+      res.json({ message: `Deleted ${deletedCount} expired invites` });
+    } catch (error) {
+      console.error("Error cleaning up expired invites:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Генерация смен на основе шаблона расписания
+  app.post("/api/companies/:companyId/generate-shifts", async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const { startDate, endDate, employeeIds } = req.body;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: "startDate and endDate are required" });
+      }
+
+      // Получаем шаблоны расписания компании
+      const templates = await storage.getScheduleTemplatesByCompany(companyId);
+      if (templates.length === 0) {
+        return res.status(400).json({ error: "No schedule templates found for company" });
+      }
+
+      // Получаем сотрудников компании
+      const employees = await storage.getEmployeesByCompany(companyId);
+      const targetEmployees = employeeIds ? 
+        employees.filter(emp => employeeIds.includes(emp.id)) : 
+        employees;
+
+      const createdShifts = [];
+
+      // Генерируем смены для каждого сотрудника на основе шаблона
+      for (const employee of targetEmployees) {
+        // Находим шаблон для сотрудника (пока используем первый доступный)
+        const template = templates[0];
+        
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+          const dayOfWeek = date.getDay(); // 0 = воскресенье, 1 = понедельник, ...
+          
+          // Проверяем, является ли день рабочим согласно шаблону
+          if (template.rules.workdays.includes(dayOfWeek)) {
+            const shiftStart = new Date(date);
+            const [startHour, startMinute] = template.rules.shift_start.split(':').map(Number);
+            shiftStart.setHours(startHour, startMinute, 0, 0);
+            
+            const shiftEnd = new Date(date);
+            const [endHour, endMinute] = template.rules.shift_end.split(':').map(Number);
+            shiftEnd.setHours(endHour, endMinute, 0, 0);
+            
+            // Проверяем, не существует ли уже смена на этот день
+            const existingShifts = await storage.getShiftsByEmployee(employee.id);
+            const existingShift = existingShifts.find(s => {
+              const shiftDate = new Date(s.planned_start_at);
+              shiftDate.setHours(0, 0, 0, 0);
+              const checkDate = new Date(date);
+              checkDate.setHours(0, 0, 0, 0);
+              return shiftDate.getTime() === checkDate.getTime();
+            });
+            
+            if (!existingShift) {
+              const shift = await storage.createShift({
+                employee_id: employee.id,
+                planned_start_at: shiftStart,
+                planned_end_at: shiftEnd,
+                status: 'planned'
+              });
+              createdShifts.push(shift);
+            }
+          }
+        }
+      }
+
+      res.json({ 
+        message: `Created ${createdShifts.length} shifts`,
+        shifts: createdShifts 
+      });
+    } catch (error) {
+      console.error("Error generating shifts:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/companies/:companyId/employee-invites", async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const invites = await storage.getEmployeeInvitesByCompany(companyId);
+      res.json(invites);
+    } catch (error) {
+      console.error("Error getting employee invites:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/employee-invites/:code", async (req, res) => {
     try {
       const { code } = req.params;
@@ -404,7 +527,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'YourBotName';
-      const deepLink = `https://t.me/${botUsername}?start=${code}`;
+      // Убираем символ @ если он есть
+      const cleanBotUsername = botUsername.replace('@', '');
+      const deepLink = `https://t.me/${cleanBotUsername}?start=${code}`;
       
       res.json({ 
         code,
@@ -949,8 +1074,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/telegram/webhook", async (req, res) => {
     try {
       const update = req.body;
-      
-      // Use the new bot handler
+      // Lazy import to avoid bundling issues in serverless
+      const { handleTelegramWebhook } = await import("./telegram/webhook.js");
       await handleTelegramWebhook(update);
       
       res.status(200).json({ ok: true });
@@ -1392,10 +1517,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           periodEnd
         );
 
-        // Уведомления в Telegram
-        const chatId = employeeAfter.telegram_user_id ? Number(employeeAfter.telegram_user_id) : undefined;
+      // Уведомления в Telegram (lazy import)
+      const chatId = employeeAfter.telegram_user_id ? Number(employeeAfter.telegram_user_id) : undefined;
         const ratingNum = Number(updatedRating.rating);
         if (chatId && !Number.isNaN(ratingNum)) {
+          const { sendTelegramMessage } = await import("./handlers/telegramHandlers.js");
           // Сообщение о нарушении
           const reason = violation.reason ? ` Причина: ${violation.reason}.` : '';
           await sendTelegramMessage(
@@ -1547,6 +1673,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+
+  // Запускаем автоматическую очистку приглашений
+  startInviteCleanup();
 
   return httpServer;
 }

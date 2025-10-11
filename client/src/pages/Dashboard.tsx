@@ -127,7 +127,50 @@ export default function Dashboard() {
     shift.position.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const mockActivities: ActivityItem[] = [];
+  // Генерируем активность на основе реальных данных
+  const generateActivities = (): ActivityItem[] => {
+    const activities: ActivityItem[] = [];
+    
+    // Добавляем активность на основе активных смен
+    activeShifts.forEach((shift, index) => {
+      if (shift.current_work_interval) {
+        activities.push({
+          id: `work-${shift.id}`,
+          type: 'shift_start',
+          employeeName: shift.employee.full_name,
+          employeeImage: undefined,
+          description: 'Начал смену',
+          timestamp: new Date(shift.current_work_interval.start_at).toLocaleTimeString('ru-RU', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          })
+        });
+      }
+      
+      if (shift.current_break_interval) {
+        activities.push({
+          id: `break-${shift.id}`,
+          type: 'break_start',
+          employeeName: shift.employee.full_name,
+          employeeImage: undefined,
+          description: 'Начал перерыв',
+          timestamp: new Date(shift.current_break_interval.start_at).toLocaleTimeString('ru-RU', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          })
+        });
+      }
+    });
+    
+    // Сортируем по времени (новые сверху)
+    return activities.sort((a, b) => {
+      const timeA = new Date(`1970-01-01 ${a.timestamp}`).getTime();
+      const timeB = new Date(`1970-01-01 ${b.timestamp}`).getTime();
+      return timeB - timeA;
+    });
+  };
+
+  const mockActivities: ActivityItem[] = generateActivities();
 
   if (authLoading || statsLoading || shiftsLoading) {
     return (
@@ -203,7 +246,7 @@ export default function Dashboard() {
 
         {/* Recent Activity */}
         <div className="space-y-4">
-          <RecentActivity activities={[]} />
+          <RecentActivity activities={mockActivities} />
         </div>
       </div>
 

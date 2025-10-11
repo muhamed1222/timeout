@@ -44,6 +44,9 @@ export interface IStorage {
   // Employee Invites
   createEmployeeInvite(invite: InsertEmployeeInvite): Promise<EmployeeInvite>;
   getEmployeeInviteByCode(code: string): Promise<EmployeeInvite | undefined>;
+  getEmployeeInvitesByCompany(companyId: string): Promise<EmployeeInvite[]>;
+  deleteEmployeeInvite(id: string): Promise<void>;
+  cleanupExpiredInvites(): Promise<number>;
   useEmployeeInvite(code: string, employeeId: string): Promise<EmployeeInvite | undefined>;
   updateEmployeeInvite(code: string, updates: Partial<InsertEmployeeInvite>): Promise<EmployeeInvite | undefined>;
   
@@ -52,6 +55,7 @@ export interface IStorage {
   getShift(id: string): Promise<Shift | undefined>;
   getShiftsByEmployee(employeeId: string, limit?: number): Promise<Shift[]>;
   getActiveShiftsByCompany(companyId: string): Promise<(Shift & { employee: Employee })[]>;
+  getTodayShiftForEmployee(employeeId: string): Promise<Shift | undefined>;
   updateShift(id: string, updates: Partial<InsertShift>): Promise<Shift | undefined>;
   
   // Work Intervals
@@ -165,6 +169,13 @@ export class PostgresStorage implements IStorage {
     return result;
   }
 
+  async getEmployeeInvitesByCompany(companyId: string): Promise<EmployeeInvite[]> {
+    const results = await db.select().from(schema.employee_invite)
+      .where(eq(schema.employee_invite.company_id, companyId))
+      .orderBy(desc(schema.employee_invite.created_at));
+    return results;
+  }
+
   async useEmployeeInvite(code: string, employeeId: string): Promise<EmployeeInvite | undefined> {
     const [result] = await db.update(schema.employee_invite)
       .set({ 
@@ -177,6 +188,22 @@ export class PostgresStorage implements IStorage {
       ))
       .returning();
     return result;
+  }
+
+  async deleteEmployeeInvite(id: string): Promise<void> {
+    await db.delete(schema.employee_invite)
+      .where(eq(schema.employee_invite.id, id));
+  }
+
+  async cleanupExpiredInvites(): Promise<number> {
+    // Удаляем приглашения старше 2 минут, которые не были использованы
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+    const result = await db.delete(schema.employee_invite)
+      .where(and(
+        sql`${schema.employee_invite.created_at} < ${twoMinutesAgo.toISOString()}`,
+        sql`${schema.employee_invite.used_by_employee} IS NULL`
+      ));
+    return result.rowCount || 0;
   }
 
   async updateEmployeeInvite(code: string, updates: Partial<InsertEmployeeInvite>): Promise<EmployeeInvite | undefined> {
@@ -206,6 +233,7 @@ export class PostgresStorage implements IStorage {
   }
 
   async getActiveShiftsByCompany(companyId: string): Promise<(Shift & { employee: Employee })[]> {
+    // Получаем только смены со статусом 'active' (начатые смены)
     return db.select({
       id: schema.shift.id,
       employee_id: schema.shift.employee_id,
@@ -230,11 +258,26 @@ export class PostgresStorage implements IStorage {
     .innerJoin(schema.employee, eq(schema.shift.employee_id, schema.employee.id))
     .where(and(
       eq(schema.employee.company_id, companyId),
-      or(
-        eq(schema.shift.status, 'planned'),
-        eq(schema.shift.status, 'active')
-      )
-));
+      eq(schema.shift.status, 'active')
+    ));
+  }
+
+  async getTodayShiftForEmployee(employeeId: string): Promise<Shift | undefined> {
+    // Получаем смену на сегодня для сотрудника
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const [result] = await db.select().from(schema.shift)
+      .where(and(
+        eq(schema.shift.employee_id, employeeId),
+        gte(schema.shift.planned_start_at, today.toISOString()),
+        lte(schema.shift.planned_start_at, tomorrow.toISOString())
+      ))
+      .limit(1);
+    
+    return result;
   }
 
   async updateShift(id: string, updates: Partial<InsertShift>): Promise<Shift | undefined> {

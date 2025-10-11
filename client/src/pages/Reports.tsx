@@ -14,15 +14,32 @@ import { ru } from "date-fns/locale";
 type DailyReport = {
   id: string;
   shift_id: string;
-  summary: string;
-  notes: string | null;
+  planned_items: string[] | null;
+  done_items: string[] | null;
+  blockers: string | null;
+  tasks_links: string[] | null;
+  time_spent: any;
+  attachments: any;
   submitted_at: string;
   shift: {
-    employee: {
-      full_name: string;
-      position: string;
-    };
-    shift_date: string;
+    id: string;
+    employee_id: string;
+    planned_start_at: string;
+    planned_end_at: string;
+    actual_start_at: string | null;
+    actual_end_at: string | null;
+    status: string;
+    created_at: string;
+  };
+  employee: {
+    id: string;
+    company_id: string;
+    full_name: string;
+    position: string | null;
+    telegram_user_id: string | null;
+    status: string;
+    tz: string | null;
+    created_at: string;
   };
 };
 
@@ -48,11 +65,11 @@ export default function Reports() {
     }
 
     const data = filteredReports.map(report => ({
-      Дата: format(new Date(report.shift.shift_date), 'dd.MM.yyyy', { locale: ru }),
-      Сотрудник: report.shift.employee.full_name,
-      Должность: report.shift.employee.position,
-      Отчет: report.summary,
-      Примечания: report.notes || '-',
+      Дата: format(new Date(report.shift.planned_start_at), 'dd.MM.yyyy', { locale: ru }),
+      Сотрудник: report.employee.full_name,
+      Должность: report.employee.position || '-',
+      Отчет: report.done_items ? report.done_items.join('; ') : '-',
+      Примечания: report.blockers || '-',
       Отправлен: format(new Date(report.submitted_at), 'dd.MM.yyyy HH:mm', { locale: ru })
     }));
     
@@ -75,11 +92,11 @@ export default function Reports() {
 
   const filteredReports = reports.filter(report => {
     const matchesSearch = 
-      report.shift.employee.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (report.notes && report.notes.toLowerCase().includes(searchQuery.toLowerCase()));
+      report.employee.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (report.done_items && report.done_items.some(item => item.toLowerCase().includes(searchQuery.toLowerCase()))) ||
+      (report.blockers && report.blockers.toLowerCase().includes(searchQuery.toLowerCase()));
     
-    const matchesDate = !selectedDate || report.shift.shift_date === selectedDate;
+    const matchesDate = !selectedDate || format(new Date(report.shift.planned_start_at), 'yyyy-MM-dd') === selectedDate;
     
     return matchesSearch && matchesDate;
   });
@@ -155,17 +172,17 @@ export default function Reports() {
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <Avatar>
                     <AvatarFallback>
-                      {report.shift.employee.full_name.split(' ').map(n => n[0]).join('')}
+                      {report.employee.full_name.split(' ').map(n => n[0]).join('')}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base truncate">{report.shift.employee.full_name}</CardTitle>
-                    <p className="text-sm text-muted-foreground truncate">{report.shift.employee.position}</p>
+                    <CardTitle className="text-base truncate">{report.employee.full_name}</CardTitle>
+                    <p className="text-sm text-muted-foreground truncate">{report.employee.position || '-'}</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <Badge variant="outline">
-                    {format(new Date(report.shift.shift_date), 'dd MMM', { locale: ru })}
+                    {format(new Date(report.shift.planned_start_at), 'dd MMM', { locale: ru })}
                   </Badge>
                   <p className="text-xs text-muted-foreground mt-1">
                     {format(new Date(report.submitted_at), 'HH:mm', { locale: ru })}
@@ -176,12 +193,12 @@ export default function Reports() {
             <CardContent className="space-y-3">
               <div>
                 <p className="text-sm font-medium mb-1">Отчет:</p>
-                <p className="text-sm">{report.summary}</p>
+                <p className="text-sm">{report.done_items ? report.done_items.join('; ') : '-'}</p>
               </div>
-              {report.notes && (
+              {report.blockers && (
                 <div>
-                  <p className="text-sm font-medium mb-1">Примечания:</p>
-                  <p className="text-sm text-muted-foreground">{report.notes}</p>
+                  <p className="text-sm font-medium mb-1">Проблемы:</p>
+                  <p className="text-sm text-muted-foreground">{report.blockers}</p>
                 </div>
               )}
             </CardContent>

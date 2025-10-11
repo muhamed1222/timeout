@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Plus, Loader2, QrCode, Copy, Check } from "lucide-react";
+import { Search, Plus, Loader2, QrCode, Copy, Check, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -15,6 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { AddEmployeeModal } from "@/components/AddEmployeeModal";
 
 type Employee = {
   id: string;
@@ -55,8 +56,41 @@ export default function Employees() {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [selectedInvite, setSelectedInvite] = useState<InviteLink | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const { toast } = useToast();
   const { companyId, loading: authLoading } = useAuth();
+
+  const handleAddEmployee = () => {
+    setShowAddEmployeeModal(true);
+  };
+
+  // Мутация для удаления приглашения
+  const deleteInviteMutation = useMutation({
+    mutationFn: async (inviteId: string) => {
+      const response = await apiRequest(`/api/employee-invites/${inviteId}`, {
+        method: 'DELETE',
+      });
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Приглашение удалено",
+        description: "Приглашение успешно удалено",
+      });
+      refetchInvites();
+    },
+    onError: (error) => {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось удалить приглашение",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteInvite = (inviteId: string) => {
+    deleteInviteMutation.mutate(inviteId);
+  };
 
   const { data: employees = [], isLoading: employeesLoading, refetch: refetchEmployees } = useQuery<Employee[]>({
     queryKey: ['/api/companies', companyId, 'employees'],
@@ -175,131 +209,10 @@ export default function Employees() {
           <h1 className="text-3xl font-bold">Сотрудники</h1>
           <p className="text-muted-foreground">Управление командой</p>
         </div>
-        <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-employee">
-              <Plus className="w-4 h-4 mr-2" />
-              Добавить сотрудника
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Пригласить сотрудника</DialogTitle>
-              <DialogDescription>
-                Создайте инвайт-код для нового сотрудника
-              </DialogDescription>
-            </DialogHeader>
-            {selectedInvite ? (
-              <div className="space-y-4">
-                <div className="flex flex-col items-center gap-4 p-4 border rounded-lg">
-                  <img src={selectedInvite.qr_code_url} alt="QR Code" className="w-48 h-48" />
-                  <div className="text-center space-y-2 w-full">
-                    <p className="text-sm font-medium">Инвайт-код</p>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 px-3 py-2 bg-muted rounded text-sm font-mono">
-                        {selectedInvite.code}
-                      </code>
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => handleCopyCode(selectedInvite.code)}
-                        data-testid="button-copy-code"
-                      >
-                        {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      </Button>
-                    </div>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => handleCopyLink(selectedInvite.deep_link)}
-                      data-testid="button-copy-link"
-                    >
-                      <Copy className="w-4 h-4 mr-2" />
-                      Скопировать ссылку
-                    </Button>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedInvite(null);
-                      setIsInviteOpen(false);
-                    }}
-                    data-testid="button-close-invite"
-                  >
-                    Закрыть
-                  </Button>
-                </DialogFooter>
-              </div>
-            ) : (
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="full_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Имя сотрудника</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Иван Иванов" {...field} data-testid="input-employee-name" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="position"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Должность</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Менеджер" {...field} data-testid="input-employee-position" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="tz"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Часовой пояс</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-timezone">
-                              <SelectValue placeholder="Выберите часовой пояс" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Europe/Moscow">Москва (UTC+3)</SelectItem>
-                            <SelectItem value="Europe/Samara">Самара (UTC+4)</SelectItem>
-                            <SelectItem value="Asia/Yekaterinburg">Екатеринбург (UTC+5)</SelectItem>
-                            <SelectItem value="Asia/Novosibirsk">Новосибирск (UTC+7)</SelectItem>
-                            <SelectItem value="Asia/Vladivostok">Владивосток (UTC+10)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <DialogFooter>
-                    <Button
-                      type="submit"
-                      disabled={createInviteMutation.isPending}
-                      data-testid="button-create-invite"
-                    >
-                      {createInviteMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                      Создать инвайт
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            )}
-          </DialogContent>
-        </Dialog>
+        <Button onClick={handleAddEmployee} data-testid="button-add-employee">
+          <Plus className="w-4 h-4 mr-2" />
+          Добавить сотрудника
+        </Button>
       </div>
 
       <div className="relative">
@@ -390,6 +303,15 @@ export default function Employees() {
                     >
                       <Copy className="w-3 h-3" />
                     </Button>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => handleDeleteInvite(invite.id)}
+                      data-testid={`button-delete-invite-${invite.id}`}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
                   </div>
                   <Button
                     variant="outline"
@@ -413,6 +335,16 @@ export default function Employees() {
           <p className="text-muted-foreground">Сотрудники не найдены</p>
         </div>
       )}
+
+      {/* Add Employee Modal */}
+      <AddEmployeeModal 
+        open={showAddEmployeeModal}
+        onOpenChange={setShowAddEmployeeModal}
+        onSuccess={() => {
+          refetchEmployees();
+          refetchInvites();
+        }}
+      />
     </div>
   );
 }

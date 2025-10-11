@@ -43,66 +43,51 @@ export function AddEmployeeModal({ open, onOpenChange }: AddEmployeeModalProps) 
 
   const createEmployeeMutation = useMutation({
     mutationFn: async (data: { full_name: string; position: string }) => {
-      const response = await fetch("/api/employees", {
+      // Создаем только инвайт для сотрудника
+      const response = await fetch("/api/employee-invites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           company_id: companyId,
           full_name: data.full_name,
           position: data.position,
-          status: "active",
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Ошибка создания сотрудника");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Ошибка создания инвайта");
       }
 
       return response.json();
     },
-    onSuccess: async (employee) => {
-      // Создаем инвайт для сотрудника
-      const inviteResponse = await fetch("/api/employee-invites", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          company_id: companyId,
-          full_name: formData.full_name,
-          position: formData.position,
-        }),
-      });
-
-      if (inviteResponse.ok) {
-        const invite = await inviteResponse.json();
-        
-        // Получаем ссылку и QR-код
-        const linkResponse = await fetch(`/api/employee-invites/${invite.code}/link`);
-        if (linkResponse.ok) {
-          const linkData = await linkResponse.json();
-          setInviteData({
-            id: invite.id,
-            code: invite.code,
-            full_name: invite.full_name,
-            position: invite.position,
-            deep_link: linkData.deep_link,
-            qr_code_url: linkData.qr_code_url,
-          });
-        }
+    onSuccess: async (invite) => {
+      // Получаем ссылку и QR-код
+      const linkResponse = await fetch(`/api/employee-invites/${invite.code}/link`);
+      if (linkResponse.ok) {
+        const linkData = await linkResponse.json();
+        setInviteData({
+          id: invite.id,
+          code: invite.code,
+          full_name: invite.full_name,
+          position: invite.position,
+          deep_link: linkData.deep_link,
+          qr_code_url: linkData.qr_code_url,
+        });
       }
 
-      // Обновляем список сотрудников
-      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "employees"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "stats"] });
+      // Обновляем список инвайтов
+      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "employee-invites"] });
 
       toast({
-        title: "Сотрудник создан",
-        description: `${formData.full_name} успешно добавлен в систему`,
+        title: "Инвайт создан",
+        description: `Приглашение для ${formData.full_name} успешно создано`,
       });
     },
     onError: (error) => {
       toast({
         title: "Ошибка",
-        description: error.message || "Не удалось создать сотрудника",
+        description: error.message || "Не удалось создать инвайт",
         variant: "destructive",
       });
     },
@@ -153,9 +138,9 @@ export function AddEmployeeModal({ open, onOpenChange }: AddEmployeeModalProps) 
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Добавить сотрудника</DialogTitle>
+          <DialogTitle>Пригласить сотрудника</DialogTitle>
           <DialogDescription>
-            Создайте нового сотрудника и получите QR-код для подключения к Telegram
+            Создайте инвайт-код для нового сотрудника
           </DialogDescription>
         </DialogHeader>
 
@@ -193,7 +178,7 @@ export function AddEmployeeModal({ open, onOpenChange }: AddEmployeeModalProps) 
                 {createEmployeeMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Создать сотрудника
+                Создать инвайт
               </Button>
             </DialogFooter>
           </form>
