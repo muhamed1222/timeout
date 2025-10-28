@@ -170,10 +170,15 @@ export class ShiftMonitor {
   async createExceptionsFromViolations(violations: ShiftViolation[]): Promise<void> {
     for (const violation of violations) {
       try {
+        // Get employee to access company_id
+        const employee = await storage.getEmployee(violation.employeeId);
+        if (!employee) {
+          console.error(`Employee not found: ${violation.employeeId}`);
+          continue;
+        }
+
         // Check if exception already exists for this violation
-        const existingExceptions = await storage.getExceptionsByCompany(
-          (await storage.getEmployee(violation.employeeId))?.company_id || ""
-        );
+        const existingExceptions = await storage.getExceptionsByCompany(employee.company_id);
         
         const alreadyExists = existingExceptions.some(ex => 
           ex.employee_id === violation.employeeId &&
@@ -183,6 +188,66 @@ export class ShiftMonitor {
         );
 
         if (!alreadyExists) {
+          // Create violation in rating system first
+          let violationId: string | undefined;
+          
+          try {
+            // Get violation rules for company
+            const rules = await storage.getViolationRulesByCompany(employee.company_id);
+            
+            // Map violation type to rule code
+            const ruleCodeMap: Record<string, string> = {
+              'late_start': 'late',
+              'early_end': 'early_end',
+              'missed_shift': 'missed_shift',
+              'long_break': 'long_break',
+              'no_break_end': 'no_break_end'
+            };
+            
+            const ruleCode = ruleCodeMap[violation.type];
+            if (!ruleCode) {
+              console.warn(`No rule mapping for violation type: ${violation.type}`);
+              continue;
+            }
+
+            // Find matching rule
+            const rule = rules.find((r: any) => r.code === ruleCode && r.is_active);
+            if (!rule) {
+              console.warn(`No active rule found for code: ${ruleCode}`);
+              continue;
+            }
+
+            // Create violation record
+            const createdViolation = await storage.createViolation({
+              employee_id: violation.employeeId,
+              company_id: employee.company_id,
+              rule_id: rule.id,
+              source: 'auto',
+              reason: `Auto-detected: ${violation.type}`,
+              penalty: rule.penalty_percent
+            } as any);
+
+            violationId = createdViolation.id;
+            console.log(`Created violation for ${violation.type} - Employee: ${violation.employeeId}`);
+
+            // Recalculate employee rating for current period
+            const now = new Date();
+            const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            
+            await storage.updateEmployeeRatingFromViolations(
+              violation.employeeId,
+              periodStart,
+              periodEnd
+            );
+
+            console.log(`Updated rating for employee: ${violation.employeeId}`);
+          } catch (ratingError) {
+            console.error(`Failed to create violation or update rating:`, ratingError);
+            // Continue anyway - will create exception without violation_id
+          }
+
+          // Create exception with link to violation
           const exception: InsertException = {
             employee_id: violation.employeeId,
             date: violation.shiftDate,
@@ -192,11 +257,12 @@ export class ShiftMonitor {
               shiftId: violation.shiftId,
               ...violation.details,
               detectedAt: new Date().toISOString()
-            }
+            },
+            violation_id: violationId
           };
 
           await storage.createException(exception);
-          console.log(`Created exception for ${violation.type} - Employee: ${violation.employeeId}`);
+          console.log(`Created exception for ${violation.type} - Employee: ${violation.employeeId}${violationId ? ` (linked to violation ${violationId})` : ''}`);
         }
       } catch (error) {
         console.error(`Failed to create exception for violation:`, violation, error);

@@ -54,6 +54,7 @@ export interface IStorage {
   createShift(shift: InsertShift): Promise<Shift>;
   getShift(id: string): Promise<Shift | undefined>;
   getShiftsByEmployee(employeeId: string, limit?: number): Promise<Shift[]>;
+  getShiftsByEmployeeAndDateRange(employeeId: string, startDate: Date, endDate: Date): Promise<Shift[]>;
   getActiveShiftsByCompany(companyId: string): Promise<(Shift & { employee: Employee })[]>;
   getTodayShiftForEmployee(employeeId: string): Promise<Shift | undefined>;
   updateShift(id: string, updates: Partial<InsertShift>): Promise<Shift | undefined>;
@@ -230,6 +231,18 @@ export class PostgresStorage implements IStorage {
       .where(eq(schema.shift.employee_id, employeeId))
       .orderBy(sql`${schema.shift.planned_start_at} DESC`)
       .limit(limit);
+  }
+
+  async getShiftsByEmployeeAndDateRange(employeeId: string, startDate: Date, endDate: Date): Promise<Shift[]> {
+    return db.select().from(schema.shift)
+      .where(
+        and(
+          eq(schema.shift.employee_id, employeeId),
+          gte(schema.shift.planned_start_at, startDate),
+          lte(schema.shift.planned_start_at, endDate)
+        )
+      )
+      .orderBy(sql`${schema.shift.planned_start_at} DESC`);
   }
 
   async getActiveShiftsByCompany(companyId: string): Promise<(Shift & { employee: Employee })[]> {

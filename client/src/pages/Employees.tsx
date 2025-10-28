@@ -67,9 +67,7 @@ export default function Employees() {
   // Мутация для удаления приглашения
   const deleteInviteMutation = useMutation({
     mutationFn: async (inviteId: string) => {
-      const response = await apiRequest(`/api/employee-invites/${inviteId}`, {
-        method: 'DELETE',
-      });
+      const response = await apiRequest('DELETE', `/api/employee-invites/${inviteId}`);
       return response;
     },
     onSuccess: () => {

@@ -16,6 +16,7 @@ import {
 import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import { logger } from "./lib/logger.js";
+import { cache } from "./lib/cache.js";
 import { shiftMonitor } from "./services/shiftMonitor.js";
 import { validateTelegramWebAppData, type TelegramUser } from "./services/telegramAuth.js";
 
@@ -26,6 +27,7 @@ import employeesRouter from "./routes/employees.js";
 import invitesRouter from "./routes/invites.js";
 import schedulesRouter from "./routes/schedules.js";
 import ratingRouter from "./routes/rating.js";
+import webappRouter from "./routes/webapp.js";
 
 // Rate limiters
 const apiLimiter = rateLimit({
@@ -148,6 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/employee-invites", invitesRouter);
   app.use("/api/schedule-templates", schedulesRouter);
   app.use("/api/rating", ratingRouter);
+  app.use("/api/webapp", webappRouter);
   
   // Legacy inline endpoints (to be migrated)
   
@@ -224,6 +227,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = requestShiftSchema.parse(req.body);
       const shift = await storage.createShift(validatedData);
+      
+      // Invalidate company stats cache
+      const employee = await storage.getEmployee(shift.employee_id);
+      if (employee) {
+        cache.delete(`company:${employee.company_id}:stats`);
+      }
+      
       res.json(shift);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -304,6 +314,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         source: "bot"
       });
       
+      // Invalidate company stats cache
+      const employee = await storage.getEmployee(shift.employee_id);
+      if (employee) {
+        cache.delete(`company:${employee.company_id}:stats`);
+      }
+      
       res.json({ message: "Shift started successfully", shift });
     } catch (error) {
       logger.error("Error starting shift", error);
@@ -323,6 +339,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activeInterval = intervals.find(i => !i.end_at);
       if (activeInterval) {
         await storage.updateWorkInterval(activeInterval.id, { end_at: new Date() });
+      }
+      
+      // Invalidate company stats cache
+      const employee = await storage.getEmployee(shift.employee_id);
+      if (employee) {
+        cache.delete(`company:${employee.company_id}:stats`);
       }
       
       res.json({ message: "Shift ended successfully", shift });

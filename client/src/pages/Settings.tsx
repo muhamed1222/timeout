@@ -4,22 +4,80 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Loader2, User, Bell, Globe, Moon } from "lucide-react";
+import { Loader2, User, Bell, Globe } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+// Типы для настроек пользователя
+interface UserSettings {
+  notifications: boolean;
+  language: string;
+  emailNotifications: boolean;
+  desktopNotifications: boolean;
+}
+
+// Ключ для localStorage
+const SETTINGS_KEY = 'user-settings';
+
+// Получить настройки из localStorage
+function getStoredSettings(): UserSettings {
+  try {
+    const stored = localStorage.getItem(SETTINGS_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error loading settings:', error);
+  }
+  // Значения по умолчанию
+  return {
+    notifications: true,
+    language: 'ru',
+    emailNotifications: true,
+    desktopNotifications: false,
+  };
+}
+
+// Сохранить настройки в localStorage
+function saveSettings(settings: UserSettings) {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch (error) {
+    console.error('Error saving settings:', error);
+  }
+}
 
 export default function Settings() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const [notifications, setNotifications] = useState(true);
-  const [language, setLanguage] = useState("ru");
+  
+  // Загрузка настроек из localStorage при монтировании
+  const [settings, setSettings] = useState<UserSettings>(getStoredSettings());
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Обработчики изменений настроек
+  const updateSetting = <K extends keyof UserSettings>(
+    key: K,
+    value: UserSettings[K]
+  ) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+    setHasChanges(true);
+  };
 
   const handleSaveSettings = () => {
+    saveSettings(settings);
+    setHasChanges(false);
     toast({
       title: "Настройки сохранены",
       description: "Ваши настройки успешно обновлены"
     });
+  };
+
+  const handleResetSettings = () => {
+    const defaultSettings = getStoredSettings();
+    setSettings(defaultSettings);
+    setHasChanges(false);
   };
 
   if (authLoading) {
@@ -86,9 +144,35 @@ export default function Settings() {
               </p>
             </div>
             <Switch
-              checked={notifications}
-              onCheckedChange={setNotifications}
+              checked={settings.notifications}
+              onCheckedChange={(checked) => updateSetting('notifications', checked)}
               data-testid="switch-notifications"
+            />
+          </div>
+          <div className="flex items-center justify-between pt-3 border-t">
+            <div className="space-y-1">
+              <Label>Email уведомления</Label>
+              <p className="text-sm text-muted-foreground">
+                Получать уведомления на почту
+              </p>
+            </div>
+            <Switch
+              checked={settings.emailNotifications}
+              onCheckedChange={(checked) => updateSetting('emailNotifications', checked)}
+              data-testid="switch-email-notifications"
+            />
+          </div>
+          <div className="flex items-center justify-between pt-3 border-t">
+            <div className="space-y-1">
+              <Label>Desktop уведомления</Label>
+              <p className="text-sm text-muted-foreground">
+                Показывать уведомления на рабочем столе
+              </p>
+            </div>
+            <Switch
+              checked={settings.desktopNotifications}
+              onCheckedChange={(checked) => updateSetting('desktopNotifications', checked)}
+              data-testid="switch-desktop-notifications"
             />
           </div>
         </CardContent>
@@ -107,7 +191,10 @@ export default function Settings() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Язык интерфейса</Label>
-            <Select value={language} onValueChange={setLanguage}>
+            <Select 
+              value={settings.language} 
+              onValueChange={(value) => updateSetting('language', value)}
+            >
               <SelectTrigger data-testid="select-language">
                 <SelectValue />
               </SelectTrigger>
@@ -116,15 +203,27 @@ export default function Settings() {
                 <SelectItem value="en">English</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              {settings.language === 'en' && 'English translation will be available in the next version'}
+              {settings.language === 'ru' && 'Перевод на английский будет доступен в следующей версии'}
+            </p>
           </div>
         </CardContent>
       </Card>
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => window.location.reload()}>
+        <Button 
+          variant="outline" 
+          onClick={handleResetSettings}
+          disabled={!hasChanges}
+        >
           Отмена
         </Button>
-        <Button onClick={handleSaveSettings} data-testid="button-save-settings">
+        <Button 
+          onClick={handleSaveSettings} 
+          data-testid="button-save-settings"
+          disabled={!hasChanges}
+        >
           Сохранить изменения
         </Button>
       </div>

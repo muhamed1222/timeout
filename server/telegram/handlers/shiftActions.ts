@@ -1,6 +1,7 @@
 import { Context } from 'telegraf';
 import { SessionData } from '../types';
 import { storage } from '../../storage';
+import { cache } from '../../lib/cache';
 
 export async function handleShiftActions(ctx: Context & { session: SessionData }) {
   const action = (ctx as any)?.callbackQuery?.data as string | undefined;
@@ -41,6 +42,12 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
             start_at: new Date(),
             source: 'bot'
           });
+
+          // Invalidate company stats cache
+          const employee = await storage.getEmployee(employeeId);
+          if (employee) {
+            cache.delete(`company:${employee.company_id}:stats`);
+          }
 
           message = '✅ Смена начата! Удачной работы!';
           success = true;
@@ -117,6 +124,12 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
             status: 'completed',
             actual_end_at: new Date()
           });
+
+          // Invalidate company stats cache
+          const employeeEndShift = await storage.getEmployee(employeeId);
+          if (employeeEndShift) {
+            cache.delete(`company:${employeeEndShift.company_id}:stats`);
+          }
 
           message = '🕔 Смена завершена! Спасибо за работу!';
           success = true;

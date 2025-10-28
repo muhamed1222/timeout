@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { env } from "./lib/env.js";
+import { scheduler } from "./services/scheduler.js";
 
 // Launch Telegram bot in development mode
 import './launchBot';
@@ -70,5 +71,28 @@ app.use((req, res, next) => {
     host: "127.0.0.1"
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start scheduled tasks (monitoring, reminders)
+    scheduler.startAll();
+    log('Schedulers started');
+  });
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    log('SIGTERM received, shutting down gracefully...');
+    scheduler.stopAll();
+    server.close(() => {
+      log('Server closed');
+      process.exit(0);
+    });
+  });
+
+  process.on('SIGINT', () => {
+    log('SIGINT received, shutting down gracefully...');
+    scheduler.stopAll();
+    server.close(() => {
+      log('Server closed');
+      process.exit(0);
+    });
   });
 })();

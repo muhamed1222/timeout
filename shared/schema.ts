@@ -129,6 +129,7 @@ export const exception = pgTable("exception", {
   severity: integer("severity").notNull().default(1),
   details: jsonb("details"),
   resolved_at: timestamp("resolved_at"),
+  violation_id: uuid("violation_id").references(() => violations.id, { onDelete: "set null" }),
 });
 
 // Напоминания

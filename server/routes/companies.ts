@@ -219,5 +219,47 @@ router.get("/:companyId/violations", async (req, res) => {
   }
 });
 
+// Get exceptions by company
+router.get("/:companyId/exceptions", async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const exceptions = await storage.getExceptionsByCompany(companyId);
+    res.json(exceptions);
+  } catch (error) {
+    logger.error("Error fetching exceptions", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Resolve exception
+router.post("/:companyId/exceptions/:exceptionId/resolve", async (req, res) => {
+  try {
+    const { exceptionId } = req.params;
+    const exception = await storage.resolveException(exceptionId);
+    if (!exception) {
+      return res.status(404).json({ error: "Exception not found" });
+    }
+    
+    logger.info("Exception resolved", { exceptionId });
+    res.json({ success: true, exception });
+  } catch (error) {
+    logger.error("Error resolving exception", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get daily reports by company
+router.get("/:companyId/daily-reports", async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+    const reports = await storage.getDailyReportsByCompany(companyId, limit);
+    res.json(reports);
+  } catch (error) {
+    logger.error("Error fetching daily reports", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
 

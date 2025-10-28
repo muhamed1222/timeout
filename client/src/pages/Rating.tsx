@@ -46,25 +46,70 @@ export default function Rating() {
     enabled: !!companyId,
   });
 
-  const { data: ratingData, isLoading: ratingLoading, isError: ratingError } = useQuery({
-    queryKey: ['/api/companies', companyId, 'ratings', selectedPeriod],
-    queryFn: async () => {
-      // For now, request current month periodStart/periodEnd to match backend shape
-      const now = new Date();
-      const periodStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-      const response = await apiRequest('GET', `/api/companies/${companyId}/ratings?periodStart=${periodStart}&periodEnd=${periodEnd}`);
-      return response.json();
-    },
-    enabled: !!companyId,
-  });
-
-  const { data: periods } = useQuery({
+  const { data: periods = [] } = useQuery<RatingPeriod[]>({
     queryKey: ['/api/rating/periods'],
     queryFn: async () => {
       const response = await apiRequest('GET', '/api/rating/periods');
       return response.json();
     },
+  });
+
+  // Вычисляем период на основе выбранного
+  const getPeriodDates = () => {
+    if (selectedPeriod === 'current') {
+      const now = new Date();
+      return {
+        periodStart: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0],
+        periodEnd: new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+      };
+    } else if (selectedPeriod === 'last') {
+      const now = new Date();
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      return {
+        periodStart: lastMonth.toISOString().split('T')[0],
+        periodEnd: new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0]
+      };
+    } else if (selectedPeriod === 'quarter') {
+      const now = new Date();
+      const quarter = Math.floor(now.getMonth() / 3);
+      const quarterStartMonth = quarter * 3;
+      return {
+        periodStart: new Date(now.getFullYear(), quarterStartMonth, 1).toISOString().split('T')[0],
+        periodEnd: new Date(now.getFullYear(), quarterStartMonth + 3, 0).toISOString().split('T')[0]
+      };
+    } else if (selectedPeriod === 'year') {
+      const now = new Date();
+      return {
+        periodStart: new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0],
+        periodEnd: new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0]
+      };
+    } else {
+      // Если выбран конкретный period ID
+      const period = periods.find(p => p.id === selectedPeriod);
+      if (period) {
+        return {
+          periodStart: period.start_date,
+          periodEnd: period.end_date
+        };
+      }
+      // По умолчанию текущий месяц
+      const now = new Date();
+      return {
+        periodStart: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0],
+        periodEnd: new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+      };
+    }
+  };
+
+  const { periodStart, periodEnd } = getPeriodDates();
+
+  const { data: ratingData, isLoading: ratingLoading, isError: ratingError } = useQuery({
+    queryKey: ['/api/companies', companyId, 'ratings', periodStart, periodEnd],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/companies/${companyId}/ratings?periodStart=${periodStart}&periodEnd=${periodEnd}`);
+      return response.json();
+    },
+    enabled: !!companyId,
   });
 
   const { data: violationRules = [], isLoading: rulesLoading } = useQuery({

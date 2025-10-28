@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter, X, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import ExceptionCard, { type ExceptionType } from "@/components/ExceptionCard";
 
 type ExceptionData = {
@@ -23,10 +25,32 @@ export default function Exceptions() {
   const [selectedSeverity, setSelectedSeverity] = useState<number | null>(null);
   const [selectedType, setSelectedType] = useState<ExceptionType | null>(null);
   const { companyId, loading: authLoading } = useAuth();
+  const { toast } = useToast();
 
   const { data: exceptions = [], isLoading } = useQuery<ExceptionData[]>({
     queryKey: ['/api/companies', companyId, 'exceptions'],
     enabled: !!companyId,
+  });
+
+  const resolveExceptionMutation = useMutation({
+    mutationFn: async (exceptionId: string) => {
+      const response = await apiRequest('POST', `/api/companies/${companyId}/exceptions/${exceptionId}/resolve`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'exceptions'] });
+      toast({
+        title: "Исключение разрешено",
+        description: "Исключение успешно помечено как решенное",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось разрешить исключение",
+        variant: "destructive",
+      });
+    }
   });
 
   const severityLabels = {
@@ -75,7 +99,21 @@ export default function Exceptions() {
     return typeMap[type] || 'no_show';
   };
 
+  const handleResolveException = (exceptionId: string, employeeName: string) => {
+    if (confirm(`Вы уверены, что хотите разрешить это исключение для ${employeeName}?`)) {
+      resolveExceptionMutation.mutate(exceptionId);
+    }
+  };
+
+  const handleContactEmployee = (employeeName: string) => {
+    toast({
+      title: "Функция в разработке",
+      description: `Отправка сообщения для ${employeeName} будет доступна в следующей версии`,
+    });
+  };
+
   const transformedExceptions = exceptions.map(exc => ({
+    id: exc.id,
     employeeName: exc.employee.full_name,
     type: mapExceptionType(exc.exception_type),
     description: exc.description,
@@ -190,8 +228,13 @@ export default function Exceptions() {
             </p>
           </div>
         ) : (
-          filteredExceptions.map((exception, index) => (
-            <ExceptionCard key={index} {...exception} />
+          filteredExceptions.map((exception) => (
+            <ExceptionCard 
+              key={exception.id} 
+              {...exception}
+              onResolve={() => handleResolveException(exception.id, exception.employeeName)}
+              onContact={() => handleContactEmployee(exception.employeeName)}
+            />
           ))
         )}
       </div>
