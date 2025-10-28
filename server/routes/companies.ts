@@ -25,8 +25,8 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Get company by ID (protected)
-router.get("/:id", requireCompanyAccess, async (req, res) => {
+// Get company by ID
+router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const company = await storage.getCompany(id);
@@ -257,6 +257,18 @@ router.get("/:companyId/daily-reports", async (req, res) => {
     res.json(reports);
   } catch (error) {
     logger.error("Error fetching daily reports", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get violation rules by company (alias for frontend compatibility)
+router.get("/:companyId/violation-rules", async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const rules = await storage.getViolationRulesByCompany(companyId);
+    res.json(rules);
+  } catch (error) {
+    logger.error("Error fetching violation rules", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

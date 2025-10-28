@@ -71,6 +71,59 @@ router.post("/:code/use", async (req, res) => {
   }
 });
 
+// Accept invite (for Telegram bot)
+router.post("/:code/accept", async (req, res) => {
+  try {
+    const { code } = req.params;
+    const { telegram_user_id, telegram_username } = req.body;
+    
+    if (!telegram_user_id) {
+      return res.status(400).json({ error: "telegram_user_id is required" });
+    }
+
+    // Получаем инвайт
+    const invite = await storage.getEmployeeInviteByCode(code);
+    if (!invite) {
+      return res.status(404).json({ error: "Invite not found" });
+    }
+
+    if (invite.used_at) {
+      return res.status(400).json({ error: "Invite already used" });
+    }
+
+    // Проверяем, есть ли уже сотрудник с этим Telegram ID
+    let employee = await storage.getEmployeeByTelegramId(telegram_user_id);
+    
+    if (employee) {
+      // Обновляем существующего сотрудника
+      employee = await storage.updateEmployee(employee.id, {
+        company_id: invite.company_id,
+        full_name: invite.full_name || employee.full_name,
+        position: invite.position || employee.position,
+        telegram_user_id,
+        status: 'active'
+      });
+    } else {
+      // Создаем нового сотрудника
+      employee = await storage.createEmployee({
+        company_id: invite.company_id,
+        full_name: invite.full_name || 'Сотрудник',
+        position: invite.position,
+        telegram_user_id,
+        status: 'active'
+      });
+    }
+
+    // Отмечаем инвайт как использованный
+    await storage.useEmployeeInvite(code, employee!.id);
+
+    res.json(employee);
+  } catch (error) {
+    logger.error("Error accepting invite", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Generate Telegram deep link for invite
 router.get("/:code/link", async (req, res) => {
   try {

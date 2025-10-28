@@ -125,3 +125,29 @@ export async function requireTelegramEmployee(req: Request, res: Response, next:
   }
 }
 
+/**
+ * Middleware to verify requests from Telegram bot
+ */
+export function requireBotAuth(req: Request, res: Response, next: NextFunction) {
+  // In development mode without bot secret, allow all requests
+  if (!process.env.BOT_API_SECRET && process.env.NODE_ENV === 'development') {
+    logger.warn('BOT_API_SECRET not set - skipping bot auth validation (development mode)');
+    return next();
+  }
+
+  const botSecret = req.headers['x-bot-secret'];
+  const expectedSecret = process.env.BOT_API_SECRET;
+
+  if (!expectedSecret) {
+    logger.error('BOT_API_SECRET not configured');
+    return res.status(500).json({ error: "Bot authentication not configured" });
+  }
+
+  if (!botSecret || botSecret !== expectedSecret) {
+    logger.warn('Invalid bot secret received');
+    return res.status(401).json({ error: "Unauthorized bot request" });
+  }
+
+  next();
+}
+
