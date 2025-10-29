@@ -76,6 +76,9 @@ export const employee_schedule = pgTable("employee_schedule", {
   pk: unique().on(table.employee_id, table.valid_from),
 }));
 
+// Shift status type
+export type ShiftStatus = 'planned' | 'active' | 'completed' | 'cancelled';
+
 // Смены
 export const shift = pgTable("shift", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),

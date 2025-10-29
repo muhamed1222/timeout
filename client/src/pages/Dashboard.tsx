@@ -1,64 +1,82 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Filter, Download, Loader2 } from "lucide-react";
+import { Search, Plus, Filter, Download, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { useExport } from "@/hooks/useExport";
 import DashboardStats from "@/components/DashboardStats";
 import ShiftCard from "@/components/ShiftCard";
 import RecentActivity, { type ActivityItem } from "@/components/RecentActivity";
 import { AddEmployeeModal } from "@/components/AddEmployeeModal";
 import ShiftDetailsModal from "@/components/ShiftDetailsModal";
+import { DashboardSkeleton } from "@/components/DashboardSkeleton";
+import { EmptyState } from "@/components/EmptyState";
 
-type DashboardStats = {
+interface CompanyStats {
   totalEmployees: number;
   activeShifts: number;
   completedShifts: number;
   exceptions: number;
-};
+}
 
-type ActiveShift = {
+interface ActiveShift {
   id: string;
   employee_id: string;
   employee: {
     full_name: string;
-    position: string;
+    position: string | null;
   };
-  shift_start: string;
-  shift_end: string;
+  planned_start_at: string;
+  planned_end_at: string;
+  actual_start_at: string | null;
+  actual_end_at: string | null;
   status: string;
-  current_work_interval?: {
-    started_at: string;
-  } | null;
-  current_break_interval?: {
-    started_at: string;
-  } | null;
-  daily_report?: {
-    summary: string;
-  } | null;
-};
+}
+
+interface TransformedShift {
+  id: string;
+  employeeName: string;
+  position: string;
+  shiftStart: string;
+  shiftEnd: string;
+  status: "active" | "break" | "late" | "done";
+  lastReport?: string;
+  location?: string;
+}
 
 export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
-  const [selectedShift, setSelectedShift] = useState<typeof transformedShifts[0] | null>(null);
+  const [selectedShift, setSelectedShift] = useState<TransformedShift | null>(null);
   const [showShiftDetails, setShowShiftDetails] = useState(false);
   const { toast } = useToast();
   const { companyId, loading: authLoading } = useAuth();
-  const { exportToCSV } = useExport();
 
-  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
+  // Fetch company stats
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<CompanyStats>({
     queryKey: ['/api/companies', companyId, 'stats'],
+    queryFn: async () => {
+      const res = await fetch(`/api/companies/${companyId}/stats`);
+      if (!res.ok) throw new Error('Failed to fetch stats');
+      return res.json();
+    },
     enabled: !!companyId,
-    refetchInterval: 30000, // Обновление каждые 30 секунд
+    refetchInterval: 30000, // Refresh every 30 seconds
+    staleTime: 20000,
   });
 
-  const { data: activeShifts = [], isLoading: shiftsLoading } = useQuery<ActiveShift[]>({
+  // Fetch active shifts
+  const { data: activeShifts = [], isLoading: shiftsLoading, error: shiftsError } = useQuery<ActiveShift[]>({
     queryKey: ['/api/companies', companyId, 'shifts', 'active'],
+    queryFn: async () => {
+      const res = await fetch(`/api/companies/${companyId}/shifts/active`);
+      if (!res.ok) throw new Error('Failed to fetch shifts');
+      return res.json();
+    },
     enabled: !!companyId,
-    refetchInterval: 30000, // Обновление каждые 30 секунд
+    refetchInterval: 30000,
+    staleTime: 20000,
   });
 
   const handleSearch = (value: string) => {
@@ -126,18 +144,29 @@ export default function Dashboard() {
 
   const getShiftStatus = (shift: ActiveShift): "active" | "break" | "late" | "done" => {
     if (shift.status === 'completed') return 'done';
-    if (shift.current_break_interval) return 'break';
-    if (shift.current_work_interval) return 'active';
-    return 'late';
+    if (shift.status === 'active') return 'active';
+    if (shift.status === 'planned' && shift.actual_start_at === null) {
+      const now = new Date();
+      const plannedStart = new Date(shift.planned_start_at);
+      if (now > plannedStart) return 'late';
+    }
+    return 'active';
   };
 
-  const transformedShifts = activeShifts.map(shift => ({
+  const transformedShifts: TransformedShift[] = activeShifts.map(shift => ({
+    id: shift.id,
     employeeName: shift.employee.full_name,
-    position: shift.employee.position,
-    shiftStart: new Date(shift.shift_start).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-    shiftEnd: new Date(shift.shift_end).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+    position: shift.employee.position || 'Сотрудник',
+    shiftStart: new Date(shift.planned_start_at).toLocaleTimeString('ru-RU', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    }),
+    shiftEnd: new Date(shift.planned_end_at).toLocaleTimeString('ru-RU', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    }),
     status: getShiftStatus(shift),
-    lastReport: shift.daily_report?.summary || undefined,
+    lastReport: undefined,
     location: undefined
   }));
 
@@ -146,13 +175,12 @@ export default function Dashboard() {
     shift.position.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Генерируем активность на основе реальных данных
-  const generateActivities = (): ActivityItem[] => {
-    const activities: ActivityItem[] = [];
-    
-    // Добавляем активность на основе активных смен
-    activeShifts.forEach((shift) => {
-      // Добавляем событие начала смены
+  // Generate activities based on real data
+  const recentActivities: ActivityItem[] = activeShifts
+    .flatMap((shift) => {
+      const activities: ActivityItem[] = [];
+      
+      // Add shift start event
       if (shift.actual_start_at) {
         activities.push({
           id: `start-${shift.id}`,
@@ -167,7 +195,7 @@ export default function Dashboard() {
         });
       }
       
-      // Если смена завершена, добавляем событие
+      // Add shift end event
       if (shift.status === 'completed' && shift.actual_end_at) {
         activities.push({
           id: `end-${shift.id}`,
@@ -181,30 +209,38 @@ export default function Dashboard() {
           })
         });
       }
-    });
-    
-    // Сортируем по времени (новые сверху)
-    return activities.sort((a, b) => {
+      
+      return activities;
+    })
+    .sort((a, b) => {
       const timeA = new Date(`1970-01-01 ${a.timestamp}`).getTime();
       const timeB = new Date(`1970-01-01 ${b.timestamp}`).getTime();
       return timeB - timeA;
-    }).slice(0, 10); // Показываем только последние 10 событий
-  };
+    })
+    .slice(0, 10);
 
-  const mockActivities: ActivityItem[] = generateActivities();
-
+  // Loading state
   if (authLoading || statsLoading || shiftsLoading) {
-    return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
+  // Not authenticated
   if (!companyId) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
         <p className="text-muted-foreground">Необходимо войти в систему</p>
+      </div>
+    );
+  }
+
+  // Error state
+  if (statsError || shiftsError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
+        <p className="text-destructive">Ошибка загрузки данных</p>
+        <Button onClick={() => window.location.reload()}>
+          Обновить страницу
+        </Button>
       </div>
     );
   }
@@ -258,21 +294,36 @@ export default function Dashboard() {
         {/* Shift Cards */}
         <div className="lg:col-span-2 space-y-4">
           <h2 className="text-xl font-semibold">Активные смены</h2>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            {filteredShifts.map((shift) => (
-              <ShiftCard 
-                key={shift.employeeName} 
-                {...shift}
-                onViewDetails={() => handleViewShiftDetails(shift)}
-                onSendMessage={() => handleSendMessage(shift.employeeName)}
-              />
-            ))}
-          </div>
+          {filteredShifts.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="Нет активных смен"
+              description={searchQuery 
+                ? "По вашему запросу ничего не найдено. Попробуйте изменить поисковый запрос."
+                : "Пока нет активных смен. Добавьте сотрудников и создайте расписание для начала работы."
+              }
+              action={searchQuery ? undefined : {
+                label: "Добавить сотрудника",
+                onClick: handleAddEmployee
+              }}
+            />
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {filteredShifts.map((shift) => (
+                <ShiftCard 
+                  key={shift.id} 
+                  {...shift}
+                  onViewDetails={() => handleViewShiftDetails(shift)}
+                  onSendMessage={() => handleSendMessage(shift.employeeName)}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Recent Activity */}
         <div className="space-y-4">
-          <RecentActivity activities={mockActivities} />
+          <RecentActivity activities={recentActivities} />
         </div>
       </div>
 

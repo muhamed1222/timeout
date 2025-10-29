@@ -78,7 +78,10 @@ declare global {
 }
 
 // Helper function to determine employee status
-function getEmployeeStatus(activeShift: any, workIntervals: any[], breakIntervals: any[]) {
+type Shift = { id: string; status: string } | null;
+type Interval = { start_at: Date | null; end_at: Date | null };
+
+function getEmployeeStatus(activeShift: Shift, workIntervals: Interval[], breakIntervals: Interval[]) {
   if (!activeShift) {
     return 'off_work';
   }
@@ -97,7 +100,8 @@ function getEmployeeStatus(activeShift: any, workIntervals: any[], breakInterval
 }
 
 // Middleware for Telegram WebApp authentication
-function authenticateTelegramWebApp(req: any, res: any, next: any) {
+import { Request, Response, NextFunction } from 'express';
+function authenticateTelegramWebApp(req: Request, res: Response, next: NextFunction) {
   const initData = req.headers['x-telegram-init-data'] || req.body.initData;
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   

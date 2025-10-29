@@ -204,7 +204,7 @@ export class PostgresStorage implements IStorage {
         sql`${schema.employee_invite.created_at} < ${twoMinutesAgo.toISOString()}`,
         sql`${schema.employee_invite.used_by_employee} IS NULL`
       ));
-    return result.rowCount || 0;
+    return (result as any).rowCount || 0;
   }
 
   async updateEmployeeInvite(code: string, updates: Partial<InsertEmployeeInvite>): Promise<EmployeeInvite | undefined> {
@@ -285,8 +285,8 @@ export class PostgresStorage implements IStorage {
     const [result] = await db.select().from(schema.shift)
       .where(and(
         eq(schema.shift.employee_id, employeeId),
-        gte(schema.shift.planned_start_at, today.toISOString()),
-        lte(schema.shift.planned_start_at, tomorrow.toISOString())
+        sql`${schema.shift.planned_start_at} >= ${today.toISOString()}`,
+        sql`${schema.shift.planned_start_at} <= ${tomorrow.toISOString()}`
       ))
       .limit(1);
     
@@ -408,6 +408,7 @@ export class PostgresStorage implements IStorage {
       severity: schema.exception.severity,
       details: schema.exception.details,
       resolved_at: schema.exception.resolved_at,
+      violation_id: schema.exception.violation_id,
       employee: {
         id: schema.employee.id,
         company_id: schema.employee.company_id,

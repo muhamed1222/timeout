@@ -19,6 +19,7 @@ import { Loader2, QrCode, Copy, Check } from "lucide-react";
 interface AddEmployeeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
 }
 
 interface EmployeeInvite {
@@ -30,7 +31,7 @@ interface EmployeeInvite {
   qr_code_url: string;
 }
 
-export function AddEmployeeModal({ open, onOpenChange }: AddEmployeeModalProps) {
+export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeModalProps) {
   const [formData, setFormData] = useState({
     full_name: "",
     position: "",

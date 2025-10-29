@@ -343,6 +343,78 @@ export default function Employees() {
           refetchInvites();
         }}
       />
+
+      {/* QR Code Dialog */}
+      {selectedInvite && (
+        <Dialog open={!!selectedInvite} onOpenChange={() => setSelectedInvite(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>QR-код для приглашения</DialogTitle>
+              <DialogDescription>
+                Отсканируйте QR-код в Telegram или поделитесь ссылкой
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {/* QR Code Image */}
+              <div className="flex justify-center p-4 bg-white rounded-lg">
+                <img 
+                  src={selectedInvite.qr_code_url} 
+                  alt="QR код приглашения" 
+                  className="w-64 h-64"
+                  data-testid="qr-code-image"
+                />
+              </div>
+              
+              {/* Invite Code */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Инвайт-код:</label>
+                <div className="flex gap-2">
+                  <Input 
+                    value={selectedInvite.code} 
+                    readOnly 
+                    className="font-mono"
+                    data-testid="input-invite-code"
+                  />
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => handleCopyCode(selectedInvite.code)}
+                    data-testid="button-copy-code"
+                  >
+                    {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Deep Link */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Прямая ссылка:</label>
+                <div className="flex gap-2">
+                  <Input 
+                    value={selectedInvite.deep_link} 
+                    readOnly 
+                    className="text-xs"
+                    data-testid="input-deep-link"
+                  />
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => handleCopyLink(selectedInvite.deep_link)}
+                    data-testid="button-copy-link"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setSelectedInvite(null)} data-testid="button-close-qr">
+                Закрыть
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

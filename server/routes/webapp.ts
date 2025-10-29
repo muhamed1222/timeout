@@ -182,6 +182,10 @@ router.post("/shift/start", authenticateTelegramWebApp, async (req, res) => {
       });
     }
     
+    if (!shift) {
+      return res.status(404).json({ error: "Shift not found" });
+    }
+    
     // Создать интервал работы
     const workInterval = await storage.createWorkInterval({
       shift_id: shift.id,
