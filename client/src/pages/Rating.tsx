@@ -229,10 +229,12 @@ export default function Rating() {
       queryClient.setQueryData(key, next);
       return { previous, key };
     },
-    onError: (_err, _vars, ctx) => {
+    onError: (err: unknown, _vars, ctx) => {
       if (ctx?.key) {
         queryClient.setQueryData(ctx.key as any, ctx.previous);
       }
+      const m = err instanceof Error ? err.message : 'Не удалось повысить рейтинг';
+      toast({ title: 'Ошибка', description: m, variant: 'destructive' });
     },
     onSuccess: () => {
       toast({ title: 'Рейтинг повышен', description: '+5% к рейтингу' });
@@ -243,10 +245,6 @@ export default function Rating() {
           && q.queryKey[2] === 'ratings'
       });
       queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'employees'] });
-    },
-    onError: (err: unknown) => {
-      const m = err instanceof Error ? err.message : 'Не удалось повысить рейтинг';
-      toast({ title: 'Ошибка', description: m, variant: 'destructive' });
     }
   });
 
