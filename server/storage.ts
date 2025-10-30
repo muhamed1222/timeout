@@ -27,6 +27,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { eq, and, or, sql, gte, lte, desc } from "drizzle-orm";
 import * as schema from "../shared/schema.js";
+import { InMemoryStorage } from './storage.inmemory.js';
 import {
   type Company, type InsertCompany,
   type Employee, type InsertEmployee,
@@ -124,6 +125,26 @@ export interface IStorage {
   assignScheduleToEmployee(employeeId: string, scheduleId: string, validFrom: Date, validTo?: Date): Promise<void>;
   getEmployeeSchedules(employeeId: string): Promise<any[]>;
   getActiveEmployeeSchedule(employeeId: string, date: Date): Promise<any | undefined>;
+
+  // Violation Rules
+  createViolationRule(rule: InsertCompanyViolationRules): Promise<CompanyViolationRules>;
+  getViolationRulesByCompany(companyId: string): Promise<CompanyViolationRules[]>;
+  getViolationRule(id: string): Promise<CompanyViolationRules | undefined>;
+  updateViolationRule(id: string, updates: Partial<InsertCompanyViolationRules>): Promise<CompanyViolationRules | undefined>;
+  deleteViolationRule(id: string): Promise<void>;
+
+  // Violations
+  createViolation(violation: InsertViolations): Promise<Violations>;
+  getViolationsByEmployee(employeeId: string, periodStart?: Date, periodEnd?: Date): Promise<Violations[]>;
+  getViolationsByCompany(companyId: string, periodStart?: Date, periodEnd?: Date): Promise<Violations[]>;
+
+  // Employee Ratings
+  createEmployeeRating(rating: InsertEmployeeRating): Promise<EmployeeRating>;
+  getEmployeeRating(employeeId: string, periodStart: Date, periodEnd: Date): Promise<EmployeeRating | undefined>;
+  updateEmployeeRating(id: string, updates: Partial<InsertEmployeeRating>): Promise<EmployeeRating | undefined>;
+  getEmployeeRatingsByCompany(companyId: string, periodStart?: Date, periodEnd?: Date): Promise<EmployeeRating[]>;
+  calculateEmployeeRating(employeeId: string, periodStart: Date, periodEnd: Date): Promise<number>;
+  updateEmployeeRatingFromViolations(employeeId: string, periodStart: Date, periodEnd: Date): Promise<EmployeeRating>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -750,8 +771,6 @@ export class PostgresStorage implements IStorage {
 let storageInstance: IStorage;
 
 if (process.env.USE_INMEMORY_STORAGE === 'true') {
-  // Lazy import to avoid including in production bundle
-  const { InMemoryStorage } = await import('./storage.inmemory.js');
   storageInstance = new InMemoryStorage();
 } else {
   storageInstance = new PostgresStorage();
