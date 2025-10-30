@@ -45,12 +45,15 @@ import {
   type EmployeeRating, type InsertEmployeeRating
 } from "@shared/schema";
 
-// Initialize database connection
-const connectionString = process.env.DATABASE_URL!;
-const client = postgres(connectionString, { 
-  ssl: connectionString.includes('supabase') ? { rejectUnauthorized: false } : false 
-});
-const db = drizzle(client, { schema });
+// Initialize database connection only if DATABASE_URL is configured
+let db: ReturnType<typeof drizzle> | undefined;
+if (process.env.DATABASE_URL) {
+  const connectionString = process.env.DATABASE_URL;
+  const client = postgres(connectionString, {
+    ssl: connectionString.includes('supabase') ? { rejectUnauthorized: false } : false
+  });
+  db = drizzle(client, { schema });
+}
 
 export interface IStorage {
   // Companies
@@ -148,23 +151,28 @@ export interface IStorage {
 }
 
 export class PostgresStorage implements IStorage {
+  constructor() {
+    if (!db) {
+      throw new Error('DATABASE_URL is not configured');
+    }
+  }
   // Companies
   async createCompany(company: InsertCompany): Promise<Company> {
-    const [result] = await db.insert(schema.company).values(company).returning();
+    const [result] = await db!.insert(schema.company).values(company).returning();
     return result;
   }
 
   async getCompany(id: string): Promise<Company | undefined> {
-    const [result] = await db.select().from(schema.company).where(eq(schema.company.id, id));
+    const [result] = await db!.select().from(schema.company).where(eq(schema.company.id, id));
     return result;
   }
 
   async getAllCompanies(): Promise<Company[]> {
-    return db.select().from(schema.company);
+    return db!.select().from(schema.company);
   }
 
   async updateCompany(id: string, updates: Partial<InsertCompany>): Promise<Company | undefined> {
-    const [result] = await db.update(schema.company)
+    const [result] = await db!.update(schema.company)
       .set(updates)
       .where(eq(schema.company.id, id))
       .returning();
@@ -172,33 +180,33 @@ export class PostgresStorage implements IStorage {
   }
 
   async deleteCompany(companyId: string): Promise<void> {
-    await db.delete(schema.company).where(eq(schema.company.id, companyId));
+    await db!.delete(schema.company).where(eq(schema.company.id, companyId));
   }
 
   // Employees
   async createEmployee(employee: InsertEmployee): Promise<Employee> {
-    const [result] = await db.insert(schema.employee).values(employee).returning();
+    const [result] = await db!.insert(schema.employee).values(employee).returning();
     return result;
   }
 
   async getEmployee(id: string): Promise<Employee | undefined> {
-    const [result] = await db.select().from(schema.employee).where(eq(schema.employee.id, id));
+    const [result] = await db!.select().from(schema.employee).where(eq(schema.employee.id, id));
     return result;
   }
 
   async getEmployeeByTelegramId(telegramId: string): Promise<Employee | undefined> {
-    const [result] = await db.select().from(schema.employee)
+    const [result] = await db!.select().from(schema.employee)
       .where(eq(schema.employee.telegram_user_id, telegramId));
     return result;
   }
 
   async getEmployeesByCompany(companyId: string): Promise<Employee[]> {
-    return db.select().from(schema.employee)
+    return db!.select().from(schema.employee)
       .where(eq(schema.employee.company_id, companyId));
   }
 
   async updateEmployee(id: string, updates: Partial<InsertEmployee>): Promise<Employee | undefined> {
-    const [result] = await db.update(schema.employee)
+    const [result] = await db!.update(schema.employee)
       .set(updates)
       .where(eq(schema.employee.id, id))
       .returning();
@@ -206,31 +214,31 @@ export class PostgresStorage implements IStorage {
   }
 
   async deleteEmployee(id: string): Promise<void> {
-    await db.delete(schema.employee)
+    await db!.delete(schema.employee)
       .where(eq(schema.employee.id, id));
   }
 
   // Employee Invites
   async createEmployeeInvite(invite: InsertEmployeeInvite): Promise<EmployeeInvite> {
-    const [result] = await db.insert(schema.employee_invite).values(invite).returning();
+    const [result] = await db!.insert(schema.employee_invite).values(invite).returning();
     return result;
   }
 
   async getEmployeeInviteByCode(code: string): Promise<EmployeeInvite | undefined> {
-    const [result] = await db.select().from(schema.employee_invite)
+    const [result] = await db!.select().from(schema.employee_invite)
       .where(eq(schema.employee_invite.code, code));
     return result;
   }
 
   async getEmployeeInvitesByCompany(companyId: string): Promise<EmployeeInvite[]> {
-    const results = await db.select().from(schema.employee_invite)
+    const results = await db!.select().from(schema.employee_invite)
       .where(eq(schema.employee_invite.company_id, companyId))
       .orderBy(desc(schema.employee_invite.created_at));
     return results;
   }
 
   async useEmployeeInvite(code: string, employeeId: string): Promise<EmployeeInvite | undefined> {
-    const [result] = await db.update(schema.employee_invite)
+    const [result] = await db!.update(schema.employee_invite)
       .set({ 
         used_by_employee: employeeId, 
         used_at: sql`now()` 
@@ -244,14 +252,14 @@ export class PostgresStorage implements IStorage {
   }
 
   async deleteEmployeeInvite(id: string): Promise<void> {
-    await db.delete(schema.employee_invite)
+    await db!.delete(schema.employee_invite)
       .where(eq(schema.employee_invite.id, id));
   }
 
   async cleanupExpiredInvites(): Promise<number> {
     // Удаляем приглашения старше 2 минут, которые не были использованы
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
-    const result = await db.delete(schema.employee_invite)
+    const result = await db!.delete(schema.employee_invite)
       .where(and(
         sql`${schema.employee_invite.created_at} < ${twoMinutesAgo.toISOString()}`,
         sql`${schema.employee_invite.used_by_employee} IS NULL`
@@ -260,7 +268,7 @@ export class PostgresStorage implements IStorage {
   }
 
   async updateEmployeeInvite(code: string, updates: Partial<InsertEmployeeInvite>): Promise<EmployeeInvite | undefined> {
-    const [result] = await db.update(schema.employee_invite)
+    const [result] = await db!.update(schema.employee_invite)
       .set(updates)
       .where(eq(schema.employee_invite.code, code))
       .returning();
@@ -269,24 +277,24 @@ export class PostgresStorage implements IStorage {
 
   // Shifts
   async createShift(shift: InsertShift): Promise<Shift> {
-    const [result] = await db.insert(schema.shift).values(shift).returning();
+    const [result] = await db!.insert(schema.shift).values(shift).returning();
     return result;
   }
 
   async getShift(id: string): Promise<Shift | undefined> {
-    const [result] = await db.select().from(schema.shift).where(eq(schema.shift.id, id));
+    const [result] = await db!.select().from(schema.shift).where(eq(schema.shift.id, id));
     return result;
   }
 
   async getShiftsByEmployee(employeeId: string, limit = 10): Promise<Shift[]> {
-    return db.select().from(schema.shift)
+    return db!.select().from(schema.shift)
       .where(eq(schema.shift.employee_id, employeeId))
       .orderBy(sql`${schema.shift.planned_start_at} DESC`)
       .limit(limit);
   }
 
   async getShiftsByEmployeeAndDateRange(employeeId: string, startDate: Date, endDate: Date): Promise<Shift[]> {
-    return db.select().from(schema.shift)
+    return db!.select().from(schema.shift)
       .where(
         and(
           eq(schema.shift.employee_id, employeeId),
@@ -299,7 +307,7 @@ export class PostgresStorage implements IStorage {
 
   async getActiveShiftsByCompany(companyId: string): Promise<(Shift & { employee: Employee })[]> {
     // Получаем только смены со статусом 'active' (начатые смены)
-    return db.select({
+    return db!.select({
       id: schema.shift.id,
       employee_id: schema.shift.employee_id,
       planned_start_at: schema.shift.planned_start_at,
@@ -334,7 +342,7 @@ export class PostgresStorage implements IStorage {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    const [result] = await db.select().from(schema.shift)
+    const [result] = await db!.select().from(schema.shift)
       .where(and(
         eq(schema.shift.employee_id, employeeId),
         sql`${schema.shift.planned_start_at} >= ${today.toISOString()}`,
@@ -346,7 +354,7 @@ export class PostgresStorage implements IStorage {
   }
 
   async updateShift(id: string, updates: Partial<InsertShift>): Promise<Shift | undefined> {
-    const [result] = await db.update(schema.shift)
+    const [result] = await db!.update(schema.shift)
       .set(updates)
       .where(eq(schema.shift.id, id))
       .returning();
@@ -355,18 +363,18 @@ export class PostgresStorage implements IStorage {
 
   // Work Intervals
   async createWorkInterval(interval: InsertWorkInterval): Promise<WorkInterval> {
-    const [result] = await db.insert(schema.work_interval).values(interval).returning();
+    const [result] = await db!.insert(schema.work_interval).values(interval).returning();
     return result;
   }
 
   async getWorkIntervalsByShift(shiftId: string): Promise<WorkInterval[]> {
-    return db.select().from(schema.work_interval)
+    return db!.select().from(schema.work_interval)
       .where(eq(schema.work_interval.shift_id, shiftId))
       .orderBy(schema.work_interval.start_at);
   }
 
   async updateWorkInterval(id: string, updates: Partial<InsertWorkInterval>): Promise<WorkInterval | undefined> {
-    const [result] = await db.update(schema.work_interval)
+    const [result] = await db!.update(schema.work_interval)
       .set(updates)
       .where(eq(schema.work_interval.id, id))
       .returning();
@@ -375,18 +383,18 @@ export class PostgresStorage implements IStorage {
 
   // Break Intervals
   async createBreakInterval(interval: InsertBreakInterval): Promise<BreakInterval> {
-    const [result] = await db.insert(schema.break_interval).values(interval).returning();
+    const [result] = await db!.insert(schema.break_interval).values(interval).returning();
     return result;
   }
 
   async getBreakIntervalsByShift(shiftId: string): Promise<BreakInterval[]> {
-    return db.select().from(schema.break_interval)
+    return db!.select().from(schema.break_interval)
       .where(eq(schema.break_interval.shift_id, shiftId))
       .orderBy(schema.break_interval.start_at);
   }
 
   async updateBreakInterval(id: string, updates: Partial<InsertBreakInterval>): Promise<BreakInterval | undefined> {
-    const [result] = await db.update(schema.break_interval)
+    const [result] = await db!.update(schema.break_interval)
       .set(updates)
       .where(eq(schema.break_interval.id, id))
       .returning();
@@ -395,18 +403,18 @@ export class PostgresStorage implements IStorage {
 
   // Daily Reports
   async createDailyReport(report: InsertDailyReport): Promise<DailyReport> {
-    const [result] = await db.insert(schema.daily_report).values(report).returning();
+    const [result] = await db!.insert(schema.daily_report).values(report).returning();
     return result;
   }
 
   async getDailyReportByShift(shiftId: string): Promise<DailyReport | undefined> {
-    const [result] = await db.select().from(schema.daily_report)
+    const [result] = await db!.select().from(schema.daily_report)
       .where(eq(schema.daily_report.shift_id, shiftId));
     return result;
   }
 
   async getDailyReportsByCompany(companyId: string, limit = 50): Promise<(DailyReport & { shift: Shift; employee: Employee })[]> {
-    return db.select({
+    return db!.select({
       id: schema.daily_report.id,
       shift_id: schema.daily_report.shift_id,
       planned_items: schema.daily_report.planned_items,
@@ -447,12 +455,12 @@ export class PostgresStorage implements IStorage {
 
   // Exceptions
   async createException(exception: InsertException): Promise<Exception> {
-    const [result] = await db.insert(schema.exception).values(exception).returning();
+    const [result] = await db!.insert(schema.exception).values(exception).returning();
     return result;
   }
 
   async getExceptionsByCompany(companyId: string): Promise<(Exception & { employee: Employee })[]> {
-    return db.select({
+    return db!.select({
       id: schema.exception.id,
       employee_id: schema.exception.employee_id,
       date: schema.exception.date,
@@ -479,7 +487,7 @@ export class PostgresStorage implements IStorage {
   }
 
   async resolveException(id: string): Promise<Exception | undefined> {
-    const [result] = await db.update(schema.exception)
+    const [result] = await db!.update(schema.exception)
       .set({ resolved_at: sql`now()` })
       .where(eq(schema.exception.id, id))
       .returning();
@@ -488,13 +496,13 @@ export class PostgresStorage implements IStorage {
 
   // Reminders
   async createReminder(reminder: InsertReminder): Promise<Reminder> {
-    const [result] = await db.insert(schema.reminder).values(reminder).returning();
+    const [result] = await db!.insert(schema.reminder).values(reminder).returning();
     return result;
   }
 
   async getPendingReminders(beforeTime?: Date): Promise<(Reminder & { employee: Employee })[]> {
     const timeFilter = beforeTime || new Date();
-    return db.select({
+    return db!.select({
       id: schema.reminder.id,
       employee_id: schema.reminder.employee_id,
       type: schema.reminder.type,
@@ -521,7 +529,7 @@ export class PostgresStorage implements IStorage {
   }
 
   async markReminderSent(id: string): Promise<Reminder | undefined> {
-    const [result] = await db.update(schema.reminder)
+    const [result] = await db!.update(schema.reminder)
       .set({ sent_at: sql`now()` })
       .where(eq(schema.reminder.id, id))
       .returning();
@@ -530,29 +538,29 @@ export class PostgresStorage implements IStorage {
 
   // Audit Log
   async logAudit(log: InsertAuditLog): Promise<AuditLog> {
-    const [result] = await db.insert(schema.audit_log).values(log).returning();
+    const [result] = await db!.insert(schema.audit_log).values(log).returning();
     return result;
   }
 
   // Schedule Templates
   async createScheduleTemplate(template: InsertScheduleTemplate): Promise<ScheduleTemplate> {
-    const [result] = await db.insert(schema.schedule_template).values(template).returning();
+    const [result] = await db!.insert(schema.schedule_template).values(template).returning();
     return result;
   }
 
   async getScheduleTemplatesByCompany(companyId: string): Promise<ScheduleTemplate[]> {
-    return db.select().from(schema.schedule_template)
+    return db!.select().from(schema.schedule_template)
       .where(eq(schema.schedule_template.company_id, companyId));
   }
 
   async getScheduleTemplate(id: string): Promise<ScheduleTemplate | undefined> {
-    const [result] = await db.select().from(schema.schedule_template)
+    const [result] = await db!.select().from(schema.schedule_template)
       .where(eq(schema.schedule_template.id, id));
     return result;
   }
 
   async updateScheduleTemplate(id: string, updates: Partial<InsertScheduleTemplate>): Promise<ScheduleTemplate | undefined> {
-    const [result] = await db.update(schema.schedule_template)
+    const [result] = await db!.update(schema.schedule_template)
       .set(updates)
       .where(eq(schema.schedule_template.id, id))
       .returning();
@@ -560,13 +568,13 @@ export class PostgresStorage implements IStorage {
   }
 
   async deleteScheduleTemplate(id: string): Promise<void> {
-    await db.delete(schema.schedule_template)
+    await db!.delete(schema.schedule_template)
       .where(eq(schema.schedule_template.id, id));
   }
 
   // Employee Schedules
   async assignScheduleToEmployee(employeeId: string, scheduleId: string, validFrom: Date, validTo?: Date): Promise<void> {
-    await db.insert(schema.employee_schedule).values({
+    await db!.insert(schema.employee_schedule).values({
       employee_id: employeeId,
       schedule_id: scheduleId,
       valid_from: validFrom.toISOString().split('T')[0],
@@ -575,7 +583,7 @@ export class PostgresStorage implements IStorage {
   }
 
   async getEmployeeSchedules(employeeId: string): Promise<any[]> {
-    return db.select({
+    return db!.select({
       employee_id: schema.employee_schedule.employee_id,
       schedule_id: schema.employee_schedule.schedule_id,
       valid_from: schema.employee_schedule.valid_from,
@@ -595,7 +603,7 @@ export class PostgresStorage implements IStorage {
 
   async getActiveEmployeeSchedule(employeeId: string, date: Date): Promise<any | undefined> {
     const dateStr = date.toISOString().split('T')[0];
-    const [result] = await db.select({
+    const [result] = await db!.select({
       employee_id: schema.employee_schedule.employee_id,
       schedule_id: schema.employee_schedule.schedule_id,
       valid_from: schema.employee_schedule.valid_from,
@@ -624,24 +632,24 @@ export class PostgresStorage implements IStorage {
 
   // Система рейтинга - Правила нарушений
   async createViolationRule(rule: InsertCompanyViolationRules): Promise<CompanyViolationRules> {
-    const [result] = await db.insert(schema.company_violation_rules).values(rule).returning();
+    const [result] = await db!.insert(schema.company_violation_rules).values(rule).returning();
     return result;
   }
 
   async getViolationRulesByCompany(companyId: string): Promise<CompanyViolationRules[]> {
-    return db.select().from(schema.company_violation_rules)
+    return db!.select().from(schema.company_violation_rules)
       .where(eq(schema.company_violation_rules.company_id, companyId))
       .orderBy(schema.company_violation_rules.name);
   }
 
   async getViolationRule(id: string): Promise<CompanyViolationRules | undefined> {
-    const [result] = await db.select().from(schema.company_violation_rules)
+    const [result] = await db!.select().from(schema.company_violation_rules)
       .where(eq(schema.company_violation_rules.id, id));
     return result;
   }
 
   async updateViolationRule(id: string, updates: Partial<InsertCompanyViolationRules>): Promise<CompanyViolationRules | undefined> {
-    const [result] = await db.update(schema.company_violation_rules)
+    const [result] = await db!.update(schema.company_violation_rules)
       .set(updates)
       .where(eq(schema.company_violation_rules.id, id))
       .returning();
@@ -649,13 +657,13 @@ export class PostgresStorage implements IStorage {
   }
 
   async deleteViolationRule(id: string): Promise<void> {
-    await db.delete(schema.company_violation_rules)
+    await db!.delete(schema.company_violation_rules)
       .where(eq(schema.company_violation_rules.id, id));
   }
 
   // Система рейтинга - Нарушения
   async createViolation(violation: InsertViolations): Promise<Violations> {
-    const [result] = await db.insert(schema.violations).values(violation).returning();
+    const [result] = await db!.insert(schema.violations).values(violation).returning();
     return result;
   }
 
@@ -668,7 +676,7 @@ export class PostgresStorage implements IStorage {
         )
       : eq(schema.violations.employee_id, employeeId);
 
-    return db.select().from(schema.violations)
+    return db!.select().from(schema.violations)
       .where(whereExpr)
       .orderBy(desc(schema.violations.created_at));
   }
@@ -682,19 +690,19 @@ export class PostgresStorage implements IStorage {
         )
       : eq(schema.violations.company_id, companyId);
 
-    return db.select().from(schema.violations)
+    return db!.select().from(schema.violations)
       .where(whereExpr)
       .orderBy(desc(schema.violations.created_at));
   }
 
   // Система рейтинга - Рейтинги сотрудников
   async createEmployeeRating(rating: InsertEmployeeRating): Promise<EmployeeRating> {
-    const [result] = await db.insert(schema.employee_rating).values(rating).returning();
+    const [result] = await db!.insert(schema.employee_rating).values(rating).returning();
     return result;
   }
 
   async getEmployeeRating(employeeId: string, periodStart: Date, periodEnd: Date): Promise<EmployeeRating | undefined> {
-    const [result] = await db.select().from(schema.employee_rating)
+    const [result] = await db!.select().from(schema.employee_rating)
       .where(and(
         eq(schema.employee_rating.employee_id, employeeId),
         eq(schema.employee_rating.period_start, periodStart.toISOString().split('T')[0]),
@@ -704,7 +712,7 @@ export class PostgresStorage implements IStorage {
   }
 
   async updateEmployeeRating(id: string, updates: Partial<InsertEmployeeRating>): Promise<EmployeeRating | undefined> {
-    const [result] = await db.update(schema.employee_rating)
+    const [result] = await db!.update(schema.employee_rating)
       .set({ ...updates, updated_at: sql`now()` })
       .where(eq(schema.employee_rating.id, id))
       .returning();
@@ -720,7 +728,7 @@ export class PostgresStorage implements IStorage {
         )
       : eq(schema.employee_rating.company_id, companyId);
 
-    return db.select().from(schema.employee_rating)
+    return db!.select().from(schema.employee_rating)
       .where(whereExpr)
       .orderBy(desc(schema.employee_rating.rating));
   }
@@ -770,7 +778,7 @@ export class PostgresStorage implements IStorage {
 
 let storageInstance: IStorage;
 
-if (process.env.USE_INMEMORY_STORAGE === 'true') {
+if (process.env.USE_INMEMORY_STORAGE === 'true' || !process.env.DATABASE_URL) {
   storageInstance = new InMemoryStorage();
 } else {
   storageInstance = new PostgresStorage();
