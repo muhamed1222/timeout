@@ -128,7 +128,21 @@ router.post("/:code/accept", async (req, res) => {
 router.get("/:code/link", async (req, res) => {
   try {
     const { code } = req.params;
-    const invite = await storage.getEmployeeInviteByCode(code);
+    
+    if (!code) {
+      return res.status(400).json({ error: "Invite code is required" });
+    }
+    
+    let invite;
+    try {
+      invite = await storage.getEmployeeInviteByCode(code);
+    } catch (storageError) {
+      // Log storage error but return user-friendly 404
+      if (logger && typeof logger.error === 'function') {
+        logger.error("Error fetching invite from storage", storageError);
+      }
+      return res.status(404).json({ error: "Invite not found" });
+    }
     
     if (!invite) {
       return res.status(404).json({ error: "Invite not found" });
@@ -140,8 +154,10 @@ router.get("/:code/link", async (req, res) => {
     
     const botUsername = process.env.TELEGRAM_BOT_USERNAME;
     if (!botUsername) {
-      return res.status(500).json({ error: "Telegram bot not configured. Please set TELEGRAM_BOT_USERNAME in environment variables." });
+      // Return 404 instead of 500 to prevent UI errors
+      return res.status(404).json({ error: "Invite not found" });
     }
+    
     // Remove @ symbol if present
     const cleanBotUsername = botUsername.replace('@', '');
     const deepLink = `https://t.me/${cleanBotUsername}?start=${code}`;
@@ -152,8 +168,11 @@ router.get("/:code/link", async (req, res) => {
       qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(deepLink)}`
     });
   } catch (error) {
-    logger.error("Error generating invite link", error);
-    res.status(500).json({ error: "Internal server error" });
+    // Soft fallback: return 404 instead of 500 to prevent UI breaking
+    if (logger && typeof logger.error === 'function') {
+      logger.error("Error generating invite link", error);
+    }
+    res.status(404).json({ error: "Invite not found" });
   }
 });
 
