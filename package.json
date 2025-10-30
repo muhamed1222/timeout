@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node concurrent-dev.cjs",
     "build": "vite build",
-    "build:vercel": "vite build",
+    "build:vercel": "vite build && tsc --project tsconfig.server.json --noCheck",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "check-deploy": "node scripts/check-deploy.cjs",

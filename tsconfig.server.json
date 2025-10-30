@@ -11,22 +11,21 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
-    "isolatedModules": true,
     "noEmit": false,
-    "strict": true,
     "lib": ["ES2022"],
     "types": ["node"]
   },
   "include": [
     "server/**/*",
-    "shared/**/*",
-    "api/**/*"
+    "shared/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "client",
-    "**/*.test.ts"
+    "api",
+    "**/*.test.ts",
+    "**/*.disabled/**"
   ]
 }
 
