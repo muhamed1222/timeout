@@ -77,9 +77,11 @@ router.get("/:companyId/stats", async (req, res) => {
     const violations = await storage.getViolationsByCompany(companyId);
     
     const today = new Date().toISOString().split('T')[0];
-    const todayShifts = activeShifts.filter(shift => 
-      shift.planned_start_at.toISOString().split('T')[0] === today
-    );
+    const todayShifts = activeShifts.filter(shift => {
+      const start = new Date((shift as any).planned_start_at);
+      if (isNaN(start.getTime())) return false;
+      return start.toISOString().split('T')[0] === today;
+    });
     
     const completedShifts = todayShifts.filter(shift => shift.status === 'completed').length;
     
