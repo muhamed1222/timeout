@@ -1,5 +1,5 @@
-import { storage } from '../../storage';
-import { logger } from '../../lib/logger';
+import { storage } from '../../storage.js';
+import { logger } from '../../lib/logger.js';
 
 export async function sendShiftReminder(employeeId: string, message: string) {
   try {

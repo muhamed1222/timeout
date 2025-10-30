@@ -3,14 +3,14 @@ import { initSentry, Sentry } from "./lib/sentry.js";
 initSentry();
 
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { registerRoutes } from "./routes.js";
+import { setupVite, serveStatic, log } from "./vite.js";
 import { env } from "./lib/env.js";
 import { scheduler } from "./services/scheduler.js";
 import { configureCors } from "./lib/cors.js";
 
 // Launch Telegram bot in development mode
-import './launchBot';
+import './launchBot.js';
 
 const app = express();
 

@@ -1,5 +1,5 @@
 import { createHmac } from "crypto";
-import { logger } from "../lib/logger";
+import { logger } from "../lib/logger.js";
 
 export interface TelegramUser {
   id: number;

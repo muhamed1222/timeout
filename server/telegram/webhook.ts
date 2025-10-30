@@ -1,5 +1,5 @@
-import { bot } from './bot';
-import { logger } from '../lib/logger';
+import { bot } from './bot.js';
+import { logger } from '../lib/logger.js';
 
 export async function handleTelegramWebhook(update: any) {
   try {

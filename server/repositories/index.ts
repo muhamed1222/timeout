@@ -19,7 +19,7 @@ const db = drizzle(client, { schema });
  * Centralized repositories for database access
  * 
  * @example
- * import { repositories } from './repositories';
+ * import { repositories } from './repositories.js';
  * 
  * const company = await repositories.company.findById('123');
  * const employees = await repositories.employee.findByCompanyId('123');

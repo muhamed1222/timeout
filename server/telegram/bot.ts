@@ -1,12 +1,12 @@
 import { Telegraf, Context, session } from 'telegraf';
-import { SessionData } from './types';
-import { handleStart } from './handlers/start';
-import { handleShiftActions } from './handlers/shiftActions';
-import { handleAbsence } from './handlers/absence';
-import { handleReport } from './handlers/report';
-import { sendShiftReminder } from './handlers/reminders';
-import { storage } from '../storage';
-import { logger } from '../lib/logger';
+import { SessionData } from './types.js';
+import { handleStart } from './handlers/start.js';
+import { handleShiftActions } from './handlers/shiftActions.js';
+import { handleAbsence } from './handlers/absence.js';
+import { handleReport } from './handlers/report.js';
+import { sendShiftReminder } from './handlers/reminders.js';
+import { storage } from '../storage.js';
+import { logger } from '../lib/logger.js';
 
 const bot = new Telegraf<Context & { session: SessionData }>(process.env.TELEGRAM_BOT_TOKEN!);
 

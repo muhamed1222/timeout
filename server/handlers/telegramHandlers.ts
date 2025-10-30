@@ -1,11 +1,11 @@
-import { storage } from "../storage";
-import { getTelegramBotService } from "../services/telegramBot";
+import { storage } from "../storage.js";
+import { getTelegramBotService } from "../services/telegramBot.js";
 import { 
   TELEGRAM_MESSAGES, 
   getWebAppKeyboard 
-} from "../constants/telegram";
+} from "../constants/telegram.js";
 import type { Employee } from "@shared/schema";
-import { logger } from "../lib/logger";
+import { logger } from "../lib/logger.js";
 
 const botService = getTelegramBotService();
 

@@ -419,7 +419,7 @@ export const wsManager = new WebSocketManager();
  * Helper functions for common events
  */
 
-import type { ShiftResponse, ViolationResponse, DashboardStatsResponse } from '../../shared/types/api';
+import type { ShiftResponse, ViolationResponse, DashboardStatsResponse } from '../../shared/types/api.js';
 
 interface EmployeeStatusData {
   employeeId: string;

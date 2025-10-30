@@ -1,5 +1,5 @@
-import { bot } from './telegram/bot';
-import { logger } from './lib/logger';
+import { bot } from './telegram/bot.js';
+import { logger } from './lib/logger.js';
 
 // Only launch the bot if we're not in a serverless environment
 // and if the TELEGRAM_BOT_TOKEN is provided

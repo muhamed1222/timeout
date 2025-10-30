@@ -7,7 +7,7 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import { Express } from 'express';
-import { logger } from './lib/logger';
+import { logger } from './lib/logger.js';
 
 const options: swaggerJsdoc.Options = {
   definition: {

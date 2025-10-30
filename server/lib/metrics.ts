@@ -1,6 +1,6 @@
 import { register, Counter, Histogram, Gauge, collectDefaultMetrics } from 'prom-client';
 import type { Request, Response, NextFunction } from 'express';
-import { logger } from './logger';
+import { logger } from './logger.js';
 
 /**
  * Prometheus Metrics

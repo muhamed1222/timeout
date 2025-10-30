@@ -9,11 +9,11 @@
  * **Migration Path:**
  * ```typescript
  * // ❌ Old way
- * import { storage } from './storage';
+ * import { storage } from './storage.js';
  * const employee = await storage.getEmployee('id');
  * 
  * // ✅ New way
- * import { repositories } from './repositories';
+ * import { repositories } from './repositories.js';
  * const employee = await repositories.employee.findById('id');
  * ```
  * 

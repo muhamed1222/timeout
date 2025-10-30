@@ -1,7 +1,7 @@
 import { Context } from 'telegraf';
-import { SessionData } from '../types';
-import { storage } from '../../storage';
-import { logger } from '../../lib/logger';
+import { SessionData } from '../types.js';
+import { storage } from '../../storage.js';
+import { logger } from '../../lib/logger.js';
 
 export async function handleAbsence(ctx: Context & { session: SessionData }) {
   const action = (ctx as any)?.callbackQuery?.data as string | undefined;

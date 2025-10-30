@@ -3,6 +3,11 @@
   "buildCommand": "npm run build:vercel",
   "outputDirectory": "dist/public",
   "devCommand": "npm run dev",
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "dist/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",

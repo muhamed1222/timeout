@@ -1,8 +1,8 @@
 import { Context } from 'telegraf';
-import { SessionData } from '../types';
-import { storage } from '../../storage';
-import { cache } from '../../lib/cache';
-import { logger } from '../../lib/logger';
+import { SessionData } from '../types.js';
+import { storage } from '../../storage.js';
+import { cache } from '../../lib/cache.js';
+import { logger } from '../../lib/logger.js';
 
 export async function handleShiftActions(ctx: Context & { session: SessionData }) {
   const action = (ctx as any)?.callbackQuery?.data as string | undefined;
