@@ -186,11 +186,18 @@ export default function Employees() {
       const data = await response.json();
       setSelectedInvite(data);
     } catch (error) {
+      // apiRequest throws on non-ok responses, so we handle 404 and other errors here
+      const errorMessage = error instanceof Error ? error.message : 'Не удалось получить ссылку-приглашение';
+      const isNotFound = errorMessage.includes('404') || errorMessage.includes('Invite not found');
+      
       toast({
-        title: "Ошибка",
-        description: "Не удалось получить ссылку-приглашение",
+        title: isNotFound ? "Приглашение не найдено" : "Ошибка",
+        description: isNotFound 
+          ? 'Приглашение не найдено или уже использовано' 
+          : errorMessage,
         variant: "destructive"
       });
+      console.error('Error fetching invite link:', error);
     }
   };
 
