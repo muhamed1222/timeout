@@ -33,13 +33,15 @@ async function initializeApp() {
   });
   
   try {
-    // Динамически импортируем registerRoutes
-    const { registerRoutes } = await import('../server/routes.js');
+    // Динамически импортируем registerRoutes из TypeScript через tsx
+    const tsx = await import('tsx/esm/api');
+    const { registerRoutes } = await tsx.default.import('../server/routes.ts', import.meta.url);
     const httpServer = await registerRoutes(app);
     initialized = true;
     console.log('Routes initialized successfully');
   } catch (error) {
     console.error('Failed to initialize routes:', error);
+    console.error('Error details:', error.stack || error);
     throw error;
   }
   
