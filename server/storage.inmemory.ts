@@ -44,8 +44,10 @@ export class InMemoryStorage implements IStorage {
     this.companies.set(demoCompanyId, {
       id: demoCompanyId,
       name: 'Demo Company',
-      created_at: nowIso(),
-      updated_at: nowIso(),
+      timezone: 'Europe/Amsterdam' as any,
+      locale: 'ru' as any,
+      privacy_settings: {} as any,
+      created_at: new Date() as any,
     } as Company);
 
     // Seed demo employees
@@ -78,7 +80,14 @@ export class InMemoryStorage implements IStorage {
   // Companies
   async createCompany(company: InsertCompany): Promise<Company> {
     const id = genId('comp');
-    const row: Company = { id, name: company.name, created_at: nowIso(), updated_at: nowIso() } as Company;
+    const row: Company = {
+      id,
+      name: company.name,
+      timezone: (company as any).timezone || 'Europe/Amsterdam',
+      locale: (company as any).locale || 'ru',
+      privacy_settings: (company as any).privacy_settings || {},
+      created_at: new Date() as any,
+    } as Company;
     this.companies.set(id, row);
     return row;
   }
@@ -87,7 +96,10 @@ export class InMemoryStorage implements IStorage {
   async updateCompany(id: string, updates: Partial<InsertCompany>): Promise<Company | undefined> {
     const row = this.companies.get(id);
     if (!row) return undefined;
-    const updated = { ...row, ...updates, updated_at: nowIso() } as Company;
+    const updated = {
+      ...row,
+      ...updates,
+    } as any as Company;
     this.companies.set(id, updated);
     return updated;
   }
@@ -341,10 +353,22 @@ export class InMemoryStorage implements IStorage {
     return row;
   }
   async getViolationsByEmployee(employeeId: string, periodStart?: Date, periodEnd?: Date): Promise<Violations[]> {
-    return Array.from(this.violations.values()).filter(v => v.employee_id === employeeId && (!periodStart || v.created_at >= periodStart) && (!periodEnd || v.created_at <= periodEnd));
+    return Array.from(this.violations.values()).filter(v => {
+      if (v.employee_id !== employeeId) return false;
+      if (!v.created_at) return false;
+      if (periodStart && v.created_at < periodStart) return false;
+      if (periodEnd && v.created_at > periodEnd) return false;
+      return true;
+    });
   }
   async getViolationsByCompany(companyId: string, periodStart?: Date, periodEnd?: Date): Promise<Violations[]> {
-    return Array.from(this.violations.values()).filter(v => v.company_id === companyId && (!periodStart || v.created_at >= periodStart) && (!periodEnd || v.created_at <= periodEnd));
+    return Array.from(this.violations.values()).filter(v => {
+      if (v.company_id !== companyId) return false;
+      if (!v.created_at) return false;
+      if (periodStart && v.created_at < periodStart) return false;
+      if (periodEnd && v.created_at > periodEnd) return false;
+      return true;
+    });
   }
 
   // Ratings
