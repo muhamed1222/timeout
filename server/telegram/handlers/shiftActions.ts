@@ -2,6 +2,7 @@ import { Context } from 'telegraf';
 import { SessionData } from '../types';
 import { storage } from '../../storage';
 import { cache } from '../../lib/cache';
+import { logger } from '../../lib/logger';
 
 export async function handleShiftActions(ctx: Context & { session: SessionData }) {
   const action = (ctx as any)?.callbackQuery?.data as string | undefined;
@@ -168,7 +169,7 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
     }
 
   } catch (error) {
-    console.error('Error in shift action:', error);
+    logger.error('Error in shift action', error);
     await ctx.answerCbQuery('❌ Ошибка выполнения действия');
   }
 }
@@ -236,6 +237,6 @@ ${activeBreak ? `🍽 *Перерыв с:* ${new Date(activeBreak.start_at).toLo
     }
 
   } catch (error) {
-    console.error('Error showing updated menu:', error);
+    logger.error('Error showing updated menu', error);
   }
 }

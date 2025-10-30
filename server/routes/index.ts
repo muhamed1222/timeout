@@ -4,7 +4,10 @@ import authRouter from "./auth.js";
 import companiesRouter from "./companies.js";
 import employeesRouter from "./employees.js";
 import invitesRouter from "./invites.js";
+import violationRulesRouter from "./violation-rules.js";
+import ratingRouter from "./rating.js";
 import rateLimit from "express-rate-limit";
+import violationsRouter from "./violations.js";
 
 // Global API rate limiter
 const apiLimiter = rateLimit({
@@ -24,6 +27,9 @@ export function registerRoutes(app: Express): Server {
   app.use("/api/companies", companiesRouter);
   app.use("/api/employees", employeesRouter);
   app.use("/api/employee-invites", invitesRouter);
+  app.use("/api/violation-rules", violationRulesRouter);
+  app.use("/api/rating", ratingRouter);
+  app.use("/api/violations", violationsRouter);
   
   const httpServer = createServer(app);
   return httpServer;

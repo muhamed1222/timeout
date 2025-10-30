@@ -1,3 +1,5 @@
+import { logger } from '../lib/logger';
+
 interface TelegramMessageOptions {
   reply_markup?: {
     inline_keyboard?: Array<Array<{
@@ -46,13 +48,13 @@ export class TelegramBotService {
       const data: TelegramApiResponse = await response.json();
 
       if (!data.ok) {
-        console.error('Telegram API error:', data.description, data.error_code);
+        logger.error('Telegram API error', undefined, { description: data.description, errorCode: data.error_code });
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('Error sending Telegram message:', error);
+      logger.error('Error sending Telegram message', error);
       return false;
     }
   }
@@ -70,7 +72,7 @@ export class TelegramBotService {
       const data: TelegramApiResponse = await response.json();
       return data.ok;
     } catch (error) {
-      console.error('Error setting webhook:', error);
+      logger.error('Error setting webhook', error);
       return false;
     }
   }
@@ -81,7 +83,7 @@ export class TelegramBotService {
       const data: TelegramApiResponse = await response.json();
       return data.result;
     } catch (error) {
-      console.error('Error getting webhook info:', error);
+      logger.error('Error getting webhook info', error);
       return null;
     }
   }
@@ -95,7 +97,7 @@ export function getTelegramBotService(): TelegramBotService | null {
   
   if (!botToken) {
     if (process.env.NODE_ENV === 'production') {
-      console.error('TELEGRAM_BOT_TOKEN is not set in production!');
+      logger.error('TELEGRAM_BOT_TOKEN is not set in production!');
     }
     return null;
   }

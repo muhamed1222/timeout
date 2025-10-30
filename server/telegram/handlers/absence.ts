@@ -1,6 +1,7 @@
 import { Context } from 'telegraf';
 import { SessionData } from '../types';
 import { storage } from '../../storage';
+import { logger } from '../../lib/logger';
 
 export async function handleAbsence(ctx: Context & { session: SessionData }) {
   const action = (ctx as any)?.callbackQuery?.data as string | undefined;
@@ -86,7 +87,7 @@ export async function handleAbsence(ctx: Context & { session: SessionData }) {
     `, { parse_mode: 'Markdown' });
 
   } catch (error) {
-    console.error('Error handling absence:', error);
+    logger.error('Error handling absence', error);
     await ctx.answerCbQuery('❌ Ошибка фиксации отсутствия');
   }
 }

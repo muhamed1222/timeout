@@ -176,3 +176,6 @@ echo "   ./scripts/restore-database.sh ${BACKUP_FILE} ${ENVIRONMENT}"
 echo ""
 echo -e "${GREEN}✅ Done!${NC}"
 
+
+
+

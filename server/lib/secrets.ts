@@ -66,8 +66,19 @@ export function loadSecrets(): Secrets {
   }
 
   try {
+    // In test environment, provide sensible defaults to avoid hard .env deps
+    const isTestEnv = process.env.NODE_ENV === 'test';
+    const envSource: NodeJS.ProcessEnv = { ...process.env };
+
+    if (isTestEnv) {
+      envSource.DATABASE_URL ||= 'http://localhost:5432/test-db';
+      envSource.TELEGRAM_BOT_TOKEN ||= 'test-telegram-bot-token';
+      envSource.BOT_API_SECRET ||= '0123456789abcdef0123456789abcdef';
+      envSource.NODE_ENV = 'test';
+    }
+
     // Parse and validate environment variables
-    const secrets = secretsSchema.parse(process.env);
+    const secrets = secretsSchema.parse(envSource);
     
     // Cache for subsequent calls
     cachedSecrets = secrets;

@@ -39,6 +39,27 @@ TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
 TELEGRAM_BOT_USERNAME=YourBotName_bot
 ```
 
+### CORS Configuration
+```env
+# Comma-separated list of allowed origins
+ALLOWED_ORIGINS=https://outtime.vercel.app,https://outtime.com,https://www.outtime.com
+
+# Allow requests with no origin (for mobile apps, Postman)
+# Set to 'true' only if needed
+ALLOW_NO_ORIGIN=false
+```
+
+### S3 Backup Configuration
+```env
+# S3 bucket for automated backups
+S3_BACKUP_BUCKET=outtime-database-backups
+
+# AWS credentials (if not using AWS CLI profile)
+AWS_ACCESS_KEY_ID=your_access_key_id
+AWS_SECRET_ACCESS_KEY=your_secret_access_key
+AWS_DEFAULT_REGION=us-east-1
+```
+
 ### API Secrets
 ```env
 # MUST be 32+ characters

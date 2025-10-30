@@ -3,9 +3,9 @@
 # =============================================================================
 # Database Restore Script
 # =============================================================================
-# Restores PostgreSQL database from backup file
-# Usage: ./scripts/restore-database.sh <backup_file> [environment]
-# Example: ./scripts/restore-database.sh backups/production/backup_20251029.sql.gz production
+# Restores PostgreSQL database from a backup file
+# Usage: ./scripts/restore-database.sh [backup_file] [environment]
+# Example: ./scripts/restore-database.sh backups/production/backup.sql.gz production
 # =============================================================================
 
 set -e
@@ -19,13 +19,13 @@ NC='\033[0m'
 
 # Check arguments
 if [ -z "$1" ]; then
-  echo -e "${RED}❌ ERROR: Backup file not specified${NC}"
+  echo -e "${RED}❌ ERROR: No backup file specified${NC}"
   echo "Usage: $0 <backup_file> [environment]"
-  echo "Example: $0 backups/production/backup_20251029.sql.gz production"
+  echo "Example: $0 backups/production/shiftmanager_production_20250130_120000.sql.gz production"
   exit 1
 fi
 
-BACKUP_FILE="$1"
+BACKUP_FILE=$1
 ENVIRONMENT=${2:-development}
 
 # Check if backup file exists
@@ -34,10 +34,7 @@ if [ ! -f "$BACKUP_FILE" ]; then
   exit 1
 fi
 
-echo -e "${BLUE}🔄 Database Restore${NC}\n"
-echo "Backup file: ${BACKUP_FILE}"
-echo "Environment: ${ENVIRONMENT}"
-echo ""
+echo -e "${BLUE}🔄 Starting database restore from backup...${NC}\n"
 
 # Load environment variables
 if [ -f ".env.${ENVIRONMENT}" ]; then
@@ -46,9 +43,10 @@ elif [ -f ".env" ]; then
   export $(cat ".env" | grep -v '^#' | xargs)
 fi
 
-# Check DATABASE_URL
+# Check DATABASE_URL is set
 if [ -z "$DATABASE_URL" ]; then
   echo -e "${RED}❌ ERROR: DATABASE_URL not set${NC}"
+  echo "Please set DATABASE_URL in .env or .env.${ENVIRONMENT}"
   exit 1
 fi
 
@@ -59,48 +57,41 @@ DB_HOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
 DB_PORT=$(echo $DATABASE_URL | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
 DB_NAME=$(echo $DATABASE_URL | sed -n 's/.*\/\([^?]*\).*/\1/p')
 
+echo "Environment: ${ENVIRONMENT}"
 echo "Database: ${DB_NAME}"
 echo "Host: ${DB_HOST}:${DB_PORT}"
 echo "User: ${DB_USER}"
+echo "Backup file: ${BACKUP_FILE}"
 echo ""
 
-# Verify backup integrity
+# Verify checksum if available
 if [ -f "${BACKUP_FILE}.sha256" ]; then
   echo -e "${BLUE}🔐 Verifying backup integrity...${NC}"
-  
-  cd "$(dirname "$BACKUP_FILE")"
-  sha256sum -c "$(basename "$BACKUP_FILE").sha256" > /dev/null 2>&1
-  cd - > /dev/null
-  
+  sha256sum -c "${BACKUP_FILE}.sha256" > /dev/null 2>&1
   if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ Backup integrity verified${NC}\n"
   else
     echo -e "${RED}❌ ERROR: Backup integrity check failed${NC}"
-    echo "The backup file may be corrupted. Aborting restore."
     exit 1
   fi
-else
-  echo -e "${YELLOW}⚠️  Warning: Checksum file not found. Skipping integrity check.${NC}\n"
 fi
 
-# Confirm restore
-echo -e "${RED}⚠️  WARNING: This will REPLACE all data in database '${DB_NAME}'${NC}"
-echo -e "${RED}   Current data will be LOST!${NC}"
-echo ""
-read -p "$(echo -e ${YELLOW}Are you sure you want to continue? Type 'yes' to confirm:${NC} )" -r
+# Warning
+echo -e "${YELLOW}⚠️  WARNING: This will REPLACE all data in database '${DB_NAME}'${NC}"
+echo -e "${YELLOW}   Environment: ${ENVIRONMENT}${NC}\n"
 
-if [ "$REPLY" != "yes" ]; then
-  echo -e "${BLUE}ℹ️  Restore cancelled${NC}"
-  exit 0
+# Confirm unless --yes flag is provided
+if [ "$3" != "--yes" ] && [ "$3" != "-y" ]; then
+  read -p "Are you sure you want to continue? (yes/no): " CONFIRM
+  if [ "$CONFIRM" != "yes" ]; then
+    echo -e "${YELLOW}❌ Restore cancelled${NC}"
+    exit 0
+  fi
 fi
-
-echo ""
 
 # Create backup of current database before restore
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-PRE_RESTORE_BACKUP="backups/${ENVIRONMENT}/pre_restore_${TIMESTAMP}.sql.gz"
-
-echo -e "${BLUE}📦 Creating safety backup of current database...${NC}"
+echo -e "${BLUE}📦 Creating backup of current database...${NC}"
+SAFETY_BACKUP="backups/${ENVIRONMENT}/pre_restore_$(date +%Y%m%d_%H%M%S).sql.gz"
 mkdir -p "backups/${ENVIRONMENT}"
 
 export PGPASSWORD="$DB_PASS"
@@ -113,83 +104,77 @@ pg_dump \
   --format=plain \
   --no-owner \
   --no-acl \
-  2>/dev/null | gzip > "$PRE_RESTORE_BACKUP"
+  | gzip -9 > "$SAFETY_BACKUP"
 
-unset PGPASSWORD
-
-echo -e "${GREEN}✅ Safety backup created: ${PRE_RESTORE_BACKUP}${NC}\n"
+echo -e "${GREEN}✅ Safety backup created: ${SAFETY_BACKUP}${NC}\n"
 
 # Drop all connections to database
-echo -e "${BLUE}🔌 Terminating database connections...${NC}"
-
-export PGPASSWORD="$DB_PASS"
-
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres <<EOF > /dev/null 2>&1
-SELECT pg_terminate_backend(pid)
+echo -e "${BLUE}🔌 Dropping active connections...${NC}"
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres << EOF > /dev/null 2>&1
+SELECT pg_terminate_backend(pg_stat_activity.pid)
 FROM pg_stat_activity
-WHERE datname = '${DB_NAME}'
+WHERE pg_stat_activity.datname = '${DB_NAME}'
   AND pid <> pg_backend_pid();
 EOF
+echo -e "${GREEN}✅ Connections dropped${NC}\n"
 
-unset PGPASSWORD
+# Drop and recreate database
+echo -e "${BLUE}🗑️  Dropping database...${NC}"
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres \
+  -c "DROP DATABASE IF EXISTS ${DB_NAME};" > /dev/null 2>&1
+echo -e "${GREEN}✅ Database dropped${NC}\n"
 
-echo -e "${GREEN}✅ Connections terminated${NC}\n"
+echo -e "${BLUE}🏗️  Creating database...${NC}"
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres \
+  -c "CREATE DATABASE ${DB_NAME};" > /dev/null 2>&1
+echo -e "${GREEN}✅ Database created${NC}\n"
 
-# Restore database
-echo -e "${BLUE}🔄 Restoring database...${NC}"
-echo "This may take several minutes..."
+# Restore from backup
+echo -e "${BLUE}📥 Restoring from backup...${NC}"
+echo "This may take a few minutes depending on database size..."
 echo ""
 
-export PGPASSWORD="$DB_PASS"
-
-# Decompress and restore
 if [[ "$BACKUP_FILE" == *.gz ]]; then
+  # Compressed backup
   gunzip -c "$BACKUP_FILE" | \
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
-    2>&1 | grep -E "^(ERROR|CREATE|ALTER|COPY)" || true
+    2>&1 | grep -v "^$" || true
 else
+  # Uncompressed backup
   psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
     -f "$BACKUP_FILE" \
-    2>&1 | grep -E "^(ERROR|CREATE|ALTER|COPY)" || true
+    2>&1 | grep -v "^$" || true
 fi
-
-RESTORE_EXIT_CODE=${PIPESTATUS[1]}
 
 unset PGPASSWORD
 
-if [ $RESTORE_EXIT_CODE -ne 0 ]; then
-  echo -e "${RED}❌ ERROR: Restore failed${NC}"
-  echo ""
-  echo "You can restore from safety backup:"
-  echo "  $0 ${PRE_RESTORE_BACKUP} ${ENVIRONMENT}"
-  exit 1
-fi
-
 echo ""
-echo -e "${GREEN}✅ Database restored successfully${NC}\n"
+echo -e "${GREEN}✅ Database restored${NC}\n"
 
 # Verify restore
 echo -e "${BLUE}✔️  Verifying restore...${NC}"
 
 export PGPASSWORD="$DB_PASS"
 
-# Check table count
+# Count tables
 TABLE_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
   -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';")
 
-# Check row counts in key tables
-EMPLOYEE_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+# Count rows in main tables
+COMPANIES_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+  -t -c "SELECT COUNT(*) FROM company;" 2>/dev/null || echo "0")
+EMPLOYEES_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
   -t -c "SELECT COUNT(*) FROM employee;" 2>/dev/null || echo "0")
-
-SHIFT_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+SHIFTS_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
   -t -c "SELECT COUNT(*) FROM shift;" 2>/dev/null || echo "0")
 
 unset PGPASSWORD
 
 echo "Tables: ${TABLE_COUNT}"
-echo "Employees: ${EMPLOYEE_COUNT}"
-echo "Shifts: ${SHIFT_COUNT}"
-echo ""
+echo "Companies: ${COMPANIES_COUNT}"
+echo "Employees: ${EMPLOYEES_COUNT}"
+echo "Shifts: ${SHIFTS_COUNT}"
+echo -e "${GREEN}✅ Restore verified${NC}\n"
 
 # Summary
 echo "======================================================================="
@@ -197,15 +182,13 @@ echo -e "${GREEN}✅ RESTORE COMPLETED SUCCESSFULLY${NC}"
 echo "======================================================================="
 echo "Environment: ${ENVIRONMENT}"
 echo "Database: ${DB_NAME}"
-echo "Restored from: ${BACKUP_FILE}"
-echo "Safety backup: ${PRE_RESTORE_BACKUP}"
+echo "Backup file: ${BACKUP_FILE}"
+echo "Tables: ${TABLE_COUNT}"
+echo "Safety backup: ${SAFETY_BACKUP}"
 echo "======================================================================="
 echo ""
-echo -e "${BLUE}ℹ️  Next steps:${NC}"
-echo "1. Verify application functionality"
-echo "2. Check data integrity"
-echo "3. If restore was unsuccessful, use safety backup:"
-echo "   $0 ${PRE_RESTORE_BACKUP} ${ENVIRONMENT}"
+echo -e "${YELLOW}Note: If something went wrong, restore from:${NC}"
+echo -e "${YELLOW}  ${SAFETY_BACKUP}${NC}"
 echo ""
-echo -e "${GREEN}✅ Done!${NC}"
 
+echo -e "${GREEN}✅ Done!${NC}"

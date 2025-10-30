@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Search, Trophy, Medal, Award, Star, AlertTriangle } from 'lucide-react';
+import { Search, Trophy, Medal, Award, Star, AlertTriangle, ArrowUp } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +24,28 @@ interface RatingPeriod {
   end_date: string;
 }
 
+interface ViolationRule {
+  id: string;
+  code: string;
+  name: string;
+  penalty_percent: number;
+  is_active: boolean;
+  company_id: string;
+}
+
+interface Employee {
+  id: string;
+  full_name: string;
+  position?: string;
+  company_id: string;
+  status: string;
+}
+
+interface RatingData {
+  employee_id: string;
+  rating: number;
+}
+
 export default function Rating() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState('current');
@@ -37,7 +57,7 @@ export default function Rating() {
   const { companyId, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
-  const { data: employees, isLoading: employeesLoading, isError: employeesError } = useQuery({
+  const { data: employees, isLoading: employeesLoading, isError: employeesError } = useQuery<Employee[]>({
     queryKey: ['/api/companies', companyId, 'employees'],
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/companies/${companyId}/employees`);
@@ -103,7 +123,7 @@ export default function Rating() {
 
   const { periodStart, periodEnd } = getPeriodDates();
 
-  const { data: ratingData, isLoading: ratingLoading, isError: ratingError } = useQuery({
+  const { data: ratingData, isLoading: ratingLoading, isError: ratingError } = useQuery<RatingData[]>({
     queryKey: ['/api/companies', companyId, 'ratings', periodStart, periodEnd],
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/companies/${companyId}/ratings?periodStart=${periodStart}&periodEnd=${periodEnd}`);
@@ -112,7 +132,7 @@ export default function Rating() {
     enabled: !!companyId,
   });
 
-  const { data: violationRules = [], isLoading: rulesLoading } = useQuery({
+  const { data: violationRules = [], isLoading: rulesLoading } = useQuery<ViolationRule[]>({
     queryKey: ['/api/companies', companyId, 'violation-rules'],
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/companies/${companyId}/violation-rules`);
@@ -128,28 +148,13 @@ export default function Rating() {
     return <Star className="w-4 h-4 text-muted-foreground" />;
   };
 
-  const getRatingColor = (rating: number) => {
-    if (rating >= 90) return 'text-green-600';
-    if (rating >= 80) return 'text-blue-600';
-    if (rating >= 70) return 'text-yellow-600';
-    if (rating >= 60) return 'text-orange-600';
-    return 'text-red-600';
-  };
-
-  const getRatingBadgeVariant = (rating: number) => {
-    if (rating >= 90) return 'default';
-    if (rating >= 80) return 'secondary';
-    if (rating >= 70) return 'outline';
-    return 'destructive';
-  };
-
   const handleAddViolation = (employee: EmployeeRating) => {
     setSelectedEmployee(employee);
     setIsViolationModalOpen(true);
     setSelectedRuleId(null);
     setViolationComment('');
     // Если нет активных правил — предупредим
-    const hasActiveRules = (violationRules || []).some((r: any) => r.is_active);
+    const hasActiveRules = (violationRules || []).some((r: ViolationRule) => r.is_active);
     if (!hasActiveRules) {
       toast({
         title: 'Нет активных правил',
@@ -182,7 +187,12 @@ export default function Rating() {
       setSelectedEmployee(null);
       setSelectedRuleId(null);
       setViolationComment('');
-      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'ratings'] });
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey)
+          && q.queryKey[0] === '/api/companies'
+          && q.queryKey[1] === companyId
+          && q.queryKey[2] === 'ratings'
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'employees'] });
     },
     onError: async (error: unknown) => {
@@ -191,16 +201,65 @@ export default function Rating() {
     },
   });
 
+  const adjustRatingMutation = useMutation({
+    mutationFn: async (employee: EmployeeRating) => {
+      const body = { delta: 5, periodStart, periodEnd };
+      const res = await apiRequest('POST', `/api/rating/employees/${employee.id}/adjust`, body);
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload?.error || 'Не удалось повысить рейтинг');
+      return payload;
+    },
+    // Оптимистичное обновление шкалы рейтинга
+    onMutate: async (employee: EmployeeRating) => {
+      await queryClient.cancelQueries({
+        predicate: (q) => Array.isArray(q.queryKey)
+          && q.queryKey[0] === '/api/companies'
+          && q.queryKey[1] === companyId
+          && q.queryKey[2] === 'ratings'
+      });
+      const key = ['/api/companies', companyId, 'ratings', periodStart, periodEnd];
+      const previous = queryClient.getQueryData<RatingData[]>(key);
+      const next = (() => {
+        const map = new Map<string, number>((previous || []).map(r => [r.employee_id, Number(r.rating)]));
+        const current = map.get(employee.id) ?? 100;
+        const updated = Math.max(0, Math.min(100, current + 5));
+        map.set(employee.id, updated);
+        return Array.from(map.entries()).map(([employee_id, rating]) => ({ employee_id, rating }));
+      })();
+      queryClient.setQueryData(key, next);
+      return { previous, key };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.key) {
+        queryClient.setQueryData(ctx.key as any, ctx.previous);
+      }
+    },
+    onSuccess: () => {
+      toast({ title: 'Рейтинг повышен', description: '+5% к рейтингу' });
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey)
+          && q.queryKey[0] === '/api/companies'
+          && q.queryKey[1] === companyId
+          && q.queryKey[2] === 'ratings'
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'employees'] });
+    },
+    onError: (err: unknown) => {
+      const m = err instanceof Error ? err.message : 'Не удалось повысить рейтинг';
+      toast({ title: 'Ошибка', description: m, variant: 'destructive' });
+    }
+  });
+
   // Сливаем сотрудников с реальными рейтингами; по умолчанию 100%
-  const ratingsMap = new Map<string, number>((ratingData || []).map((r: any) => [r.employee_id, Number(r.rating)]));
-  const employeesWithRating = (employees || []).map((emp: any) => ({
+  const ratingsMap = new Map<string, number>((ratingData || []).map((r: RatingData) => [r.employee_id, Number(r.rating)]));
+  const employeesWithRating: EmployeeRating[] = (employees || []).map((emp: Employee) => ({
     id: emp.id,
     full_name: emp.full_name,
     position: emp.position,
     rating: ratingsMap.has(emp.id) ? Math.round(Number(ratingsMap.get(emp.id))) : 100
   }));
 
-  const filteredEmployees = employeesWithRating.filter((emp: any) =>
+  const filteredEmployees = employeesWithRating.filter((emp: EmployeeRating) =>
     emp.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     emp.position?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -246,69 +305,17 @@ export default function Rating() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Поиск сотрудников..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-            data-testid="input-search-employees"
-          />
-        </div>
-        
-        <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Период" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="current">Текущий месяц</SelectItem>
-            <SelectItem value="last">Прошлый месяц</SelectItem>
-            <SelectItem value="quarter">Квартал</SelectItem>
-            <SelectItem value="year">Год</SelectItem>
-            {periods?.map((period: RatingPeriod) => (
-              <SelectItem key={period.id} value={period.id}>
-                {period.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Сортировка" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="rating">По рейтингу</SelectItem>
-            <SelectItem value="name">По имени</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Rating Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {sortedEmployees.map((employee: EmployeeRating, index: number) => (
           <Card key={employee.id} className="hover-elevate" data-testid={`rating-card-${employee.id}`}>
             <CardHeader className="pb-3">
-              <div className="flex items-start gap-3">
-                <Avatar>
-                  <AvatarFallback>{employee.full_name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    {getRatingIcon(index + 1)}
-                    <CardTitle className="text-base truncate">{employee.full_name}</CardTitle>
-                  </div>
-                  <p className="text-sm text-muted-foreground truncate">{employee.position}</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  {getRatingIcon(index + 1)}
+                  <CardTitle className="text-base truncate">{employee.full_name}</CardTitle>
                 </div>
-                <Badge 
-                  variant={getRatingBadgeVariant(employee.rating)}
-                  className={`${getRatingColor(employee.rating)} font-semibold`}
-                >
-                  {employee.rating}%
-                </Badge>
+                <p className="text-sm text-muted-foreground truncate">{employee.position}</p>
               </div>
             </CardHeader>
             <CardContent>
@@ -353,9 +360,15 @@ export default function Rating() {
                       ⚠️ Низкий рейтинг
                     </span>
                   ) : (
-                    <span className="text-red-600 dark:text-red-400 text-sm font-medium">
-                      🚨 Критический рейтинг
-                    </span>
+                    employee.rating <= 0 ? (
+                      <span className="text-red-600 dark:text-red-400 text-sm font-medium">
+                        🚫 Увольнение: рейтинг достиг 0%
+                      </span>
+                    ) : (
+                      <span className="text-red-600 dark:text-red-400 text-sm font-medium">
+                        🚨 Критический рейтинг
+                      </span>
+                    )
                   )}
                 </div>
               </div>
@@ -371,6 +384,18 @@ export default function Rating() {
                 >
                   <AlertTriangle className="w-4 h-4 mr-2" />
                   Добавить нарушение
+                </Button>
+                <div className="mt-2" />
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => adjustRatingMutation.mutate(employee)}
+                  disabled={adjustRatingMutation.isPending}
+                  data-testid={`button-boost-rating-${employee.id}`}
+                >
+                  <ArrowUp className="w-4 h-4 mr-2" />
+                  Повысить рейтинг (+5%)
                 </Button>
               </div>
             </CardContent>
@@ -404,8 +429,8 @@ export default function Rating() {
                   </SelectTrigger>
                   <SelectContent>
                     {violationRules
-                      .filter((r: any) => r.is_active)
-                      .map((rule: any) => (
+                      .filter((r: ViolationRule) => r.is_active)
+                      .map((rule: ViolationRule) => (
                         <SelectItem key={rule.id} value={rule.id}>
                           {rule.name} ({rule.penalty_percent}%)
                         </SelectItem>
@@ -434,7 +459,7 @@ export default function Rating() {
                   Отмена
                 </Button>
                 <Button
-                  disabled={!selectedRuleId || createViolationMutation.isPending || !(violationRules || []).some((r: any) => r.is_active)}
+                  disabled={!selectedRuleId || createViolationMutation.isPending || !(violationRules || []).some((r: ViolationRule) => r.is_active)}
                   onClick={() => createViolationMutation.mutate()}
                 >
                   {createViolationMutation.isPending ? 'Сохранение...' : 'Добавить нарушение'}

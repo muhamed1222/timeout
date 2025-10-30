@@ -4,9 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Search, Plus, Loader2, QrCode, Copy, Check, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -52,11 +52,12 @@ type InviteFormValues = z.infer<typeof inviteFormSchema>;
 
 export default function Employees() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [selectedInvite, setSelectedInvite] = useState<InviteLink | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { toast } = useToast();
   const { companyId, loading: authLoading } = useAuth();
 
@@ -90,6 +91,41 @@ export default function Employees() {
     deleteInviteMutation.mutate(inviteId);
   };
 
+  // Мутация для удаления сотрудника
+  const deleteEmployeeMutation = useMutation({
+    mutationFn: async (employeeId: string) => {
+      const response = await apiRequest('DELETE', `/api/employees/${employeeId}`);
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Сотрудник удалён",
+        description: "Сотрудник успешно удалён из компании",
+      });
+      refetchEmployees();
+      setShowDeleteDialog(false);
+      setEmployeeToDelete(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось удалить сотрудника",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteEmployee = (employee: Employee) => {
+    setEmployeeToDelete(employee);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteEmployee = () => {
+    if (employeeToDelete) {
+      deleteEmployeeMutation.mutate(employeeToDelete.id);
+    }
+  };
+
   const { data: employees = [], isLoading: employeesLoading, refetch: refetchEmployees } = useQuery<Employee[]>({
     queryKey: ['/api/companies', companyId, 'employees'],
     enabled: !!companyId,
@@ -101,6 +137,10 @@ export default function Employees() {
 
   const { data: invites = [], isLoading: invitesLoading, refetch: refetchInvites } = useQuery<EmployeeInvite[]>({
     queryKey: ['/api/companies', companyId, 'employee-invites'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/companies/${companyId}/employee-invites`);
+      return response.json();
+    },
     enabled: !!companyId,
     // После использования инвайта через Telegram быстро подтягиваем изменения
     refetchInterval: 5000,
@@ -177,9 +217,8 @@ export default function Employees() {
   };
 
   const filteredEmployees = employees.filter(emp =>
-    (emp.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     emp.position.toLowerCase().includes(searchQuery.toLowerCase())) &&
-    (selectedStatus === null || emp.status === selectedStatus)
+    emp.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    emp.position.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const activeInvites = invites.filter(inv => !inv.used_at);
@@ -224,33 +263,11 @@ export default function Employees() {
         />
       </div>
 
-      <div className="flex gap-2">
-        <Badge
-          variant={selectedStatus === null ? "default" : "outline"}
-          className="cursor-pointer hover-elevate"
-          onClick={() => setSelectedStatus(null)}
-          data-testid="filter-all-employees"
-        >
-          Все ({employees.length})
-        </Badge>
-        <Badge
-          variant={selectedStatus === 'active' ? "default" : "outline"}
-          className="cursor-pointer hover-elevate"
-          onClick={() => setSelectedStatus('active')}
-          data-testid="filter-active-employees"
-        >
-          Активные ({employees.filter(e => e.status === 'active').length})
-        </Badge>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filteredEmployees.map((employee) => (
           <Card key={employee.id} className="hover-elevate" data-testid={`employee-card-${employee.id}`}>
             <CardHeader className="pb-3">
-              <div className="flex items-start gap-3">
-                <Avatar>
-                  <AvatarFallback>{employee.full_name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                </Avatar>
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <CardTitle className="text-base truncate">{employee.full_name}</CardTitle>
                   <p className="text-sm text-muted-foreground truncate">{employee.position}</p>
@@ -261,17 +278,23 @@ export default function Employees() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Часовой пояс:</span>
-                  <span>{employee.tz}</span>
-                </div>
+              <div className="space-y-3">
                 {employee.telegram_user_id && (
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Telegram ID:</span>
                     <span className="font-mono text-xs">{employee.telegram_user_id}</span>
                   </div>
                 )}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => handleDeleteEmployee(employee)}
+                  data-testid={`button-delete-employee-${employee.id}`}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Удалить сотрудника
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -415,6 +438,31 @@ export default function Employees() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete Employee Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить сотрудника?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить сотрудника <strong>{employeeToDelete?.full_name}</strong>?
+              <br />
+              Это действие нельзя отменить. Все данные сотрудника будут удалены из компании.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteEmployee}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteEmployeeMutation.isPending}
+            >
+              {deleteEmployeeMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -24,7 +24,7 @@ export type WebSocketEventType =
   | 'dashboard.stats_updated'
   | 'system.notification';
 
-export interface WebSocketEvent<T = any> {
+export interface WebSocketEvent<T = unknown> {
   type: WebSocketEventType;
   data: T;
   timestamp: number;
@@ -334,7 +334,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 /**
  * Hook to listen to specific event type
  */
-export function useWebSocketEvent<T = any>(
+export function useWebSocketEvent<T = unknown>(
   eventType: WebSocketEventType,
   handler: (data: T) => void,
   options: UseWebSocketOptions = {}
@@ -343,7 +343,7 @@ export function useWebSocketEvent<T = any>(
   
   useEffect(() => {
     const unsubscribe = ws.subscribe(eventType, (event) => {
-      handler(event.data);
+      handler(event.data as T);
     });
     
     return unsubscribe;
@@ -352,16 +352,33 @@ export function useWebSocketEvent<T = any>(
   return ws;
 }
 
+interface DashboardStats {
+  activeShifts: number;
+  totalEmployees: number;
+  todayViolations: number;
+  averageRating: number;
+}
+
 /**
  * Hook for dashboard real-time updates
  */
 export function useDashboardUpdates(
   companyId: string,
-  onStatsUpdate: (stats: any) => void
+  onStatsUpdate: (stats: DashboardStats) => void
 ): UseWebSocketReturn {
-  return useWebSocketEvent('dashboard.stats_updated', onStatsUpdate, {
+  return useWebSocketEvent<DashboardStats>('dashboard.stats_updated', onStatsUpdate, {
     companyId,
   });
+}
+
+interface Shift {
+  id: string;
+  employee_id: string;
+  status: 'planned' | 'active' | 'completed' | 'cancelled';
+  planned_start_at: string;
+  planned_end_at: string;
+  actual_start_at?: string;
+  actual_end_at?: string;
 }
 
 /**
@@ -369,16 +386,16 @@ export function useDashboardUpdates(
  */
 export function useShiftUpdates(
   companyId: string,
-  onShiftUpdate: (shift: any) => void
+  onShiftUpdate: (shift: Shift) => void
 ): UseWebSocketReturn {
   const ws = useWebSocket({ companyId });
   
   useEffect(() => {
     const unsubscribers = [
-      ws.subscribe('shift.started', (e) => onShiftUpdate(e.data)),
-      ws.subscribe('shift.ended', (e) => onShiftUpdate(e.data)),
-      ws.subscribe('shift.paused', (e) => onShiftUpdate(e.data)),
-      ws.subscribe('shift.updated', (e) => onShiftUpdate(e.data)),
+      ws.subscribe('shift.started', (e) => onShiftUpdate(e.data as Shift)),
+      ws.subscribe('shift.ended', (e) => onShiftUpdate(e.data as Shift)),
+      ws.subscribe('shift.paused', (e) => onShiftUpdate(e.data as Shift)),
+      ws.subscribe('shift.updated', (e) => onShiftUpdate(e.data as Shift)),
     ];
     
     return () => {
@@ -389,14 +406,24 @@ export function useShiftUpdates(
   return ws;
 }
 
+interface Violation {
+  id: string;
+  employee_id: string;
+  company_id: string;
+  rule_id: string;
+  source: 'auto' | 'manual';
+  reason?: string;
+  detected_at: string;
+}
+
 /**
  * Hook for violation updates
  */
 export function useViolationUpdates(
   companyId: string,
-  onViolation: (violation: any) => void
+  onViolation: (violation: Violation) => void
 ): UseWebSocketReturn {
-  return useWebSocketEvent('violation.detected', onViolation, {
+  return useWebSocketEvent<Violation>('violation.detected', onViolation, {
     companyId,
   });
 }

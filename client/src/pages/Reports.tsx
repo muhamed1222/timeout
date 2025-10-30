@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Search, Download, Loader2, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -169,16 +168,9 @@ export default function Reports() {
           <Card key={report.id} className="hover-elevate" data-testid={`report-card-${report.id}`}>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <Avatar>
-                    <AvatarFallback>
-                      {report.employee.full_name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base truncate">{report.employee.full_name}</CardTitle>
-                    <p className="text-sm text-muted-foreground truncate">{report.employee.position || '-'}</p>
-                  </div>
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="text-base truncate">{report.employee.full_name}</CardTitle>
+                  <p className="text-sm text-muted-foreground truncate">{report.employee.position || '-'}</p>
                 </div>
                 <div className="text-right">
                   <Badge variant="outline">

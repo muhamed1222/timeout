@@ -7,6 +7,7 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import { Express } from 'express';
+import { logger } from './lib/logger';
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -241,7 +242,7 @@ export function setupSwagger(app: Express): void {
     res.send(swaggerSpec);
   });
 
-  console.log('📖 Swagger docs available at /api/docs');
+  logger.info('Swagger docs available at /api/docs');
 }
 
 export { swaggerSpec };

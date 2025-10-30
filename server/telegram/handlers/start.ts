@@ -1,9 +1,10 @@
 import { Context } from 'telegraf';
 import { SessionData } from '../types';
 import { storage } from '../../storage';
+import { logger } from '../../lib/logger.js';
 
 export async function handleStart(ctx: Context & { session: SessionData }) {
-  console.log('Start command received:', {
+  logger.info('Start command received', {
     userId: ctx.from?.id,
     username: ctx.from?.username,
     messageText: ctx.message && 'text' in ctx.message ? ctx.message.text : 'No text'
@@ -14,13 +15,13 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
   
   // Если нет параметра start, но сотрудник уже авторизован - показываем главное меню
   if (!startParam && ctx.session?.employeeId) {
-    console.log('Employee already authorized, showing main menu');
+    logger.info('Employee already authorized, showing main menu');
     await showMainMenu(ctx);
     return;
   }
   
   if (!startParam) {
-    console.log('No start parameter provided, showing access denied message');
+    logger.info('No start parameter provided, showing access denied message');
     return ctx.reply(`
 ❌ *Доступ запрещён*
 
@@ -31,7 +32,7 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
   }
 
   if (!ctx.from?.id) {
-    console.error('No user ID in context');
+    logger.error('No user ID in context');
     return ctx.reply(`
 ❌ *Ошибка аутентификации*
 
@@ -41,12 +42,12 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
   }
 
   try {
-    console.log('Processing invite code:', startParam);
+    logger.info('Processing invite code', { code: startParam });
     // Проверяем инвайт-код
     const invite = await storage.getEmployeeInviteByCode(startParam);
     
     if (!invite) {
-      console.log('Invite not found:', startParam);
+      logger.warn('Invite not found', { code: startParam });
       return ctx.reply(`
 ❌ *Неверный код приглашения*
 
@@ -57,20 +58,20 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
 
     // Сначала проверяем, есть ли уже сотрудник с этим Telegram ID
     const currentTelegramId = ctx.from.id.toString();
-    console.log('Checking for existing employee with Telegram ID:', currentTelegramId);
+    logger.info('Checking for existing employee with Telegram ID', { telegramId: currentTelegramId });
     let existingEmployee = await storage.getEmployeeByTelegramId(currentTelegramId);
-    console.log('Found existing employee:', existingEmployee ? {
+    logger.info('Found existing employee', existingEmployee ? {
       id: existingEmployee.id,
       company_id: existingEmployee.company_id,
       full_name: existingEmployee.full_name
-    } : null);
+    } : { found: false });
     
     if (existingEmployee) {
-      console.log('Found existing employee with Telegram ID:', currentTelegramId);
+      logger.info('Found existing employee with Telegram ID', { telegramId: currentTelegramId });
       
       // Если сотрудник уже существует, обновляем его данные и переносим в новую компанию
       const needsCompanyTransfer = existingEmployee.company_id !== invite.company_id;
-      console.log('Company transfer needed:', needsCompanyTransfer, 'from', existingEmployee.company_id, 'to', invite.company_id);
+      logger.info('Company transfer needed', { needsTransfer: needsCompanyTransfer, fromCompany: existingEmployee.company_id, toCompany: invite.company_id });
       
       const updated = await storage.updateEmployee(existingEmployee.id, {
         company_id: invite.company_id,
@@ -79,16 +80,16 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
         telegram_user_id: currentTelegramId,
         status: 'active'
       });
-      console.log('Updated employee:', updated ? {
+      logger.info('Updated employee', updated ? {
         id: updated.id,
         company_id: updated.company_id,
         full_name: updated.full_name
-      } : null);
+      } : { updated: false });
 
       // Помечаем инвайт как использованный
-      console.log('Marking invite as used:', invite.code, 'for employee:', existingEmployee.id);
+      logger.info('Marking invite as used', { inviteCode: invite.code, employeeId: existingEmployee.id });
       await storage.useEmployeeInvite(invite.code, existingEmployee.id);
-      console.log('Invite marked as used successfully');
+      logger.info('Invite marked as used successfully');
 
       // Сохраняем в сессию и продолжаем стандартный флоу
       if (!ctx.session) ctx.session = {} as any;
@@ -117,11 +118,11 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
     }
 
     if (invite.used_at) {
-      console.log('Invite already used:', startParam);
+      logger.warn('Invite already used', { code: startParam });
       
       // Если сотрудник уже авторизован и использует свой же инвайт - показываем главное меню
       if (ctx.session?.employeeId && invite.used_by_employee === ctx.session.employeeId) {
-        console.log('Employee using their own invite, showing main menu');
+        logger.info('Employee using their own invite, showing main menu');
         await showMainMenu(ctx);
         return;
       }
@@ -134,7 +135,7 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
       `, { parse_mode: 'Markdown' });
     }
 
-    console.log('Creating/updating employee for Telegram ID:', ctx.from.id);
+    logger.info('Creating/updating employee for Telegram ID', { telegramId: ctx.from.id });
     // Создаем или обновляем сотрудника
     let employee = await storage.getEmployeeByTelegramId(ctx.from.id.toString());
     
@@ -147,7 +148,7 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
         telegram_user_id: ctx.from.id.toString(),
         status: 'active'
       });
-      console.log('Created new employee:', employee.id);
+      logger.info('Created new employee', { employeeId: employee.id });
     } else {
       // Перенос сотрудника в компанию из инвайта, если отличается
       const needsCompanyTransfer = employee.company_id !== invite.company_id;
@@ -158,18 +159,16 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
         telegram_user_id: ctx.from.id.toString(),
         status: 'active'
       });
-      console.log(
-        needsCompanyTransfer
-          ? `Transferred employee to company ${invite.company_id}`
-          : 'Updated existing employee',
-        updated?.id
+      logger.info(
+        needsCompanyTransfer ? 'Transferred employee to company' : 'Updated existing employee',
+        { employeeId: updated?.id, companyId: invite.company_id }
       );
       employee = updated || employee;
     }
 
     // Отмечаем инвайт как использованный
     await storage.useEmployeeInvite(startParam, employee!.id);
-    console.log('Marked invite as used:', startParam);
+    logger.info('Marked invite as used', { code: startParam });
 
     // Сохраняем данные в сессию
     if (!ctx.session) {
@@ -181,7 +180,7 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
     // Получаем информацию о компании
     const company = await storage.getCompany(employee!.company_id);
 
-    console.log('Sending welcome message to user:', ctx.from.id);
+    logger.info('Sending welcome message to user', { userId: ctx.from.id });
     await ctx.reply(`
 🎉 *Добро пожаловать!*
 
@@ -202,7 +201,7 @@ ${employee.position ? `💼 *Должность:* ${employee.position}` : ''}
     await showMainMenu(ctx);
 
   } catch (error: unknown) {
-    console.error('Error in start handler:', error as any);
+    logger.error('Error in start handler', error);
     ctx.reply(`
 ❌ *Ошибка подключения*
 
@@ -216,13 +215,13 @@ ${employee.position ? `💼 *Должность:* ${employee.position}` : ''}
 
 async function showMainMenu(ctx: Context & { session: SessionData }) {
   if (!ctx.session) {
-    console.error('No session available in showMainMenu');
+    logger.error('No session available in showMainMenu');
     return;
   }
   
   const employeeId = ctx.session.employeeId;
   if (!employeeId) {
-    console.error('No employeeId in session');
+    logger.error('No employeeId in session');
     return;
   }
 
@@ -292,7 +291,7 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
     }
 
   } catch (error) {
-    console.error('Error showing main menu:', error);
+    logger.error('Error showing main menu', error);
     ctx.reply('❌ Ошибка загрузки меню. Попробуйте позже.');
   }
 }

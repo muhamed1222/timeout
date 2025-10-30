@@ -1,136 +1,120 @@
-import * as Sentry from '@sentry/node';
-import { nodeProfilingIntegration } from '@sentry/profiling-node';
-import { httpIntegration, expressIntegration } from '@sentry/node';
-import { logger } from './logger.js';
+import * as Sentry from "@sentry/node";
+import { nodeProfilingIntegration } from "@sentry/profiling-node";
+import { logger } from "./logger.js";
 
 /**
- * Initialize Sentry for error tracking and performance monitoring
+ * Initialize Sentry for error tracking in production
+ * 
+ * Set SENTRY_DSN environment variable to enable Sentry
  */
 export function initSentry(): void {
-  const dsn = process.env.SENTRY_DSN;
-  
-  // Only initialize in production or if DSN is explicitly provided
-  if (process.env.NODE_ENV !== 'production' && !dsn) {
-    logger.info('Sentry not initialized (development mode)');
+  const sentryDsn = process.env.SENTRY_DSN;
+  const environment = process.env.NODE_ENV || 'development';
+
+  if (!sentryDsn) {
+    if (environment === 'production') {
+      logger.warn('SENTRY_DSN not set - error tracking disabled in production');
+    } else {
+      logger.debug('SENTRY_DSN not set - running without error tracking');
+    }
     return;
   }
-  
-  if (!dsn) {
-    logger.warn('SENTRY_DSN not set, error tracking disabled');
-    return;
+
+  try {
+    Sentry.init({
+      dsn: sentryDsn,
+      environment,
+      
+      // Set sample rates
+      tracesSampleRate: environment === 'production' ? 0.1 : 1.0,
+      profilesSampleRate: environment === 'production' ? 0.1 : 1.0,
+      
+      // Integrations
+      integrations: [
+        nodeProfilingIntegration(),
+      ],
+      
+      // Release tracking
+      release: process.env.VERCEL_GIT_COMMIT_SHA || process.env.RENDER_GIT_COMMIT || 'development',
+      
+      // Configure what to send
+      beforeSend(event, hint) {
+        // Filter out sensitive data
+        if (event.request) {
+          delete event.request.cookies;
+          delete event.request.headers;
+        }
+        
+        // Don't send errors in development
+        if (environment === 'development') {
+          logger.error('Sentry captured error (not sent in dev)', hint.originalException);
+          return null;
+        }
+        
+        return event;
+      },
+      
+      // Ignore certain errors
+      ignoreErrors: [
+        'ECONNRESET',
+        'ECONNREFUSED',
+        'ETIMEDOUT',
+        'NetworkError',
+        'Non-Error promise rejection',
+      ],
+    });
+
+    logger.info('Sentry initialized successfully', {
+      environment,
+      tracesSampleRate: environment === 'production' ? 0.1 : 1.0,
+    });
+  } catch (error) {
+    logger.error('Failed to initialize Sentry', error);
   }
-  
-  Sentry.init({
-    dsn,
-    integrations: [
-      nodeProfilingIntegration(),
-      httpIntegration(),
-      expressIntegration(),
-    ],
-    
-    // Performance Monitoring
-    tracesSampleRate: parseFloat(process.env.SENTRY_TRACES_SAMPLE_RATE || '0.1'),
-    profilesSampleRate: parseFloat(process.env.SENTRY_PROFILES_SAMPLE_RATE || '0.1'),
-    
-    // Environment
-    environment: process.env.NODE_ENV || 'development',
-    release: process.env.VERCEL_GIT_COMMIT_SHA || 'development',
-    
-    // Server name for grouping
-    serverName: process.env.VERCEL_REGION || 'local',
-    
-    // Breadcrumbs
-    maxBreadcrumbs: 50,
-    
-    // Ignore certain errors
-    ignoreErrors: [
-      'Non-Error promise rejection captured',
-      'Network request failed',
-      'Failed to fetch',
-      'NetworkError',
-      'AbortError',
-    ],
-    
-    // Enhanced context and filtering
-    beforeSend(event: Sentry.ErrorEvent, hint: Sentry.EventHint) {
-      // Add custom context
-      if (event.request) {
-        event.request.cookies = undefined; // Remove cookies for privacy
-      }
-      
-      // Filter out sensitive data
-      if (event.extra) {
-        delete (event.extra as Record<string, unknown>).password;
-        delete (event.extra as Record<string, unknown>).token;
-        delete (event.extra as Record<string, unknown>).api_key;
-      }
-      
-      // Don't send health check events
-      if (event.transaction?.includes('/health')) {
-        return null;
-      }
-      
-      return event;
-    },
-  });
-  
-  logger.info('Sentry initialized', {
-    environment: process.env.NODE_ENV,
-    release: process.env.VERCEL_GIT_COMMIT_SHA,
-  });
 }
 
 /**
- * Capture exception with Sentry
+ * Capture an exception in Sentry
  */
 export function captureException(error: Error, context?: Record<string, any>): void {
-  if (process.env.NODE_ENV === 'production') {
-    Sentry.captureException(error, {
-      extra: context,
+  if (context) {
+    Sentry.withScope((scope) => {
+      Object.entries(context).forEach(([key, value]) => {
+        scope.setContext(key, value);
+      });
+      Sentry.captureException(error);
     });
   } else {
-    logger.error('Exception captured', { error, context });
+    Sentry.captureException(error);
   }
 }
 
 /**
- * Capture message with Sentry
+ * Capture a message in Sentry
  */
 export function captureMessage(message: string, level: Sentry.SeverityLevel = 'info'): void {
-  if (process.env.NODE_ENV === 'production') {
-    Sentry.captureMessage(message, level);
-  } else {
-    logger.info('Message captured', { message, level });
-  }
+  Sentry.captureMessage(message, level);
 }
 
 /**
- * Add breadcrumb for debugging
+ * Set user context for Sentry
  */
-export function addBreadcrumb(breadcrumb: Sentry.Breadcrumb): void {
-  Sentry.addBreadcrumb(breadcrumb);
-}
-
-/**
- * Set user context
- */
-export function setUser(user: { id: string; email?: string; username?: string }): void {
+export function setUserContext(user: { id: string; email?: string; username?: string }): void {
   Sentry.setUser(user);
 }
 
 /**
  * Clear user context
  */
-export function clearUser(): void {
+export function clearUserContext(): void {
   Sentry.setUser(null);
 }
 
 /**
- * Flush Sentry events (use on shutdown)
+ * Add breadcrumb to Sentry
  */
-export async function flushSentry(timeout = 2000): Promise<void> {
-  await Sentry.close(timeout);
+export function addBreadcrumb(breadcrumb: { message: string; category?: string; level?: Sentry.SeverityLevel; data?: Record<string, any> }): void {
+  Sentry.addBreadcrumb(breadcrumb);
 }
 
 export { Sentry };
-

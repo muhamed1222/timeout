@@ -14,9 +14,8 @@ import Exceptions from "@/pages/Exceptions";
 import Rating from "@/pages/Rating";
 import Employees from "@/pages/Employees";
 import Reports from "@/pages/Reports";
-import Schedules from "@/pages/Schedules";
 import Settings from "@/pages/Settings";
-import CompanySettings from "@/pages/CompanySettings";
+import Schedules from "@/pages/Schedules";
 import NotFound from "@/pages/NotFound";
 import WebAppPage from "@/pages/webapp";
 import Login from "@/pages/Login";
@@ -30,9 +29,11 @@ function MainRouter() {
       <Route path="/rating" component={Rating} />
       <Route path="/employees" component={Employees} />
       <Route path="/reports" component={Reports} />
-      <Route path="/schedules" component={Schedules} />
       <Route path="/settings" component={Settings} />
-      <Route path="/company" component={CompanySettings} />
+      <Route path="/schedules" component={Schedules} />
+      <Route path="/company">
+        <Redirect to="/settings" />
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -43,7 +44,7 @@ function AppContent() {
   const { user, loading } = useAuth();
 
   const style = {
-    "--sidebar-width": "20rem",
+    "--sidebar-width": "200px",
     "--sidebar-width-icon": "4rem",
   };
 

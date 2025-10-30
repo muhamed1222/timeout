@@ -58,6 +58,24 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+// Delete employee
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const employee = await storage.getEmployee(id);
+    if (!employee) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+    await storage.deleteEmployee(id);
+    // Invalidate company stats cache
+    cache.delete(`company:${employee.company_id}:stats`);
+    res.json({ success: true });
+  } catch (error) {
+    logger.error("Error deleting employee", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Get employee by Telegram ID
 router.get("/telegram/:telegramUserId", async (req, res) => {
   try {

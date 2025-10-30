@@ -1,6 +1,7 @@
 import { Context } from 'telegraf';
 import { SessionData } from '../types';
 import { storage } from '../../storage';
+import { logger } from '../../lib/logger';
 
 export async function handleReport(ctx: Context & { session: SessionData }, shiftId?: string) {
   const reportShiftId = shiftId || ctx.session.waitingForReport;
@@ -49,7 +50,7 @@ export async function handleReport(ctx: Context & { session: SessionData }, shif
     `, { parse_mode: 'Markdown' });
 
   } catch (error) {
-    console.error('Error saving report:', error);
+    logger.error('Error saving report', error);
     ctx.reply('❌ Ошибка сохранения отчёта. Попробуйте позже.');
   }
 }

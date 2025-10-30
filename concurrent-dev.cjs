@@ -14,6 +14,15 @@ const backend = spawn('npx', ['tsx', '-r', 'dotenv/config', 'server/index.ts'], 
   env: {
     ...process.env,
     PORT: '3001',
+    // Default safe dev env
+    USE_INMEMORY_STORAGE: process.env.USE_INMEMORY_STORAGE || 'true',
+    DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/shiftmanager',
+    SUPABASE_URL: process.env.SUPABASE_URL || 'http://localhost:54321',
+    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || 'dev-anon-key',
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || 'dev-service-role-key',
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || 'dev-telegram-token',
+    BOT_API_SECRET: process.env.BOT_API_SECRET || '0123456789abcdef0123456789abcdef',
+    SESSION_SECRET: process.env.SESSION_SECRET || 'fedcba9876543210fedcba9876543210',
     // Prefer IPv4 DNS results to avoid ENOTFOUND issues in some environments
     NODE_OPTIONS: process.env.NODE_OPTIONS
       ? `${process.env.NODE_OPTIONS} --dns-result-order=ipv4first`

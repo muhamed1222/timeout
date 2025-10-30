@@ -29,7 +29,7 @@ const menuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Исключения",
+    title: "Нарушения",
     url: "/exceptions",
     icon: AlertTriangle,
   },
@@ -49,11 +49,6 @@ const menuItems = [
     icon: ClipboardList,
   },
   {
-    title: "Графики",
-    url: "/schedules",
-    icon: Calendar,
-  },
-  {
     title: "Настройки",
     url: "/settings",
     icon: Settings,
@@ -69,8 +64,8 @@ export function AppSidebar() {
         <div className="flex items-center gap-3">
           <img src={companyLogo} alt="Company Logo" className="w-8 h-8 rounded" />
           <div>
-            <h2 className="font-semibold text-lg">ShiftManager</h2>
-            <p className="text-xs text-muted-foreground">ООО "Техком"</p>
+            <h2 className="font-semibold text-lg">outTime</h2>
+            <p className="text-xs text-muted-foreground">ООО "РАРААВИС ГРУП"</p>
           </div>
         </div>
       </SidebarHeader>
@@ -83,7 +78,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     asChild 
-                    isActive={location === item.url}
+                    isActive={location === item.url || (item.url === '/settings' && (location === '/company' || location === '/schedules'))}
                     data-testid={`nav-${item.title.toLowerCase()}`}
                   >
                     <Link href={item.url}>
@@ -93,22 +88,6 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        
-        <SidebarGroup>
-          <SidebarGroupLabel>Компания</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild data-testid="nav-company-settings">
-                  <Link href="/company">
-                    <Building2 className="w-4 h-4" />
-                    <span>Настройки компании</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

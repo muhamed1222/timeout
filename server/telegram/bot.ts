@@ -6,6 +6,7 @@ import { handleAbsence } from './handlers/absence';
 import { handleReport } from './handlers/report';
 import { sendShiftReminder } from './handlers/reminders';
 import { storage } from '../storage';
+import { logger } from '../lib/logger';
 
 const bot = new Telegraf<Context & { session: SessionData }>(process.env.TELEGRAM_BOT_TOKEN!);
 
@@ -17,7 +18,11 @@ bot.use(session({
 // Middleware для логирования
 bot.use((ctx, next) => {
   const text = (ctx as any)?.message?.text as string | undefined;
-  console.log(`[${new Date().toISOString()}] ${ctx.from?.username || 'Unknown'}: ${text || 'Callback'}`);
+  logger.info("Telegram bot message", {
+    timestamp: new Date().toISOString(),
+    username: ctx.from?.username || 'Unknown',
+    message: text || 'Callback'
+  });
   return next();
 });
 
@@ -33,7 +38,7 @@ bot.use(async (ctx, next) => {
     try {
       const employee = await storage.getEmployeeByTelegramId(telegramId);
       if (employee) {
-        console.log('Auto-restoring session for employee:', employee.id);
+        logger.info("Auto-restoring session for employee", { employeeId: employee.id });
         ctx.session = {
           employeeId: employee.id,
           companyId: employee.company_id,
@@ -41,7 +46,7 @@ bot.use(async (ctx, next) => {
         };
       }
     } catch (error) {
-      console.error('Error auto-restoring session:', error);
+      logger.error("Error auto-restoring session", { error });
     }
   }
 
@@ -122,7 +127,7 @@ ${activeBreak ? `🍽 Перерыв с: ${new Date(activeBreak.start_at).toLoca
 
     ctx.reply(message, { parse_mode: 'Markdown' });
   } catch (error) {
-    console.error('Error getting status:', error);
+    logger.error("Error getting status", { error });
     ctx.reply('❌ Ошибка получения статуса. Попробуйте позже.');
   }
 });
@@ -144,25 +149,25 @@ bot.on('text', async (ctx) => {
       await ctx.reply('Используйте кнопки для управления сменой или команду /help для справки.');
     }
   } catch (error) {
-    console.error('Error handling text message:', error);
+    logger.error("Error handling text message", { error });
     // Не пытаемся отвечать при ошибке
   }
 });
 
 // Обработка ошибок
 bot.catch((err: unknown, ctx) => {
-  console.error('Bot error:', err as any);
+  logger.error("Bot error", { error: err });
   
   // Не пытаемся отвечать, если чат не найден
   if ((err as any).description && (err as any).description.includes('chat not found')) {
-    console.log('Chat not found, skipping reply');
+    logger.info("Chat not found, skipping reply");
     return;
   }
   
   try {
     ctx.reply('❌ Произошла ошибка. Попробуйте позже или обратитесь к администратору.');
   } catch (replyError) {
-    console.error('Error sending error message:', replyError);
+    logger.error("Error sending error message", { error: replyError });
   }
 });
 

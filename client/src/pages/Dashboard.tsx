@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Filter, Download, Users } from "lucide-react";
+import { Search, Plus, Download, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -99,13 +99,6 @@ export default function Dashboard() {
     });
   };
 
-  const handleFilter = () => {
-    toast({
-      title: "Фильтры",
-      description: "Настройка фильтров будет доступна в следующей версии",
-    });
-  };
-
   const handleExport = () => {
     if (!transformedShifts.length) {
       toast({
@@ -170,10 +163,7 @@ export default function Dashboard() {
     location: undefined
   }));
 
-  const filteredShifts = transformedShifts.filter(shift =>
-    shift.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    shift.position.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredShifts = transformedShifts;
 
   // Generate activities based on real data
   const recentActivities: ActivityItem[] = activeShifts
@@ -254,10 +244,6 @@ export default function Dashboard() {
           <p className="text-muted-foreground">Обзор активности сотрудников</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleFilter} data-testid="button-filter">
-            <Filter className="w-4 h-4 mr-2" />
-            Фильтр
-          </Button>
           <Button variant="outline" onClick={handleExport} data-testid="button-export">
             <Download className="w-4 h-4 mr-2" />
             Экспорт
@@ -277,18 +263,6 @@ export default function Dashboard() {
         exceptions={stats?.exceptions || 0}
       />
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-        <Input
-          placeholder="Поиск сотрудников..."
-          value={searchQuery}
-          onChange={(e) => handleSearch(e.target.value)}
-          className="pl-10"
-          data-testid="input-search"
-        />
-      </div>
-
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Shift Cards */}
@@ -298,11 +272,8 @@ export default function Dashboard() {
             <EmptyState
               icon={Users}
               title="Нет активных смен"
-              description={searchQuery 
-                ? "По вашему запросу ничего не найдено. Попробуйте изменить поисковый запрос."
-                : "Пока нет активных смен. Добавьте сотрудников и создайте расписание для начала работы."
-              }
-              action={searchQuery ? undefined : {
+              description="Пока нет активных смен. Добавьте сотрудников и создайте расписание для начала работы."
+              action={{
                 label: "Добавить сотрудника",
                 onClick: handleAddEmployee
               }}

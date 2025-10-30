@@ -1,13 +1,22 @@
+// Initialize Sentry FIRST, before any other imports
+import { initSentry, Sentry } from "./lib/sentry.js";
+initSentry();
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { env } from "./lib/env.js";
 import { scheduler } from "./services/scheduler.js";
+import { configureCors } from "./lib/cors.js";
 
 // Launch Telegram bot in development mode
 import './launchBot';
 
 const app = express();
+
+// CORS must be configured before other middleware
+app.use(configureCors());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -44,12 +53,18 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
+// Sentry error handler (must be before other error handlers)
+// @ts-ignore - Sentry types issue
+app.use(Sentry.Handlers?.errorHandler?.() || ((_req: any, _res: any, next: any) => next()));
+
+  // Global error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    // Log error but don't throw (Sentry already captured it)
+    log(`Error ${status}: ${message}`);
     res.status(status).json({ message });
-    throw err;
   });
 
   // importantly only setup vite in development and after

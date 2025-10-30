@@ -64,11 +64,10 @@ export default function DashboardStats({
         icon={UserX}
         color="text-shift-done"
       />
-      <div onClick={handleViewExceptions} className="cursor-pointer">
+      <div>
         <StatCard
-          title="Исключения"
+          title="Нарушения"
           value={exceptions}
-          change={exceptions > 0 ? "Требует внимания" : "Все в порядке"}
           icon={AlertTriangle}
           color={exceptions > 0 ? "text-shift-missed" : "text-shift-active"}
         />

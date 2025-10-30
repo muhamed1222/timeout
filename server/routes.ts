@@ -28,6 +28,8 @@ import invitesRouter from "./routes/invites.js";
 import schedulesRouter from "./routes/schedules.js";
 import ratingRouter from "./routes/rating.js";
 import webappRouter from "./routes/webapp.js";
+import violationRulesRouter from "./routes/violation-rules.js";
+import violationsRouter from "./routes/violations.js";
 
 // Rate limiters
 const apiLimiter = rateLimit({
@@ -155,6 +157,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/schedule-templates", schedulesRouter);
   app.use("/api/rating", ratingRouter);
   app.use("/api/webapp", webappRouter);
+  app.use("/api/violation-rules", violationRulesRouter);
+  app.use("/api/violations", violationsRouter);
   
   // Legacy inline endpoints (to be migrated)
   
@@ -166,6 +170,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(employees);
     } catch (error) {
       logger.error("Error fetching employees", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get employee invites by company
+  app.get("/api/companies/:companyId/employee-invites", async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const invites = await storage.getEmployeeInvitesByCompany(companyId);
+      res.json(invites);
+    } catch (error) {
+      logger.error("Error fetching employee invites", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

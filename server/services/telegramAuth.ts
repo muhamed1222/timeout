@@ -1,4 +1,5 @@
 import { createHmac } from "crypto";
+import { logger } from "../lib/logger";
 
 export interface TelegramUser {
   id: number;
@@ -38,7 +39,7 @@ export function validateTelegramWebAppData(initData: string, botToken: string): 
     const user = JSON.parse(userParam) as TelegramUser;
     return user;
   } catch (error) {
-    console.error("Error validating Telegram WebApp data:", error);
+    logger.error("Error validating Telegram WebApp data", error);
     return null;
   }
 }

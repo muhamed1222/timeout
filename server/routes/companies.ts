@@ -74,6 +74,7 @@ router.get("/:companyId/stats", async (req, res) => {
     const employees = await storage.getEmployeesByCompany(companyId);
     const activeShifts = await storage.getActiveShiftsByCompany(companyId);
     const exceptions = await storage.getExceptionsByCompany(companyId);
+    const violations = await storage.getViolationsByCompany(companyId);
     
     const today = new Date().toISOString().split('T')[0];
     const todayShifts = activeShifts.filter(shift => 
@@ -86,7 +87,8 @@ router.get("/:companyId/stats", async (req, res) => {
       totalEmployees: employees.length,
       activeShifts: activeShifts.length,
       completedShifts,
-      exceptions: exceptions.length
+      // Frontend ожидает поле exceptions, используем количество нарушений
+      exceptions: violations.length
     };
     
     // Cache for 2 minutes
@@ -269,6 +271,51 @@ router.get("/:companyId/violation-rules", async (req, res) => {
     res.json(rules);
   } catch (error) {
     logger.error("Error fetching violation rules", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get ratings by company and period
+router.get("/:companyId/ratings", async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const { periodStart, periodEnd } = req.query as { periodStart?: string; periodEnd?: string };
+    if (!periodStart || !periodEnd) {
+      return res.status(400).json({ error: "periodStart and periodEnd are required" });
+    }
+    const start = new Date(periodStart);
+    const end = new Date(periodEnd);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ error: "Invalid periodStart or periodEnd" });
+    }
+    const ratings = await storage.getEmployeeRatingsByCompany(companyId, start, end);
+    res.json(ratings);
+  } catch (error) {
+    logger.error("Error fetching ratings", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get employees by company
+router.get("/:companyId/employees", async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const employees = await storage.getEmployeesByCompany(companyId);
+    res.json(employees);
+  } catch (error) {
+    logger.error("Error fetching employees", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get employee invites by company
+router.get("/:companyId/employee-invites", async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const invites = await storage.getEmployeeInvitesByCompany(companyId);
+    res.json(invites);
+  } catch (error) {
+    logger.error("Error fetching employee invites", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { storage } from "../storage.js";
+import { cache } from "../lib/cache.js";
 import { insertCompanyViolationRulesSchema, insertViolationsSchema } from "../../shared/schema.js";
 import { logger } from "../lib/logger.js";
 
@@ -174,44 +175,33 @@ router.post("/violations", async (req, res) => {
       penalty: rule.penalty_percent,
     } as any);
     
-    // Recalculate rating
+    // Adjust rating decrementally by penalty for the current period
     const employeeAfter = await storage.getEmployee(violation.employee_id);
     if (employeeAfter) {
       const now = new Date();
       const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      
-      const updatedRating = await storage.updateEmployeeRatingFromViolations(
-        violation.employee_id, 
-        periodStart, 
-        periodEnd
-      );
 
-      // Send Telegram notifications
-      const chatId = employeeAfter.telegram_user_id ? Number(employeeAfter.telegram_user_id) : undefined;
-      const ratingNum = Number(updatedRating.rating);
-      if (chatId && !Number.isNaN(ratingNum)) {
-        const { sendTelegramMessage } = await import("../handlers/telegramHandlers.js");
-        const reason = violation.reason ? ` Причина: ${violation.reason}.` : '';
-        await sendTelegramMessage(
-          chatId,
-          `❗ Зафиксировано нарушение. Рейтинг −${violation.penalty}%.
-Текущий рейтинг: ${Math.max(0, Math.round(ratingNum))}%.${reason}`
-        );
+      const existing = await storage.getEmployeeRating(violation.employee_id, periodStart, periodEnd);
+      const currentValue = existing ? Number(existing.rating) : 100;
+      const penalty = Number(violation.penalty || 0);
+      const newValue = Math.max(0, currentValue - penalty);
 
-        if (ratingNum <= 30) {
-          await sendTelegramMessage(
-            chatId,
-            `🚫 Ваш аккаунт заблокирован. Рейтинг опустился до ${Math.max(0, Math.round(ratingNum))}%.
-Обратитесь к руководителю.`
-          );
-        } else if (ratingNum <= 35) {
-          await sendTelegramMessage(
-            chatId,
-            `⚠️ Критический уровень. Ваш рейтинг ${Math.max(0, Math.round(ratingNum))}%. Ещё одно нарушение может привести к блокировке.`
-          );
-        }
+      if (existing) {
+        await storage.updateEmployeeRating(existing.id, { rating: String(newValue) } as any);
+      } else {
+        await storage.createEmployeeRating({
+          employee_id: violation.employee_id,
+          company_id: employeeAfter.company_id,
+          period_start: periodStart.toISOString().split('T')[0],
+          period_end: periodEnd.toISOString().split('T')[0],
+          rating: String(newValue),
+          status: newValue <= 30 ? 'terminated' : newValue <= 50 ? 'warning' : 'active'
+        } as any);
       }
+
+      // Invalidate company stats cache so "Нарушения" обновились
+      cache.delete(`company:${employeeAfter.company_id}:stats`);
     }
     
     res.json(violation);
@@ -358,6 +348,50 @@ router.post("/employees/:employeeId/recalculate", async (req, res) => {
   } catch (error) {
     logger.error("Error recalculating rating", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Adjust employee rating by delta (e.g., +5 to increase)
+router.post("/employees/:employeeId/adjust", async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    const schema = z.object({
+      delta: z.number(),
+      periodStart: z.string(),
+      periodEnd: z.string(),
+    });
+    const { delta, periodStart, periodEnd } = schema.parse(req.body);
+
+    const startDate = new Date(periodStart);
+    const endDate = new Date(periodEnd);
+    const employee = await storage.getEmployee(employeeId);
+    if (!employee) return res.status(404).json({ error: 'Employee not found' });
+
+    // Get or create rating for the period
+    const existing = await storage.getEmployeeRating(employeeId, startDate, endDate);
+    const current = existing ? Number(existing.rating) : 100;
+    const updatedValue = Math.max(0, Math.min(100, current + delta));
+
+    if (existing) {
+      const updated = await storage.updateEmployeeRating(existing.id, { rating: String(updatedValue) } as any);
+      return res.json(updated);
+    } else {
+      const created = await storage.createEmployeeRating({
+        employee_id: employeeId,
+        company_id: employee.company_id,
+        period_start: periodStart,
+        period_end: periodEnd,
+        rating: String(updatedValue),
+        status: updatedValue <= 30 ? 'terminated' : updatedValue <= 50 ? 'warning' : 'active'
+      } as any);
+      return res.json(created);
+    }
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation failed', details: error.errors });
+    }
+    logger.error('Error adjusting rating', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

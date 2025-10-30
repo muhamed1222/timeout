@@ -1,5 +1,6 @@
 import { register, Counter, Histogram, Gauge, collectDefaultMetrics } from 'prom-client';
 import type { Request, Response, NextFunction } from 'express';
+import { logger } from './logger';
 
 /**
  * Prometheus Metrics
@@ -165,7 +166,7 @@ export async function updateBusinessMetrics(): Promise<void> {
     // const activeShifts = await storage.getActiveShiftsCount();
     // activeShiftsGauge.set(activeShifts);
   } catch (error) {
-    console.error('Error updating business metrics:', error);
+    logger.error('Error updating business metrics', error);
   }
 }
 

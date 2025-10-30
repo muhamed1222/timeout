@@ -5,6 +5,7 @@ import {
   getWebAppKeyboard 
 } from "../constants/telegram";
 import type { Employee } from "@shared/schema";
+import { logger } from "../lib/logger";
 
 const botService = getTelegramBotService();
 
@@ -17,8 +18,8 @@ export async function sendTelegramMessage(
   options?: any
 ): Promise<void> {
   if (!botService) {
-    console.warn('Telegram bot service not available, skipping message send');
-    console.log(`[Mock] Would send to ${chatId}: ${text}`, options);
+    logger.warn('Telegram bot service not available, skipping message send');
+    logger.info('[Mock] Would send to Telegram', { chatId, text, options });
     return;
   }
 
@@ -78,7 +79,7 @@ export async function handleInviteCode(
             );
           }
         } catch (updateError) {
-          console.error("Error updating employee telegram_user_id:", updateError);
+          logger.error("Error updating employee telegram_user_id", updateError);
           
           // Check if telegram_user_id is already linked to another account
           if (updateError && typeof updateError === 'object' && 'code' in updateError && updateError.code === '23505') {
@@ -91,7 +92,7 @@ export async function handleInviteCode(
           // This is acceptable as it prevents reuse of the invite
         }
       } catch (inviteError) {
-        console.error("Error processing pre-created employee invite:", inviteError);
+        logger.error("Error processing pre-created employee invite", inviteError);
         await sendTelegramMessage(chatId, TELEGRAM_MESSAGES.INVITE_PROCESSING_ERROR);
       }
       return;
@@ -113,7 +114,7 @@ export async function handleInviteCode(
       
       if (!usedInvite) {
         // Invite was claimed by another request - rollback
-        console.error("Invite already claimed, rolling back employee creation");
+        logger.error("Invite already claimed, rolling back employee creation", undefined, { employeeId: employee.id });
         
         // Clean up: we can't reliably delete the employee because it might have
         // related data, so we mark it as inactive instead
@@ -133,7 +134,7 @@ export async function handleInviteCode(
         { reply_markup: getWebAppKeyboard() }
       );
     } catch (creationError) {
-      console.error("Error creating employee:", creationError);
+      logger.error("Error creating employee", creationError);
       
       // Check if telegram_user_id constraint was violated
       if (creationError && typeof creationError === 'object' && 'code' in creationError && creationError.code === '23505') {
@@ -143,7 +144,7 @@ export async function handleInviteCode(
       }
     }
   } catch (error) {
-    console.error("Error processing invite:", error);
+    logger.error("Error processing invite", error);
     await sendTelegramMessage(chatId, TELEGRAM_MESSAGES.INVITE_PROCESSING_ERROR);
   }
 }
@@ -203,7 +204,7 @@ export async function handleTelegramMessage(message: any): Promise<void> {
   const text = message.text;
   const userId = message.from.id;
   
-  console.log(`Received Telegram message from ${userId}: ${text}`);
+  logger.info('Received Telegram message', { userId, text });
   
   if (!text) {
     return;

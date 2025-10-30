@@ -1,5 +1,6 @@
 import { storage } from "../storage.js";
 import { type InsertException, type Shift, type Employee } from "../../shared/schema.js";
+import { logger } from "../lib/logger.js";
 
 export interface ShiftViolation {
   type: 'late_start' | 'early_end' | 'missed_shift' | 'long_break' | 'no_break_end';
@@ -37,7 +38,7 @@ export class ShiftMonitor {
       
       return violations;
     } catch (error) {
-      console.error("Error checking shift violations:", error);
+      logger.error("Error checking shift violations", { error });
       return [];
     }
   }
@@ -173,7 +174,7 @@ export class ShiftMonitor {
         // Get employee to access company_id
         const employee = await storage.getEmployee(violation.employeeId);
         if (!employee) {
-          console.error(`Employee not found: ${violation.employeeId}`);
+          logger.error("Employee not found", { employeeId: violation.employeeId });
           continue;
         }
 
@@ -206,14 +207,14 @@ export class ShiftMonitor {
             
             const ruleCode = ruleCodeMap[violation.type];
             if (!ruleCode) {
-              console.warn(`No rule mapping for violation type: ${violation.type}`);
+              logger.warn("No rule mapping for violation type", { violationType: violation.type });
               continue;
             }
 
             // Find matching rule
             const rule = rules.find((r: any) => r.code === ruleCode && r.is_active);
             if (!rule) {
-              console.warn(`No active rule found for code: ${ruleCode}`);
+              logger.warn("No active rule found for code", { ruleCode });
               continue;
             }
 
@@ -228,7 +229,11 @@ export class ShiftMonitor {
             } as any);
 
             violationId = createdViolation.id;
-            console.log(`Created violation for ${violation.type} - Employee: ${violation.employeeId}`);
+            logger.info("Created violation", { 
+              violationType: violation.type, 
+              employeeId: violation.employeeId,
+              violationId
+            });
 
             // Recalculate employee rating for current period
             const now = new Date();
@@ -241,9 +246,9 @@ export class ShiftMonitor {
               periodEnd
             );
 
-            console.log(`Updated rating for employee: ${violation.employeeId}`);
+            logger.info("Updated rating for employee", { employeeId: violation.employeeId });
           } catch (ratingError) {
-            console.error(`Failed to create violation or update rating:`, ratingError);
+            logger.error("Failed to create violation or update rating", { error: ratingError });
             // Continue anyway - will create exception without violation_id
           }
 
@@ -262,10 +267,15 @@ export class ShiftMonitor {
           };
 
           await storage.createException(exception);
-          console.log(`Created exception for ${violation.type} - Employee: ${violation.employeeId}${violationId ? ` (linked to violation ${violationId})` : ''}`);
+          logger.info("Created exception", { 
+            violationType: violation.type, 
+            employeeId: violation.employeeId,
+            violationId: violationId || undefined,
+            linked: !!violationId
+          });
         }
       } catch (error) {
-        console.error(`Failed to create exception for violation:`, violation, error);
+        logger.error("Failed to create exception for violation", { violation, error });
       }
     }
   }
@@ -283,14 +293,18 @@ export class ShiftMonitor {
       const finalExceptions = await storage.getExceptionsByCompany(companyId);
       const exceptionsCreated = finalExceptions.length - initialExceptions.length;
 
-      console.log(`Processed company ${companyId}: ${violations.length} violations found, ${exceptionsCreated} new exceptions created`);
+      logger.info("Processed company shifts", { 
+        companyId, 
+        violationsFound: violations.length, 
+        exceptionsCreated 
+      });
       
       return {
         violationsFound: violations.length,
         exceptionsCreated
       };
     } catch (error) {
-      console.error(`Failed to process shifts for company ${companyId}:`, error);
+      logger.error("Failed to process shifts for company", { companyId, error });
       return { violationsFound: 0, exceptionsCreated: 0 };
     }
   }
@@ -311,7 +325,7 @@ export class ShiftMonitor {
     totalExceptions: number;
   }> {
     try {
-      console.log("Starting global shift monitoring...");
+      logger.info("Starting global shift monitoring");
       
       const companies = await storage.getAllCompanies();
       let totalViolations = 0;
@@ -323,7 +337,11 @@ export class ShiftMonitor {
         totalExceptions += result.exceptionsCreated;
       }
       
-      console.log(`Global shift monitoring completed: ${companies.length} companies, ${totalViolations} violations, ${totalExceptions} exceptions`);
+      logger.info("Global shift monitoring completed", { 
+        companiesProcessed: companies.length, 
+        totalViolations, 
+        totalExceptions 
+      });
       
       return {
         companiesProcessed: companies.length,
@@ -331,7 +349,7 @@ export class ShiftMonitor {
         totalExceptions
       };
     } catch (error) {
-      console.error("Failed to run global monitoring:", error);
+      logger.error("Failed to run global monitoring", { error });
       return {
         companiesProcessed: 0,
         totalViolations: 0,

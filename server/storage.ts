@@ -1,3 +1,28 @@
+/**
+ * @deprecated This file is deprecated in favor of the Repository Pattern.
+ * 
+ * **Why?**
+ * - This file has become too large (1000+ lines)
+ * - Hard to test and maintain
+ * - Violates Single Responsibility Principle
+ * 
+ * **Migration Path:**
+ * ```typescript
+ * // ❌ Old way
+ * import { storage } from './storage';
+ * const employee = await storage.getEmployee('id');
+ * 
+ * // ✅ New way
+ * import { repositories } from './repositories';
+ * const employee = await repositories.employee.findById('id');
+ * ```
+ * 
+ * **See:** `REPOSITORY_PATTERN_GUIDE.md` for full documentation.
+ * 
+ * **Status:** This file will be removed in a future version.
+ * Please migrate your code to use repositories instead.
+ */
+
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { eq, and, or, sql, gte, lte, desc } from "drizzle-orm";
@@ -40,6 +65,7 @@ export interface IStorage {
   getEmployeeByTelegramId(telegramId: string): Promise<Employee | undefined>;
   getEmployeesByCompany(companyId: string): Promise<Employee[]>;
   updateEmployee(id: string, updates: Partial<InsertEmployee>): Promise<Employee | undefined>;
+  deleteEmployee(id: string): Promise<void>;
   
   // Employee Invites
   createEmployeeInvite(invite: InsertEmployeeInvite): Promise<EmployeeInvite>;
@@ -156,6 +182,11 @@ export class PostgresStorage implements IStorage {
       .where(eq(schema.employee.id, id))
       .returning();
     return result;
+  }
+
+  async deleteEmployee(id: string): Promise<void> {
+    await db.delete(schema.employee)
+      .where(eq(schema.employee.id, id));
   }
 
   // Employee Invites
@@ -716,4 +747,14 @@ export class PostgresStorage implements IStorage {
   }
 }
 
-export const storage = new PostgresStorage();
+let storageInstance: IStorage;
+
+if (process.env.USE_INMEMORY_STORAGE === 'true') {
+  // Lazy import to avoid including in production bundle
+  const { InMemoryStorage } = await import('./storage.inmemory.js');
+  storageInstance = new InMemoryStorage();
+} else {
+  storageInstance = new PostgresStorage();
+}
+
+export const storage = storageInstance;
