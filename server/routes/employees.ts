@@ -11,7 +11,7 @@ const router = Router();
 router.post("/", async (req, res) => {
   try {
     const validatedData = insertEmployeeSchema.parse(req.body);
-    const employee = await storage.createEmployee(validatedData);
+    const employee = await storage.createEmployee(validatedData as any);
     // Invalidate company stats cache
     cache.delete(`company:${employee.company_id}:stats`);
     res.json(employee);
@@ -44,7 +44,7 @@ router.put("/:id", async (req, res) => {
   try {
     const { id} = req.params;
     const validatedData = insertEmployeeSchema.partial().parse(req.body);
-    const employee = await storage.updateEmployee(id, validatedData);
+    const employee = await storage.updateEmployee(id, validatedData as any);
     if (!employee) {
       return res.status(404).json({ error: "Employee not found" });
     }

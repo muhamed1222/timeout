@@ -65,7 +65,7 @@ const requestCreateViolationRuleSchema = insertCompanyViolationRulesSchema.exten
 
 router.post("/rules", async (req, res) => {
   try {
-    const validatedData = requestCreateViolationRuleSchema.parse(req.body);
+    const validatedData = requestCreateViolationRuleSchema.parse(req.body) as any;
     const company = await storage.getCompany(validatedData.company_id);
     if (!company) {
       return res.status(404).json({ error: "Company not found" });
@@ -96,7 +96,7 @@ const requestUpdateViolationRuleSchema = insertCompanyViolationRulesSchema.parti
 router.put("/rules/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const validatedData = requestUpdateViolationRuleSchema.parse(req.body);
+    const validatedData = requestUpdateViolationRuleSchema.parse(req.body) as any;
     if (validatedData.code || validatedData.company_id) {
       const current = await storage.getViolationRule(id);
       if (!current) return res.status(404).json({ error: "Violation rule not found" });

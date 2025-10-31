@@ -3,6 +3,10 @@
     "module": "ESNext",
     "target": "ES2022",
     "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["./shared/*"]
+    },
     "outDir": "./dist",
     "rootDir": ".",
     "declaration": false,
@@ -25,7 +29,8 @@
     "client",
     "api",
     "**/*.test.ts",
-    "**/*.disabled/**"
+    "**/*.disabled/**",
+    "server/repositories.disabled/**"
   ]
 }
 

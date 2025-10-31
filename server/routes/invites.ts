@@ -14,7 +14,7 @@ router.post("/", async (req, res) => {
     // Generate unique invite code
     data.code = randomBytes(16).toString('hex');
     const validatedData = insertEmployeeInviteSchema.parse(data);
-    const invite = await storage.createEmployeeInvite(validatedData);
+    const invite = await storage.createEmployeeInvite(validatedData as any);
     res.json(invite);
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -3,9 +3,7 @@ import postgres from 'postgres';
 import * as schema from '../../shared/schema.js';
 import { CompanyRepository } from './CompanyRepository.js';
 import { EmployeeRepository } from './EmployeeRepository.js';
-import { ShiftRepository } from './ShiftRepository.js';
 import { RatingRepository } from './RatingRepository.js';
-import { ScheduleRepository } from './ScheduleRepository.js';
 
 // Initialize database connection
 const connectionString = process.env.DATABASE_URL!;
@@ -27,17 +25,13 @@ const db = drizzle(client, { schema });
 export const repositories = {
   company: new CompanyRepository(db),
   employee: new EmployeeRepository(db),
-  shift: new ShiftRepository(db),
   rating: new RatingRepository(db),
-  schedule: new ScheduleRepository(db),
 } as const;
 
 // Export individual repositories for direct import
 export { CompanyRepository } from './CompanyRepository.js';
 export { EmployeeRepository } from './EmployeeRepository.js';
-export { ShiftRepository } from './ShiftRepository.js';
 export { RatingRepository } from './RatingRepository.js';
-export { ScheduleRepository } from './ScheduleRepository.js';
 export { BaseRepository } from './BaseRepository.js';
 
 // Export db for custom queries  

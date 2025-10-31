@@ -242,7 +242,7 @@ export class PostgresStorage implements IStorage {
       .set({ 
         used_by_employee: employeeId, 
         used_at: sql`now()` 
-      })
+      } as any)
       .where(and(
         eq(schema.employee_invite.code, code),
         sql`${schema.employee_invite.used_by_employee} IS NULL`
@@ -488,7 +488,7 @@ export class PostgresStorage implements IStorage {
 
   async resolveException(id: string): Promise<Exception | undefined> {
     const [result] = await db!.update(schema.exception)
-      .set({ resolved_at: sql`now()` })
+      .set({ resolved_at: sql`now()` } as any)
       .where(eq(schema.exception.id, id))
       .returning();
     return result;
@@ -530,7 +530,7 @@ export class PostgresStorage implements IStorage {
 
   async markReminderSent(id: string): Promise<Reminder | undefined> {
     const [result] = await db!.update(schema.reminder)
-      .set({ sent_at: sql`now()` })
+      .set({ sent_at: sql`now()` } as any)
       .where(eq(schema.reminder.id, id))
       .returning();
     return result;

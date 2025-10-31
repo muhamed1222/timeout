@@ -12,7 +12,7 @@ const router = Router();
 router.post("/", async (req, res) => {
   try {
     const validatedData = insertCompanySchema.parse(req.body);
-    const company = await storage.createCompany(validatedData);
+    const company = await storage.createCompany(validatedData as any);
     // Invalidate cache
     cache.delete(`company:${company.id}:stats`);
     res.json(company);
@@ -45,7 +45,7 @@ router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updates = insertCompanySchema.partial().parse(req.body);
-    const company = await storage.updateCompany(id, updates);
+    const company = await storage.updateCompany(id, updates as any);
     if (!company) {
       return res.status(404).json({ error: "Company not found" });
     }

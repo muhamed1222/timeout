@@ -53,7 +53,10 @@ export class RedisCache implements CacheAdapter {
   async get<T>(key: string): Promise<T | undefined> {
     try {
       const value = await this.client.get(key);
-      return value ? JSON.parse(value) : undefined;
+      if (typeof value !== 'string') {
+        return undefined;
+      }
+      return JSON.parse(value) as T;
     } catch (error) {
       logger.error('Redis get error', error, { key });
       return undefined;
@@ -98,8 +101,15 @@ export class RedisCache implements CacheAdapter {
     try {
       if (keys.length === 0) return [];
       
-      const values = await this.client.mGet(keys);
-      return values.map(value => value ? JSON.parse(value) : undefined);
+      const values = (await this.client.mGet(keys)) as Array<string | null>;
+      return values.map((value) => {
+        if (value == null) return undefined;
+        try {
+          return JSON.parse(value) as T;
+        } catch {
+          return undefined;
+        }
+      });
     } catch (error) {
       logger.error('Redis mget error', error, { keys });
       return keys.map(() => undefined);

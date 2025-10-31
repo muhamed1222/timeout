@@ -195,36 +195,36 @@ export const employee_rating = pgTable("employee_rating", {
 export const insertCompanySchema = createInsertSchema(company).omit({
   id: true,
   created_at: true,
-});
+} as any);
 
 export const insertAdminUserSchema = createInsertSchema(admin_user).omit({
   id: true,
   created_at: true,
-});
+} as any);
 
 export const insertEmployeeSchema = createInsertSchema(employee).omit({
   id: true,
   created_at: true,
-});
+} as any);
 
 export const insertEmployeeInviteSchema = createInsertSchema(employee_invite).omit({
   id: true,
   created_at: true,
   used_by_employee: true,
   used_at: true,
-});
+} as any);
 
 export const insertScheduleTemplateSchema = createInsertSchema(schedule_template).omit({
   id: true,
   created_at: true,
-});
+} as any);
 
 export const insertEmployeeScheduleSchema = createInsertSchema(employee_schedule);
 
 export const insertShiftSchema = createInsertSchema(shift).omit({
   id: true,
   created_at: true,
-});
+} as any);
 
 export const insertWorkIntervalSchema = createInsertSchema(work_interval);
 
@@ -242,64 +242,64 @@ export const insertAuditLogSchema = createInsertSchema(audit_log);
 export const insertCompanyViolationRulesSchema = createInsertSchema(company_violation_rules).omit({
   id: true,
   created_at: true,
-});
+} as any);
 
 export const insertViolationsSchema = createInsertSchema(violations).omit({
   id: true,
   created_at: true,
-});
+} as any);
 
 export const insertEmployeeRatingSchema = createInsertSchema(employee_rating).omit({
   id: true,
   updated_at: true,
-});
+} as any);
 
 // Type definitions
 export type Company = typeof company.$inferSelect;
-export type InsertCompany = z.infer<typeof insertCompanySchema>;
+export type InsertCompany = typeof company.$inferInsert;
 
 export type AdminUser = typeof admin_user.$inferSelect;
-export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
+export type InsertAdminUser = typeof admin_user.$inferInsert;
 
 export type Employee = typeof employee.$inferSelect;
-export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
+export type InsertEmployee = typeof employee.$inferInsert;
 
 export type EmployeeInvite = typeof employee_invite.$inferSelect;
-export type InsertEmployeeInvite = z.infer<typeof insertEmployeeInviteSchema>;
+export type InsertEmployeeInvite = typeof employee_invite.$inferInsert;
 
 export type ScheduleTemplate = typeof schedule_template.$inferSelect;
-export type InsertScheduleTemplate = z.infer<typeof insertScheduleTemplateSchema>;
+export type InsertScheduleTemplate = typeof schedule_template.$inferInsert;
 
 export type EmployeeSchedule = typeof employee_schedule.$inferSelect;
-export type InsertEmployeeSchedule = z.infer<typeof insertEmployeeScheduleSchema>;
+export type InsertEmployeeSchedule = typeof employee_schedule.$inferInsert;
 
 export type Shift = typeof shift.$inferSelect;
-export type InsertShift = z.infer<typeof insertShiftSchema>;
+export type InsertShift = typeof shift.$inferInsert;
 
 export type WorkInterval = typeof work_interval.$inferSelect;
-export type InsertWorkInterval = z.infer<typeof insertWorkIntervalSchema>;
+export type InsertWorkInterval = typeof work_interval.$inferInsert;
 
 export type BreakInterval = typeof break_interval.$inferSelect;
-export type InsertBreakInterval = z.infer<typeof insertBreakIntervalSchema>;
+export type InsertBreakInterval = typeof break_interval.$inferInsert;
 
 export type DailyReport = typeof daily_report.$inferSelect;
-export type InsertDailyReport = z.infer<typeof insertDailyReportSchema>;
+export type InsertDailyReport = typeof daily_report.$inferInsert;
 
 export type Exception = typeof exception.$inferSelect;
-export type InsertException = z.infer<typeof insertExceptionSchema>;
+export type InsertException = typeof exception.$inferInsert;
 
 export type Reminder = typeof reminder.$inferSelect;
-export type InsertReminder = z.infer<typeof insertReminderSchema>;
+export type InsertReminder = typeof reminder.$inferInsert;
 
 export type AuditLog = typeof audit_log.$inferSelect;
-export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type InsertAuditLog = typeof audit_log.$inferInsert;
 
 // Система рейтинга - Типы
 export type CompanyViolationRules = typeof company_violation_rules.$inferSelect;
-export type InsertCompanyViolationRules = z.infer<typeof insertCompanyViolationRulesSchema>;
+export type InsertCompanyViolationRules = typeof company_violation_rules.$inferInsert;
 
 export type Violations = typeof violations.$inferSelect;
-export type InsertViolations = z.infer<typeof insertViolationsSchema>;
+export type InsertViolations = typeof violations.$inferInsert;
 
 export type EmployeeRating = typeof employee_rating.$inferSelect;
-export type InsertEmployeeRating = z.infer<typeof insertEmployeeRatingSchema>;
+export type InsertEmployeeRating = typeof employee_rating.$inferInsert;

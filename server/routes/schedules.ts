@@ -10,7 +10,7 @@ const router = Router();
 router.post("/", async (req, res) => {
   try {
     const validatedData = insertScheduleTemplateSchema.parse(req.body);
-    const template = await storage.createScheduleTemplate(validatedData);
+    const template = await storage.createScheduleTemplate(validatedData as any);
     res.json(template);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -41,7 +41,7 @@ router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updates = insertScheduleTemplateSchema.partial().parse(req.body);
-    const template = await storage.updateScheduleTemplate(id, updates);
+    const template = await storage.updateScheduleTemplate(id, updates as any);
     if (!template) {
       return res.status(404).json({ error: "Schedule template not found" });
     }

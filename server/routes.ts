@@ -246,7 +246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/shifts", async (req, res) => {
     try {
       const validatedData = requestShiftSchema.parse(req.body);
-      const shift = await storage.createShift(validatedData);
+      const shift = await storage.createShift(validatedData as any);
       
       // Invalidate company stats cache
       const employee = await storage.getEmployee(shift.employee_id);

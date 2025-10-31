@@ -9,7 +9,7 @@ import type {
   CompanyViolationRules,
   InsertCompanyViolationRules
 } from '../../shared/schema.js';
-import { eq, and, gte, lte, desc } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 
 /**
  * Repository for Rating and Violations entities
@@ -56,13 +56,9 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
         eq(schema.employee_rating.employee_id, schema.employee.id)
       )
       .where(eq(schema.employee.company_id, companyId))
-      .orderBy(desc(schema.employee_rating.rating_value));
+      .orderBy(desc(schema.employee_rating.rating));
 
-    if (limit) {
-      query = query.limit(limit);
-    }
-
-    const results = await query;
+    const results = limit ? await query.limit(limit) : await query;
     return results.map((row: any) => row.rating) as EmployeeRating[];
   }
 
@@ -78,7 +74,7 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
         eq(schema.employee_rating.employee_id, schema.employee.id)
       )
       .where(eq(schema.employee.company_id, companyId))
-      .orderBy(desc(schema.employee_rating.rating_value))
+      .orderBy(desc(schema.employee_rating.rating))
       .limit(limit);
 
     return results.map((row: any) => ({
@@ -93,7 +89,7 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
   async getAverageRating(companyId: string): Promise<number> {
     const result = await this.db
       .select({ 
-        avg: schema.sql<number>`AVG(${schema.employee_rating.rating_value})` 
+        avg: sql<number>`AVG(${schema.employee_rating.rating})` 
       })
       .from(this.table)
       .innerJoin(
@@ -130,17 +126,17 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
     const conditions = [eq(schema.violations.employee_id, employeeId)];
 
     if (startDate) {
-      conditions.push(gte(schema.violations.detected_at, startDate));
+      conditions.push(gte(schema.violations.created_at, startDate as any));
     }
     if (endDate) {
-      conditions.push(lte(schema.violations.detected_at, endDate));
+      conditions.push(lte(schema.violations.created_at, endDate as any));
     }
 
     const results = await this.db
       .select()
       .from(schema.violations)
       .where(and(...conditions))
-      .orderBy(desc(schema.violations.detected_at));
+      .orderBy(desc(schema.violations.created_at));
 
     return results as Violations[];
   }
@@ -159,13 +155,9 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
         eq(schema.violations.employee_id, schema.employee.id)
       )
       .where(eq(schema.employee.company_id, companyId))
-      .orderBy(desc(schema.violations.detected_at));
+      .orderBy(desc(schema.violations.created_at));
 
-    if (limit) {
-      query = query.limit(limit);
-    }
-
-    const results = await query;
+    const results = limit ? await query.limit(limit) : await query;
     return results.map((row: any) => row.violation) as Violations[];
   }
 
@@ -180,14 +172,14 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
     const conditions = [eq(schema.violations.employee_id, employeeId)];
 
     if (startDate) {
-      conditions.push(gte(schema.violations.detected_at, startDate));
+      conditions.push(gte(schema.violations.created_at, startDate as any));
     }
     if (endDate) {
-      conditions.push(lte(schema.violations.detected_at, endDate));
+      conditions.push(lte(schema.violations.created_at, endDate as any));
     }
 
     const result = await this.db
-      .select({ count: schema.sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)` })
       .from(schema.violations)
       .where(and(...conditions));
 
