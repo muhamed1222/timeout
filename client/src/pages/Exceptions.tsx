@@ -63,7 +63,8 @@ export default function Exceptions() {
       'early_departure': 'short_day',
       'extended_break': 'long_break',
       'no_report': 'no_report',
-      'no_show': 'no_show'
+      'no_show': 'no_show',
+      'violation': 'no_report' // Violations displayed as reports
     };
     return typeMap[type] || 'no_show';
   };

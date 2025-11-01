@@ -192,6 +192,7 @@ export default function Rating() {
       setSelectedEmployee(null);
       setSelectedRuleId(null);
       setViolationComment('');
+      // Force refresh ratings data
       queryClient.invalidateQueries({
         predicate: (q) => Array.isArray(q.queryKey)
           && q.queryKey[0] === '/api/companies'
@@ -199,6 +200,7 @@ export default function Rating() {
           && q.queryKey[2] === 'ratings'
       });
       queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'employees'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'exceptions'] });
     },
     onError: async (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Не удалось добавить нарушение';

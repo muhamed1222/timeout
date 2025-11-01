@@ -212,14 +212,52 @@ router.get("/:companyId/violations", async (req, res) => {
   }
 });
 
-// Get exceptions by company
+// Get exceptions and violations by company
 router.get("/:companyId/exceptions", async (req, res) => {
   try {
     const { companyId } = req.params;
-    const exceptions = await repositories.exception.findByCompanyId(companyId);
-    res.json(exceptions);
+    
+    // Get both exceptions and violations
+    const [exceptions, violations] = await Promise.all([
+      repositories.exception.findByCompanyId(companyId),
+      repositories.violation.findViolationsByCompany(companyId)
+    ]);
+
+    // Transform violations to match exception format for display
+    const violationsAsExceptions = await Promise.all(
+      violations.map(async (violation) => {
+        const employee = await repositories.employee.findById(violation.employee_id);
+        const rule = await repositories.violation.findById(violation.rule_id);
+        
+        return {
+          id: violation.id,
+          employee: {
+            id: employee?.id || violation.employee_id,
+            full_name: employee?.full_name || 'Неизвестный сотрудник'
+          },
+          exception_type: 'violation',
+          description: rule 
+            ? `Нарушение: ${rule.name}${violation.reason ? `. ${violation.reason}` : ''}`
+            : violation.reason || 'Нарушение',
+          detected_at: violation.created_at || new Date().toISOString(),
+          severity: Number(violation.penalty) > 50 ? 3 : Number(violation.penalty) > 25 ? 2 : 1,
+          source: violation.source,
+          penalty: violation.penalty,
+          rule_name: rule?.name
+        };
+      })
+    );
+
+    // Combine exceptions and violations, sort by date
+    const allItems = [...exceptions, ...violationsAsExceptions].sort((a, b) => {
+      const dateA = new Date(a.detected_at || a.created_at || 0).getTime();
+      const dateB = new Date(b.detected_at || b.created_at || 0).getTime();
+      return dateB - dateA; // newest first
+    });
+
+    res.json(allItems);
   } catch (error) {
-    logger.error("Error fetching exceptions", error);
+    logger.error("Error fetching exceptions and violations", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

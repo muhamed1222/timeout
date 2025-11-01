@@ -98,22 +98,33 @@ router.post('/', validateBody(createViolationSchema), asyncHandler(async (req, r
     // Update rating for current month
     try {
       const { start: periodStart, end: periodEnd } = getCurrentMonthPeriod();
-      void logger.info('Updating rating', { periodStart, periodEnd, employeeId: violation.employee_id });
-      await repositories.rating.updateFromViolations(
+      void logger.info('Updating rating', { 
+        periodStart: periodStart.toISOString(), 
+        periodEnd: periodEnd.toISOString(), 
+        employeeId: violation.employee_id 
+      });
+      
+      const updatedRating = await repositories.rating.updateFromViolations(
         violation.employee_id,
         periodStart,
         periodEnd,
         repositories.violation,
         repositories.employee
       );
-      void logger.info('Rating updated successfully');
+      
+      void logger.info('Rating updated successfully', { 
+        rating: updatedRating.rating, 
+        status: updatedRating.status,
+        employeeId: violation.employee_id
+      });
     } catch (error) {
       logger.error('Error updating rating from violations', { 
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
-        violationId: violation.id 
+        violationId: violation.id,
+        employeeId: violation.employee_id
       });
-      // Continue execution even if rating update fails
+      // Log but don't fail - violation is already created
     }
 
     try {
@@ -132,6 +143,37 @@ router.post('/', validateBody(createViolationSchema), asyncHandler(async (req, r
     });
     throw error; // Re-throw to let asyncHandler handle it
   }
+}));
+
+// Get violations by company
+router.get('/company/:companyId', asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  const { periodStart, periodEnd } = req.query;
+
+  let startDate: Date | undefined;
+  let endDate: Date | undefined;
+
+  if (periodStart && periodEnd) {
+    startDate = new Date(periodStart as string);
+    endDate = new Date(periodEnd as string);
+  }
+
+  const violations = await repositories.violation.findViolationsByCompany(companyId, startDate, endDate);
+  
+  // Get employee and rule details for each violation
+  const violationsWithDetails = await Promise.all(
+    violations.map(async (violation) => {
+      const employee = await repositories.employee.findById(violation.employee_id);
+      const rule = await repositories.violation.findById(violation.rule_id);
+      return {
+        ...violation,
+        employee: employee ? { id: employee.id, full_name: employee.full_name } : null,
+        rule: rule ? { id: rule.id, name: rule.name, code: rule.code } : null
+      };
+    })
+  );
+
+  res.json(violationsWithDetails);
 }));
 
 export default router;
