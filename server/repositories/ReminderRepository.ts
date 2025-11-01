@@ -2,7 +2,7 @@ import { BaseRepository } from './BaseRepository.js';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as schema from '../../shared/schema.js';
 import type { Reminder, InsertReminder, Employee } from '../../shared/schema.js';
-import { eq, and, sql, lte } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 
 /**
  * Repository for Reminders
@@ -39,7 +39,7 @@ export class ReminderRepository extends BaseRepository<Reminder, InsertReminder>
       .innerJoin(schema.employee, eq(schema.reminder.employee_id, schema.employee.id))
       .where(
         and(
-          lte(schema.reminder.planned_at, timeFilter.toISOString()),
+          sql`${schema.reminder.planned_at} <= ${timeFilter.toISOString()}`,
           sql`${schema.reminder.sent_at} IS NULL`
         )
       )

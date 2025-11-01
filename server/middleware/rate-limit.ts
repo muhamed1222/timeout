@@ -8,7 +8,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { createClient, RedisClientType } from 'redis';
 import { logger } from '../lib/logger.js';
-import { isProduction } from '../lib/secrets.js';
+import { isProduction, getSecret } from '../lib/secrets.js';
 
 // Extend Express Request to include user/employee
 // Note: Employee type is already defined in middleware/auth.ts

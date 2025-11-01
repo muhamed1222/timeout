@@ -51,7 +51,14 @@ export async function loadSecretsFromAWS(
   const now = Date.now();
   if (cachedAWSSecrets && (now - lastFetchTime) < CACHE_TTL) {
     logger.debug('Using cached AWS secrets');
-    return cachedAWSSecrets as Record<string, string>;
+    // Convert Secrets to Record<string, string> for AWS compatibility
+    const stringSecrets: Record<string, string> = {};
+    for (const [key, value] of Object.entries(cachedAWSSecrets)) {
+      if (value !== undefined) {
+        stringSecrets[key] = String(value);
+      }
+    }
+    return stringSecrets;
   }
 
   try {
