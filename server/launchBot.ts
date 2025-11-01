@@ -4,7 +4,10 @@ import { logger } from './lib/logger.js';
 // Only launch the bot if we're not in a serverless environment
 // and if the TELEGRAM_BOT_TOKEN is provided
 if (process.env.TELEGRAM_BOT_TOKEN && process.env.NODE_ENV !== 'production') {
-  logger.info('Launching Telegram bot');
+  logger.info('Launching Telegram bot', { 
+    hasToken: !!process.env.TELEGRAM_BOT_TOKEN,
+    nodeEnv: process.env.NODE_ENV 
+  });
   
   // Launch bot with error handling
   bot.launch({
@@ -17,10 +20,27 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.NODE_ENV !== 'production') {
       logger.error('Failed to launch Telegram bot', {
         error: error instanceof Error ? error.message : String(error),
         code: (error as any)?.code,
+        stack: error instanceof Error ? error.stack : undefined
       });
       // Don't crash the server if bot fails to launch
       // It will retry on next restart or can be restarted manually
     });
+  
+  // Also check bot info after a delay to verify it's working
+  setTimeout(async () => {
+    try {
+      const botInfo = await bot.telegram.getMe();
+      logger.info('Telegram bot verified', { 
+        username: botInfo.username,
+        id: botInfo.id,
+        isBot: botInfo.is_bot 
+      });
+    } catch (error) {
+      logger.error('Failed to verify Telegram bot', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }, 3000);
 
   // Handle uncaught errors in bot
   process.on('unhandledRejection', (reason, promise) => {

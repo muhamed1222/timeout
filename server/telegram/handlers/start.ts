@@ -300,6 +300,7 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
   }
 
   try {
+    logger.info('Entering showMainMenu try block', { employeeId, elapsed: Date.now() - startTime });
     logger.info('Fetching shifts for employee', { employeeId, elapsed: Date.now() - startTime });
     // Получаем текущую смену
     const today = new Date();
