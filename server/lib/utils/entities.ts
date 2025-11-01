@@ -10,7 +10,7 @@ import { NotFoundError, ForbiddenError } from '../errorHandler.js';
  * Reduces duplication of find-or-throw pattern
  */
 export async function findOrThrow<T>(
-  findFn: () => Promise<T | null>,
+  findFn: () => Promise<T | null | undefined>,
   entityName: string
 ): Promise<T> {
   const entity = await findFn();

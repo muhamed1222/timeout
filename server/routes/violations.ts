@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { repositories } from "../repositories/index.js";
 import { logger } from "../lib/logger.js";
-import { ForbiddenError, asyncHandler } from "../lib/errorHandler.js";
+import { asyncHandler } from "../lib/errorHandler.js";
 import { validateBody } from "../middleware/validate.js";
 import { createViolationSchema } from "../lib/schemas/index.js";
 import { findOrThrow, validateCompanyScope, invalidateCompanyStatsByEmployeeId, getCurrentMonthPeriod } from "../lib/utils/index.js";
@@ -12,54 +12,101 @@ const router = Router();
 router.post('/', validateBody(createViolationSchema), asyncHandler(async (req, res) => {
   const validatedData = req.body;
 
-  const employee = await findOrThrow(
-    () => repositories.employee.findById(validatedData.employee_id),
-    'Employee'
-  );
-  
-  const rule = await findOrThrow(
-    () => repositories.violation.findById(validatedData.rule_id),
-    'Violation rule'
-  );
-  
-  validateCompanyScope(employee.company_id, validatedData.company_id, 'Employee company mismatch');
-  validateCompanyScope(rule.company_id, validatedData.company_id, 'Rule company mismatch');
-  
-  await findOrThrow(
-    () => repositories.company.findById(validatedData.company_id),
-    'Company'
-  );
+  void logger.info('Creating violation', {
+    employeeId: validatedData.employee_id,
+    companyId: validatedData.company_id,
+    ruleId: validatedData.rule_id,
+    source: validatedData.source
+  });
 
-  const violation = await repositories.violation.createViolation({
-    employee_id: validatedData.employee_id,
-    company_id: validatedData.company_id,
-    rule_id: validatedData.rule_id,
-    source: validatedData.source,
-    reason: validatedData.reason,
-    created_by: validatedData.created_by,
-    penalty: rule.penalty_percent,
-  } as any);
+  try {
+    const employee = await findOrThrow(
+      () => repositories.employee.findById(validatedData.employee_id),
+      'Employee'
+    );
+    
+    const rule = await findOrThrow(
+      () => repositories.violation.findById(validatedData.rule_id),
+      'Violation rule'
+    );
+    
+    void logger.info('Found employee and rule', {
+      employeeCompanyId: employee.company_id,
+      ruleCompanyId: rule.company_id,
+      rulePenalty: rule.penalty_percent
+    });
+    
+    validateCompanyScope(employee.company_id, validatedData.company_id, 'Employee company mismatch');
+    validateCompanyScope(rule.company_id, validatedData.company_id, 'Rule company mismatch');
+    
+    await findOrThrow(
+      () => repositories.company.findById(validatedData.company_id),
+      'Company'
+    );
 
-  // Track violation in Prometheus metrics
-  violationsCounter.labels(
-    validatedData.type || 'other',
-    String(rule.penalty_percent || 0),
-    validatedData.source || 'manual'
-  ).inc();
+    const penaltyValue = String(rule.penalty_percent ?? '0');
+    void logger.info('Creating violation with penalty', { penalty: penaltyValue });
 
-  // Update rating for current month
-  const { start: periodStart, end: periodEnd } = getCurrentMonthPeriod();
-  await repositories.rating.updateFromViolations(
-    violation.employee_id,
-    periodStart,
-    periodEnd,
-    repositories.violation,
-    repositories.employee
-  );
+    const violation = await repositories.violation.createViolation({
+      employee_id: validatedData.employee_id,
+      company_id: validatedData.company_id,
+      rule_id: validatedData.rule_id,
+      source: validatedData.source,
+      reason: validatedData.reason,
+      created_by: validatedData.created_by,
+      penalty: penaltyValue,
+    } as any);
 
-  await invalidateCompanyStatsByEmployeeId(violation.employee_id);
+    void logger.info('Violation created', { violationId: violation.id });
 
-  res.json(violation);
+    // Track violation in Prometheus metrics
+    try {
+      violationsCounter.labels(
+        rule.code ?? 'other',
+        String(rule.penalty_percent ?? 0),
+        validatedData.source ?? 'manual'
+      ).inc();
+    } catch (error) {
+      logger.error('Error tracking violation metrics', { error });
+    }
+
+    // Update rating for current month
+    try {
+      const { start: periodStart, end: periodEnd } = getCurrentMonthPeriod();
+      void logger.info('Updating rating', { periodStart, periodEnd, employeeId: violation.employee_id });
+      await repositories.rating.updateFromViolations(
+        violation.employee_id,
+        periodStart,
+        periodEnd,
+        repositories.violation,
+        repositories.employee
+      );
+      void logger.info('Rating updated successfully');
+    } catch (error) {
+      logger.error('Error updating rating from violations', { 
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        violationId: violation.id 
+      });
+      // Continue execution even if rating update fails
+    }
+
+    try {
+      await invalidateCompanyStatsByEmployeeId(violation.employee_id);
+    } catch (error) {
+      logger.error('Error invalidating cache', { error });
+    }
+
+    void logger.info('Violation creation completed successfully', { violationId: violation.id });
+    res.json(violation);
+  } catch (error) {
+    logger.error('Error in violation creation', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      validatedData
+    });
+    throw error; // Re-throw to let asyncHandler handle it
+  }
 }));
 
 export default router;

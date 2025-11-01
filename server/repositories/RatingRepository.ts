@@ -30,14 +30,18 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
     startDate: Date,
     endDate: Date
   ): Promise<EmployeeRating | undefined> {
+    // Convert Date to YYYY-MM-DD string format for date column
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const endDateStr = endDate.toISOString().split('T')[0];
+    
     const results = await this.db
       .select()
       .from(this.table)
       .where(
         and(
           eq(schema.employee_rating.employee_id, employeeId),
-          gte(schema.employee_rating.period_start, startDate as any),
-          lte(schema.employee_rating.period_end, endDate as any)
+          gte(schema.employee_rating.period_start, startDateStr as any),
+          lte(schema.employee_rating.period_end, endDateStr as any)
         )
       )
       .limit(1);
