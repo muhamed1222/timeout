@@ -297,18 +297,35 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
     // Получаем текущую смену
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const shifts = await repositories.shift.findByEmployeeId(employeeId);
-    logger.info('Shifts fetched', { 
-      employeeId,
-      shiftsCount: shifts.length,
-      shifts: shifts.map(s => ({ id: s.id, status: s.status, planned_start_at: s.planned_start_at }))
-    });
+    
+    let shifts: Awaited<ReturnType<typeof repositories.shift.findByEmployeeId>>;
+    try {
+      shifts = await Promise.race([
+        repositories.shift.findByEmployeeId(employeeId),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Database query timeout')), 5000)
+        )
+      ]);
+      logger.info('Shifts fetched successfully', { 
+        employeeId,
+        shiftsCount: shifts.length
+      });
+    } catch (dbError: any) {
+      logger.error('Error fetching shifts from database', {
+        employeeId,
+        error: dbError.message || String(dbError),
+        code: dbError.code
+      });
+      // Продолжаем с пустым массивом смен, чтобы показать меню
+      shifts = [];
+    }
+    
     const todayShift = shifts.find(s => {
       const shiftDate = new Date(s.planned_start_at);
       shiftDate.setHours(0, 0, 0, 0);
       return shiftDate.getTime() === today.getTime();
     });
-    logger.info('Today shift found', { 
+    logger.info('Today shift check completed', { 
       hasTodayShift: !!todayShift,
       todayShiftStatus: todayShift?.status 
     });
@@ -363,9 +380,24 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
     }
 
     // Определяем доступные действия в зависимости от статуса смены
-    const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(todayShift.id);
+    let breakIntervals: Awaited<ReturnType<typeof repositories.shift.findBreakIntervalsByShiftId>> = [];
+    let activeBreak: Awaited<ReturnType<typeof repositories.shift.findBreakIntervalsByShiftId>>[0] | undefined;
     
-    const activeBreak = breakIntervals.find(bi => !bi.end_at);
+    try {
+      breakIntervals = await Promise.race([
+        repositories.shift.findBreakIntervalsByShiftId(todayShift.id),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Break intervals query timeout')), 3000)
+        )
+      ]);
+      activeBreak = breakIntervals.find(bi => !bi.end_at);
+    } catch (breakError: any) {
+      logger.error('Error fetching break intervals', {
+        shiftId: todayShift.id,
+        error: breakError.message || String(breakError)
+      });
+      // Продолжаем без информации о перерывах
+    }
 
     if (todayShift.status === 'planned') {
       keyboard = [
