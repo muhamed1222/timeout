@@ -198,18 +198,52 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
         message = '❌ Неизвестное действие';
     }
 
-    await ctx.answerCbQuery(message);
+    try {
+      await ctx.answerCbQuery(message);
+    } catch (answerError: any) {
+      // Если не удалось ответить (SSL/network error), логируем, но продолжаем
+      if (answerError.code === 'ERR_SSL_DECRYPTION_FAILED_OR_BAD_RECORD_MAC' ||
+          answerError.code === 'ECONNRESET' ||
+          answerError.code === 'ETIMEDOUT') {
+        logger.warn('Network error answering callback query', { code: answerError.code });
+      } else {
+        logger.error('Error answering callback query', { error: answerError });
+      }
+    }
     
     if (success && shiftIdForMenu) {
       // Обновляем меню
       void setTimeout(() => {
-        void showUpdatedMenu(ctx, shiftIdForMenu);
+        void showUpdatedMenu(ctx, shiftIdForMenu).catch((menuError: any) => {
+          // Обрабатываем сетевые ошибки при обновлении меню
+          if (menuError.code === 'ERR_SSL_DECRYPTION_FAILED_OR_BAD_RECORD_MAC' ||
+              menuError.code === 'ECONNRESET' ||
+              menuError.code === 'ETIMEDOUT') {
+            logger.warn('Network error updating menu', { code: menuError.code });
+          } else {
+            logger.error('Error updating menu', { error: menuError });
+          }
+        });
       }, 1000);
     }
 
   } catch (error) {
-    logger.error('Error in shift action', error);
-    await ctx.answerCbQuery('❌ Ошибка выполнения действия');
+    const err = error as any;
+    logger.error('Error in shift action', { error, code: err.code });
+    
+    // Не пытаемся отвечать при сетевых ошибках
+    if (err.code === 'ERR_SSL_DECRYPTION_FAILED_OR_BAD_RECORD_MAC' ||
+        err.code === 'ECONNRESET' ||
+        err.code === 'ETIMEDOUT') {
+      logger.warn('Network error in handleShiftActions', { code: err.code });
+      return;
+    }
+    
+    try {
+      await ctx.answerCbQuery('❌ Ошибка выполнения действия');
+    } catch (replyError) {
+      logger.error('Error sending error message', { error: replyError });
+    }
   }
 }
 
