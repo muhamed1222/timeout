@@ -275,6 +275,12 @@ ${employee.position ? `💼 *Должность:* ${employee.position}` : ''}
 }
 
 async function showMainMenu(ctx: Context & { session: SessionData }) {
+  logger.info('showMainMenu called', { 
+    hasSession: !!ctx.session,
+    hasEmployeeId: !!ctx.session?.employeeId,
+    chatId: ctx.chat?.id 
+  });
+  
   if (!ctx.session) {
     logger.error('No session available in showMainMenu');
     return;
@@ -368,7 +374,7 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
 
     if (keyboard.length > 0) {
       try {
-        await ctx.reply(`
+        const message = await ctx.reply(`
 📊 *Управление сменой*
 
 ⏰ *Планируемое время:* ${new Date(todayShift.planned_start_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} - ${new Date(todayShift.planned_end_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
@@ -380,7 +386,10 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
             inline_keyboard: keyboard
           }
         });
-        logger.info('Main menu message sent', { shiftStatus: todayShift.status });
+        logger.info('Main menu message sent successfully', { 
+          shiftStatus: todayShift.status,
+          messageId: (message as any)?.message_id 
+        });
       } catch (error: any) {
         logger.error('Error sending main menu message', {
           error: error.message || String(error),
