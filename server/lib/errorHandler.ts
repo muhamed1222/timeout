@@ -22,6 +22,7 @@ import {
   normalizeError
 } from './errors.js';
 import * as Sentry from '@sentry/node';
+import { isProduction } from './secrets.js';
 
 // Re-export error classes for convenience
 export {

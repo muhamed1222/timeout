@@ -218,7 +218,15 @@ export async function rotateSecret(secretName: keyof Secrets, newValue: string):
       const currentSecrets = await loadSecretsAsync();
       const updatedSecrets = { ...currentSecrets, [secretName]: newValue };
       
-      await rotateSecretInAWS(secretId, updatedSecrets as Record<string, string>);
+      // Convert to Record<string, string> for AWS
+      const stringSecrets: Record<string, string> = {};
+      for (const [key, value] of Object.entries(updatedSecrets)) {
+        if (value !== undefined) {
+          stringSecrets[key] = String(value);
+        }
+      }
+      
+      await rotateSecretInAWS(secretId, stringSecrets);
       
       // Clear cache to force reload
       cachedSecrets = null;
