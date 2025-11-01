@@ -293,14 +293,24 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
   }
 
   try {
+    logger.info('Fetching shifts for employee', { employeeId });
     // Получаем текущую смену
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const shifts = await repositories.shift.findByEmployeeId(employeeId);
+    logger.info('Shifts fetched', { 
+      employeeId,
+      shiftsCount: shifts.length,
+      shifts: shifts.map(s => ({ id: s.id, status: s.status, planned_start_at: s.planned_start_at }))
+    });
     const todayShift = shifts.find(s => {
       const shiftDate = new Date(s.planned_start_at);
       shiftDate.setHours(0, 0, 0, 0);
       return shiftDate.getTime() === today.getTime();
+    });
+    logger.info('Today shift found', { 
+      hasTodayShift: !!todayShift,
+      todayShiftStatus: todayShift?.status 
     });
 
     let keyboard: InlineKeyboard = [];
@@ -314,7 +324,11 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
       ];
       
       try {
-        await ctx.reply(`
+        logger.info('Attempting to send main menu message (no shift)', {
+          keyboardLength: keyboard.length,
+          chatId: ctx.chat?.id
+        });
+        const message = await ctx.reply(`
 📊 *Управление сменой*
 
 📅 На сегодня смена не запланирована. Вы можете начать смену вручную.
@@ -326,7 +340,9 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
             inline_keyboard: keyboard
           }
         });
-        logger.info('Main menu message sent (no shift)');
+        logger.info('Main menu message sent successfully (no shift)', {
+          messageId: (message as any)?.message_id
+        });
       } catch (error: any) {
         logger.error('Error sending main menu message (no shift)', {
           error: error.message || String(error),
