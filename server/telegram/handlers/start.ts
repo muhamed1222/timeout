@@ -275,6 +275,7 @@ ${employee.position ? `💼 *Должность:* ${employee.position}` : ''}
 }
 
 async function showMainMenu(ctx: Context & { session: SessionData }) {
+  const startTime = Date.now();
   logger.info('showMainMenu called', { 
     hasSession: !!ctx.session,
     hasEmployeeId: !!ctx.session?.employeeId,
@@ -283,17 +284,23 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
   
   if (!ctx.session) {
     logger.error('No session available in showMainMenu');
+    try {
+      await ctx.reply('❌ Ошибка сессии. Попробуйте /start');
+    } catch {}
     return;
   }
   
   const employeeId = ctx.session.employeeId;
   if (!employeeId) {
     logger.error('No employeeId in session');
+    try {
+      await ctx.reply('❌ Ошибка авторизации. Попробуйте /start');
+    } catch {}
     return;
   }
 
   try {
-    logger.info('Fetching shifts for employee', { employeeId });
+    logger.info('Fetching shifts for employee', { employeeId, elapsed: Date.now() - startTime });
     // Получаем текущую смену
     const today = new Date();
     today.setHours(0, 0, 0, 0);
