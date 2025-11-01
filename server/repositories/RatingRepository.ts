@@ -34,14 +34,16 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
     
+    // Find rating where period_start <= endDate AND period_end >= startDate
+    // This ensures we find ratings that overlap with the requested period
     const results = await this.db
       .select()
       .from(this.table)
       .where(
         and(
           eq(schema.employee_rating.employee_id, employeeId),
-          gte(schema.employee_rating.period_start, startDateStr as any),
-          lte(schema.employee_rating.period_end, endDateStr as any)
+          lte(schema.employee_rating.period_start, endDateStr as any),
+          gte(schema.employee_rating.period_end, startDateStr as any)
         )
       )
       .limit(1);
@@ -53,13 +55,21 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
    * Find ratings by company
    */
   async findByCompanyId(companyId: string, periodStart?: Date, periodEnd?: Date): Promise<EmployeeRating[]> {
-    const whereExpr = (periodStart && periodEnd)
-      ? and(
-          eq(schema.employee_rating.company_id, companyId),
-          eq(schema.employee_rating.period_start, periodStart.toISOString().split('T')[0] as any),
-          eq(schema.employee_rating.period_end, periodEnd.toISOString().split('T')[0] as any)
-        )
-      : eq(schema.employee_rating.company_id, companyId);
+    let whereExpr;
+    
+    if (periodStart && periodEnd) {
+      // Find ratings that overlap with the requested period
+      const startDateStr = periodStart.toISOString().split('T')[0];
+      const endDateStr = periodEnd.toISOString().split('T')[0];
+      
+      whereExpr = and(
+        eq(schema.employee_rating.company_id, companyId),
+        lte(schema.employee_rating.period_start, endDateStr as any),
+        gte(schema.employee_rating.period_end, startDateStr as any)
+      );
+    } else {
+      whereExpr = eq(schema.employee_rating.company_id, companyId);
+    }
 
     const results = await this.db
       .select()
