@@ -361,7 +361,8 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
     });
     logger.info('Today shift check completed', { 
       hasTodayShift: !!todayShift,
-      todayShiftStatus: todayShift?.status 
+      todayShiftStatus: todayShift?.status,
+      shiftId: todayShift?.id
     });
 
     let keyboard: InlineKeyboard = [];
