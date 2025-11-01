@@ -114,7 +114,8 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
       ctx.session.companyId = invite.company_id;
 
       const company = await repositories.company.findById(invite.company_id);
-      await ctx.reply(`
+      try {
+        await ctx.reply(`
 🎉 *Добро пожаловать!*
 
 👤 *Сотрудник:* ${(updated || existingEmployee).full_name}
@@ -128,9 +129,30 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
 /help - Справка по командам
 
 Используйте кнопки для управления сменой.
-      `, { parse_mode: 'Markdown' });
+        `, { parse_mode: 'Markdown' });
+      } catch (error: any) {
+        logger.error('Error sending welcome message (existing employee)', {
+          error: error.message || String(error),
+          code: error.code
+        });
+        // Fallback без Markdown
+        try {
+          await ctx.reply(
+            `🎉 Добро пожаловать!\n\n👤 Сотрудник: ${(updated || existingEmployee).full_name}\n🏢 Компания: ${company?.name || 'Не указана'}\n\n✅ Вы успешно подключены к системе учёта рабочего времени.\n\nДоступные команды:\n/status - Текущий статус смены\n/help - Справка по командам`
+          );
+        } catch (retryError) {
+          logger.error('Failed to send fallback welcome message', { error: retryError });
+        }
+      }
 
-      await showMainMenu(ctx);
+      try {
+        await showMainMenu(ctx);
+      } catch (menuError: any) {
+        logger.error('Error showing main menu after welcome', {
+          error: menuError.message || String(menuError),
+          code: menuError.code
+        });
+      }
       return;
     }
 
@@ -198,7 +220,8 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
     const company = await repositories.company.findById(employee!.company_id);
 
     logger.info('Sending welcome message to user', { userId: ctx.from.id });
-    await ctx.reply(`
+    try {
+      await ctx.reply(`
 🎉 *Добро пожаловать!*
 
 👤 *Сотрудник:* ${employee.full_name}
@@ -212,10 +235,31 @@ ${employee.position ? `💼 *Должность:* ${employee.position}` : ''}
 /help - Справка по командам
 
 Используйте кнопки для управления сменой.
-    `, { parse_mode: 'Markdown' });
+      `, { parse_mode: 'Markdown' });
+    } catch (error: any) {
+      logger.error('Error sending welcome message (new employee)', {
+        error: error.message || String(error),
+        code: error.code
+      });
+      // Fallback без Markdown
+      try {
+        await ctx.reply(
+          `🎉 Добро пожаловать!\n\n👤 Сотрудник: ${employee.full_name}\n🏢 Компания: ${company?.name || 'Не указана'}\n\n✅ Вы успешно подключены к системе учёта рабочего времени.\n\nДоступные команды:\n/status - Текущий статус смены\n/help - Справка по командам`
+        );
+      } catch (retryError) {
+        logger.error('Failed to send fallback welcome message', { error: retryError });
+      }
+    }
 
     // Показываем главное меню
-    await showMainMenu(ctx);
+    try {
+      await showMainMenu(ctx);
+    } catch (menuError: any) {
+      logger.error('Error showing main menu after welcome (new employee)', {
+        error: menuError.message || String(menuError),
+        code: menuError.code
+      });
+    }
 
   } catch (error: unknown) {
     logger.error('Error in start handler', error);
