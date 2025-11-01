@@ -220,13 +220,15 @@ export class ShiftMonitor {
             }
 
             // Create violation record
+            // Convert penalty_percent to string (PostgreSQL numeric requires string)
+            const penaltyValue = rule.penalty_percent ? String(rule.penalty_percent) : '0';
             const createdViolation = await repositories.violation.createViolation({
               employee_id: violation.employeeId,
               company_id: employee.company_id,
               rule_id: rule.id,
               source: 'auto',
               reason: `Auto-detected: ${violation.type}`,
-              penalty: rule.penalty_percent
+              penalty: penaltyValue
             } as any);
 
             violationId = createdViolation.id;

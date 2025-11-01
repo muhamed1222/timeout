@@ -165,6 +165,8 @@ router.post("/violations", async (req, res) => {
     const company = await repositories.company.findById(validatedData.company_id);
     if (!company) return res.status(404).json({ error: 'Company not found' });
     
+    // Convert penalty_percent to string (PostgreSQL numeric requires string)
+    const penaltyValue = rule.penalty_percent ? String(rule.penalty_percent) : '0';
     const violation = await repositories.violation.createViolation({
       employee_id: validatedData.employee_id,
       company_id: validatedData.company_id,
@@ -172,7 +174,7 @@ router.post("/violations", async (req, res) => {
       source: validatedData.source,
       reason: validatedData.reason,
       created_by: validatedData.created_by,
-      penalty: rule.penalty_percent,
+      penalty: penaltyValue,
     } as any);
     
       // Adjust rating decrementally by penalty for the current period

@@ -44,18 +44,43 @@ router.post('/', validateBody(createViolationSchema), asyncHandler(async (req, r
       'Company'
     );
 
-    const penaltyValue = String(rule.penalty_percent ?? '0');
-    void logger.info('Creating violation with penalty', { penalty: penaltyValue });
+    // Convert penalty_percent to string (PostgreSQL numeric requires string)
+    // penalty_percent is already a string from PostgreSQL numeric type, but ensure it's valid
+    let penaltyValue: string;
+    if (rule.penalty_percent === null || rule.penalty_percent === undefined) {
+      penaltyValue = '0';
+    } else if (typeof rule.penalty_percent === 'number') {
+      penaltyValue = rule.penalty_percent.toString();
+    } else {
+      penaltyValue = String(rule.penalty_percent);
+    }
+    void logger.info('Creating violation with penalty', { penalty: penaltyValue, originalType: typeof rule.penalty_percent, originalValue: rule.penalty_percent });
 
-    const violation = await repositories.violation.createViolation({
+    // Prepare violation data
+    const violationData: any = {
       employee_id: validatedData.employee_id,
       company_id: validatedData.company_id,
       rule_id: validatedData.rule_id,
-      source: validatedData.source,
-      reason: validatedData.reason,
-      created_by: validatedData.created_by,
+      source: validatedData.source ?? 'manual',
       penalty: penaltyValue,
-    } as any);
+    };
+
+    // Add optional fields only if they have values
+    if (validatedData.reason && validatedData.reason.trim()) {
+      violationData.reason = validatedData.reason.trim();
+    }
+
+    if (validatedData.created_by) {
+      violationData.created_by = validatedData.created_by;
+    }
+
+    void logger.info('Violation data prepared', { 
+      hasReason: !!violationData.reason,
+      hasCreatedBy: !!violationData.created_by,
+      penalty: violationData.penalty
+    });
+
+    const violation = await repositories.violation.createViolation(violationData);
 
     void logger.info('Violation created', { violationId: violation.id });
 

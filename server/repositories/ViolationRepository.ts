@@ -70,12 +70,21 @@ export class ViolationRepository extends BaseRepository<CompanyViolationRules, I
    * Create a violation
    */
   async createViolation(violation: InsertViolations): Promise<Violations> {
-    const results = await this.db
-      .insert(schema.violations)
-      .values(violation as any)
-      .returning();
+    try {
+      const results = await this.db
+        .insert(schema.violations)
+        .values(violation as any)
+        .returning();
 
-    return results[0] as Violations;
+      if (!results[0]) {
+        throw new Error('Failed to create violation: no result returned');
+      }
+
+      return results[0] as Violations;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to create violation: ${errorMessage}. Data: ${JSON.stringify(violation)}`);
+    }
   }
 
   /**
