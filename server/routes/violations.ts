@@ -1,62 +1,66 @@
 import { Router } from "express";
-import { z } from "zod";
-import { storage } from "../storage.js";
+import { repositories } from "../repositories/index.js";
 import { logger } from "../lib/logger.js";
+import { ForbiddenError, asyncHandler } from "../lib/errorHandler.js";
+import { validateBody } from "../middleware/validate.js";
+import { createViolationSchema } from "../lib/schemas/index.js";
+import { findOrThrow, validateCompanyScope, invalidateCompanyStatsByEmployeeId, getCurrentMonthPeriod } from "../lib/utils/index.js";
+import { violationsCounter } from "../lib/metrics.js";
 
 const router = Router();
 
-const createViolationRequest = z.object({
-  employee_id: z.string(),
-  company_id: z.string(),
-  rule_id: z.string(),
-  source: z.enum(['manual', 'auto']).default('manual'),
-  reason: z.string().optional(),
-  created_by: z.string().optional()
-});
+router.post('/', validateBody(createViolationSchema), asyncHandler(async (req, res) => {
+  const validatedData = req.body;
 
-router.post('/', async (req, res) => {
-  try {
-    const validatedData = createViolationRequest.parse(req.body);
+  const employee = await findOrThrow(
+    () => repositories.employee.findById(validatedData.employee_id),
+    'Employee'
+  );
+  
+  const rule = await findOrThrow(
+    () => repositories.violation.findById(validatedData.rule_id),
+    'Violation rule'
+  );
+  
+  validateCompanyScope(employee.company_id, validatedData.company_id, 'Employee company mismatch');
+  validateCompanyScope(rule.company_id, validatedData.company_id, 'Rule company mismatch');
+  
+  await findOrThrow(
+    () => repositories.company.findById(validatedData.company_id),
+    'Company'
+  );
 
-    const employee = await storage.getEmployee(validatedData.employee_id);
-    if (!employee) return res.status(404).json({ error: 'Employee not found' });
-    const rule = await storage.getViolationRule(validatedData.rule_id);
-    if (!rule) return res.status(404).json({ error: 'Violation rule not found' });
-    if (employee.company_id !== validatedData.company_id || rule.company_id !== validatedData.company_id) {
-      return res.status(403).json({ error: 'Company scope mismatch' });
-    }
-    const company = await storage.getCompany(validatedData.company_id);
-    if (!company) return res.status(404).json({ error: 'Company not found' });
+  const violation = await repositories.violation.createViolation({
+    employee_id: validatedData.employee_id,
+    company_id: validatedData.company_id,
+    rule_id: validatedData.rule_id,
+    source: validatedData.source,
+    reason: validatedData.reason,
+    created_by: validatedData.created_by,
+    penalty: rule.penalty_percent,
+  } as any);
 
-    const violation = await storage.createViolation({
-      employee_id: validatedData.employee_id,
-      company_id: validatedData.company_id,
-      rule_id: validatedData.rule_id,
-      source: validatedData.source,
-      reason: validatedData.reason,
-      created_by: validatedData.created_by,
-      penalty: rule.penalty_percent,
-    } as any);
+  // Track violation in Prometheus metrics
+  violationsCounter.labels(
+    validatedData.type || 'other',
+    String(rule.penalty_percent || 0),
+    validatedData.source || 'manual'
+  ).inc();
 
-    // Update rating for current month
-    const now = new Date();
-    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    await storage.updateEmployeeRatingFromViolations(
-      violation.employee_id,
-      periodStart,
-      periodEnd
-    );
+  // Update rating for current month
+  const { start: periodStart, end: periodEnd } = getCurrentMonthPeriod();
+  await repositories.rating.updateFromViolations(
+    violation.employee_id,
+    periodStart,
+    periodEnd,
+    repositories.violation,
+    repositories.employee
+  );
 
-    res.json(violation);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Validation failed', details: error.errors });
-    }
-    logger.error('Error creating violation (alias)', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+  await invalidateCompanyStatsByEmployeeId(violation.employee_id);
+
+  res.json(violation);
+}));
 
 export default router;
 

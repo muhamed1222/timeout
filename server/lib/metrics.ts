@@ -2,6 +2,9 @@ import { register, Counter, Histogram, Gauge, collectDefaultMetrics } from 'prom
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from './logger.js';
 
+// Re-export for use in other modules
+export { Counter, Histogram, Gauge };
+
 /**
  * Prometheus Metrics
  */
@@ -160,11 +163,36 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
  */
 export async function updateBusinessMetrics(): Promise<void> {
   try {
-    // This would fetch real data from storage
-    // For now, this is a placeholder
-    // Example:
-    // const activeShifts = await storage.getActiveShiftsCount();
-    // activeShiftsGauge.set(activeShifts);
+    // Import repositories dynamically to avoid circular dependencies
+    const { repositories } = await import('../repositories/index.js');
+    
+    // Get all companies
+    const companies = await repositories.company.findAll();
+    
+    // Update metrics for each company
+    for (const company of companies) {
+      try {
+        // Get active shifts count
+        const activeShifts = await repositories.shift.findActiveByCompanyId(company.id);
+        activeShiftsGauge.labels(company.id).set(activeShifts.length);
+        
+        // Get employees by status
+        const allEmployees = await repositories.employee.findByCompanyId(company.id);
+        const employeesByStatus = allEmployees.reduce((acc, emp) => {
+          acc[emp.status] = (acc[emp.status] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        // Set employee counts by status
+        for (const [status, count] of Object.entries(employeesByStatus)) {
+          employeesGauge.labels(company.id, status).set(count);
+        }
+      } catch (error) {
+        logger.error(`Error updating metrics for company ${company.id}`, error);
+      }
+    }
+    
+    logger.debug('Business metrics updated successfully');
   } catch (error) {
     logger.error('Error updating business metrics', error);
   }
@@ -202,7 +230,10 @@ export async function getMetrics(): Promise<string> {
 /**
  * Get metrics in JSON format
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getMetricsJSON(): Promise<any> {
+  // Prometheus client types don't match exactly with Record<string, unknown>
+  // This is a known issue with @types/prom-client
   return await register.getMetricsAsJSON();
 }
 

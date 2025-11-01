@@ -3,6 +3,10 @@ import { Input } from "@/components/ui/input";
 import { Search, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { ExceptionsSkeleton } from "@/components/LoadingSkeletons";
+import { ErrorState } from "@/components/ErrorBoundary";
+import { useRetry } from "@/hooks/useRetry";
+import { getContextErrorMessage } from "@/lib/errorMessages";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import ExceptionCard, { type ExceptionType } from "@/components/ExceptionCard";
@@ -23,10 +27,12 @@ export default function Exceptions() {
   const { companyId, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
-  const { data: exceptions = [], isLoading } = useQuery<ExceptionData[]>({
+  const { data: exceptions = [], isLoading, error } = useQuery<ExceptionData[]>({
     queryKey: ['/api/companies', companyId, 'exceptions'],
     enabled: !!companyId,
   });
+
+  const exceptionsRetry = useRetry(['/api/companies', companyId, 'exceptions']);
 
   const resolveExceptionMutation = useMutation({
     mutationFn: async (exceptionId: string) => {
@@ -93,11 +99,18 @@ export default function Exceptions() {
 
   const hasFilters = false;
 
+  // Loading state
   if (authLoading || isLoading) {
+    return <ExceptionsSkeleton />;
+  }
+
+  // Error state
+  if (error) {
     return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
+      <ErrorState
+        message={getContextErrorMessage('violations', 'fetch')}
+        onRetry={() => exceptionsRetry.retry()}
+      />
     );
   }
 

@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { storage } from "../storage.js";
+import { repositories } from "../repositories/index.js";
 import { logger } from "../lib/logger.js";
+import { getSecret } from "../lib/secrets.js";
 import { validateBody, validateParams } from "../middleware/validate.js";
 import { 
   linkTelegramSchema, 
@@ -24,7 +25,7 @@ const authenticateBot = (
   next: NextFunction
 ) => {
   const botSecret = req.headers['x-bot-secret'];
-  const expectedSecret = process.env.BOT_API_SECRET || process.env.API_SECRET_KEY;
+  const expectedSecret = getSecret('BOT_API_SECRET') || getSecret('API_SECRET_KEY');
   
   if (!botSecret || botSecret !== expectedSecret) {
     logger.warn('Unauthorized bot API request', {
@@ -55,7 +56,7 @@ router.post(
       const { telegram_id, telegram_username } = req.body;
 
       // Находим приглашение
-      const invite = await storage.getEmployeeInviteByCode(code);
+      const invite = await repositories.invite.findByCode(code);
       
       if (!invite) {
         return res.status(404).json({ error: "Invite not found or expired" });
@@ -66,18 +67,18 @@ router.post(
       }
 
       // Обновляем сотрудника
-      const employee = await storage.updateEmployee(invite.used_by_employee!, {
+      const employee = await repositories.employee.update(invite.used_by_employee!, {
         telegram_user_id: telegram_id,
-      });
+      } as any);
 
       if (!employee) {
         return res.status(404).json({ error: "Employee not found" });
       }
 
       // Отмечаем приглашение как использованное
-      await storage.updateEmployeeInvite(invite.id, {
+      await repositories.invite.updateByCode(invite.code, {
         // used_at обновится автоматически
-      });
+      } as any);
 
       // Audit log
       await auditLogger.logResourceChange({
@@ -107,7 +108,7 @@ router.get("/employees/telegram/:telegramId", async (req, res) => {
   try {
     const { telegramId } = req.params;
 
-    const employee = await storage.getEmployeeByTelegramId(telegramId);
+    const employee = await repositories.employee.findByTelegramId(telegramId);
 
     if (!employee) {
       return res.status(404).json({ error: "Employee not found" });
@@ -130,7 +131,7 @@ router.get("/employees/:id/shifts", async (req, res) => {
     const { id } = req.params;
     const limit = parseInt(req.query.limit as string) || 30;
 
-    const shifts = await storage.getShiftsByEmployee(id, limit);
+    const shifts = await repositories.shift.findByEmployeeId(id, limit);
     res.json(shifts);
   } catch (error) {
     logger.error("Error fetching employee shifts", error);
@@ -143,7 +144,7 @@ router.get("/shifts/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const shift = await storage.getShift(id);
+    const shift = await repositories.shift.findById(id);
 
     if (!shift) {
       return res.status(404).json({ error: "Shift not found" });
@@ -161,7 +162,7 @@ router.post("/shifts/:id/start", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const shift = await storage.getShift(id);
+    const shift = await repositories.shift.findById(id);
 
     if (!shift) {
       return res.status(404).json({ error: "Shift not found" });
@@ -175,13 +176,13 @@ router.post("/shifts/:id/start", async (req, res) => {
     }
 
     // Создаем рабочий интервал
-    const workInterval = await storage.createWorkInterval({
+    const workInterval = await repositories.shift.createWorkInterval({
       shift_id: id,
       start_at: new Date(),
     });
 
     // Обновляем статус смены
-    const updatedShift = await storage.updateShift(id, {
+    const updatedShift = await repositories.shift.update(id, {
       status: 'active',
       actual_start_at: new Date(),
     });
@@ -199,7 +200,7 @@ router.post("/shifts/:id/end", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const shift = await storage.getShift(id);
+    const shift = await repositories.shift.findById(id);
 
     if (!shift) {
       return res.status(404).json({ error: "Shift not found" });
@@ -213,27 +214,27 @@ router.post("/shifts/:id/end", async (req, res) => {
     }
 
     // Завершаем активный рабочий интервал
-    const workIntervals = await storage.getWorkIntervalsByShift(id);
+    const workIntervals = await repositories.shift.findWorkIntervalsByShiftId(id);
     const activeInterval = workIntervals.find(wi => !wi.end_at);
 
     if (activeInterval) {
-      await storage.updateWorkInterval(activeInterval.id, {
+      await repositories.shift.updateWorkInterval(activeInterval.id, {
         end_at: new Date(),
       });
     }
 
     // Завершаем активный перерыв (если есть)
-    const breakIntervals = await storage.getBreakIntervalsByShift(id);
+    const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(id);
     const activeBreak = breakIntervals.find(bi => !bi.end_at);
 
     if (activeBreak) {
-      await storage.updateBreakInterval(activeBreak.id, {
+      await repositories.shift.updateBreakInterval(activeBreak.id, {
         end_at: new Date(),
       });
     }
 
     // Обновляем статус смены
-    const updatedShift = await storage.updateShift(id, {
+    const updatedShift = await repositories.shift.update(id, {
       status: 'completed',
       actual_end_at: new Date(),
     });
@@ -256,7 +257,7 @@ router.post("/shifts/:id/break/start", async (req, res) => {
     const { id } = req.params;
     const { type = 'lunch' } = req.body;
 
-    const shift = await storage.getShift(id);
+    const shift = await repositories.shift.findById(id);
 
     if (!shift) {
       return res.status(404).json({ error: "Shift not found" });
@@ -267,7 +268,7 @@ router.post("/shifts/:id/break/start", async (req, res) => {
     }
 
     // Проверяем, нет ли активного перерыва
-    const breakIntervals = await storage.getBreakIntervalsByShift(id);
+    const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(id);
     const activeBreak = breakIntervals.find(bi => !bi.end_at);
 
     if (activeBreak) {
@@ -275,7 +276,7 @@ router.post("/shifts/:id/break/start", async (req, res) => {
     }
 
     // Создаем перерыв
-    const breakInterval = await storage.createBreakInterval({
+    const breakInterval = await repositories.shift.createBreakInterval({
       shift_id: id,
       type: type,
       start_at: new Date(),
@@ -294,14 +295,14 @@ router.post("/shifts/:id/break/end", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const shift = await storage.getShift(id);
+    const shift = await repositories.shift.findById(id);
 
     if (!shift) {
       return res.status(404).json({ error: "Shift not found" });
     }
 
     // Находим активный перерыв
-    const breakIntervals = await storage.getBreakIntervalsByShift(id);
+    const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(id);
     const activeBreak = breakIntervals.find(bi => !bi.end_at);
 
     if (!activeBreak) {
@@ -309,7 +310,7 @@ router.post("/shifts/:id/break/end", async (req, res) => {
     }
 
     // Завершаем перерыв
-    const updatedBreak = await storage.updateBreakInterval(activeBreak.id, {
+    const updatedBreak = await repositories.shift.updateBreakInterval(activeBreak.id, {
       end_at: new Date(),
     });
 
@@ -326,7 +327,7 @@ router.get("/shifts/:id/work-intervals", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const workIntervals = await storage.getWorkIntervalsByShift(id);
+    const workIntervals = await repositories.shift.findWorkIntervalsByShiftId(id);
     res.json(workIntervals);
   } catch (error) {
     logger.error("Error fetching work intervals", error);
@@ -339,7 +340,7 @@ router.get("/shifts/:id/break-intervals", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const breakIntervals = await storage.getBreakIntervalsByShift(id);
+    const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(id);
     res.json(breakIntervals);
   } catch (error) {
     logger.error("Error fetching break intervals", error);
@@ -363,13 +364,13 @@ router.post("/daily-reports", async (req, res) => {
     }
 
     // Получаем смену для проверки
-    const shift = await storage.getShift(shift_id);
+    const shift = await repositories.shift.findById(shift_id);
 
     if (!shift) {
       return res.status(404).json({ error: "Shift not found" });
     }
 
-    const report = await storage.createDailyReport({
+    const report = await repositories.shift.createDailyReport({
       shift_id,
       done_items: [content], // Используем массив для done_items
       submitted_at: new Date(),
@@ -394,7 +395,7 @@ router.post("/exceptions", async (req, res) => {
       });
     }
 
-    const exception = await storage.createException({
+    const exception = await repositories.exception.create({
       employee_id,
       date,
       kind: type,
@@ -425,7 +426,7 @@ router.post("/notifications/send", async (req, res) => {
     }
 
     // Get employee with Telegram ID
-    const employee = await storage.getEmployee(employee_id);
+    const employee = await repositories.employee.findById(employee_id);
 
     if (!employee) {
       return res.status(404).json({ error: "Employee not found" });
@@ -469,7 +470,7 @@ router.post("/notifications/broadcast", async (req, res) => {
     }
 
     // Get all employees with Telegram IDs for this company
-    const employees = await storage.getEmployeesByCompany(company_id);
+    const employees = await repositories.employee.findByCompanyId(company_id);
     const telegramEmployees = employees.filter(emp => emp.telegram_user_id);
 
     logger.info('Broadcast notification request', {

@@ -1,4 +1,11 @@
-# ✅ Чеклист проверки деплоя
+# ✅ Deployment Checklist
+
+Complete this checklist before deploying to production.
+
+> **Note:** This checklist consolidates content from:
+> - `DEPLOYMENT_CHECKLIST.md`
+> - `DEPLOYMENT_FINAL_CHECKLIST.md`
+> - `IMPROVEMENTS_CHECKLIST.md`
 
 ## 🔍 Автоматическая проверка
 

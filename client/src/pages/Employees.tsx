@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Plus, Loader2, QrCode, Copy, Check, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -14,8 +15,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, queryConfig } from "@/lib/queryClient";
 import { AddEmployeeModal } from "@/components/AddEmployeeModal";
+import { ErrorState } from "@/components/ErrorBoundary";
+import { EmployeeListSkeleton } from "@/components/LoadingSkeletons";
+import { useRetry } from "@/hooks/useRetry";
+import { getContextErrorMessage } from "@/lib/errorMessages";
+import { useSearchShortcut } from "@/hooks/useKeyboardShortcuts";
+import { useRef } from "react";
+import { useOptimisticDeleteInvite, useOptimisticDeleteEmployee } from "@/hooks/useOptimisticMutations";
 
 type Employee = {
   id: string;
@@ -60,60 +68,38 @@ export default function Employees() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { toast } = useToast();
   const { companyId, loading: authLoading } = useAuth();
+  
+  // Keyboard shortcut: / to focus search
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSearchShortcut(searchInputRef);
 
   const handleAddEmployee = () => {
     setShowAddEmployeeModal(true);
   };
 
-  // Мутация для удаления приглашения
-  const deleteInviteMutation = useMutation({
-    mutationFn: async (inviteId: string) => {
-      const response = await apiRequest('DELETE', `/api/employee-invites/${inviteId}`);
-      return response;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Приглашение удалено",
-        description: "Приглашение успешно удалено",
-      });
-      refetchInvites();
-    },
-    onError: (error) => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось удалить приглашение",
-        variant: "destructive",
-      });
-    },
-  });
+  // Оптимистичная мутация для удаления приглашения
+  const deleteInviteMutation = useOptimisticDeleteInvite();
 
   const handleDeleteInvite = (inviteId: string) => {
-    deleteInviteMutation.mutate(inviteId);
+    deleteInviteMutation.mutate(inviteId, {
+      onSuccess: () => {
+        toast({
+          title: "Приглашение удалено",
+          description: "Приглашение успешно удалено",
+        });
+      },
+      onError: () => {
+        toast({
+          title: "Ошибка",
+          description: "Не удалось удалить приглашение",
+          variant: "destructive",
+        });
+      },
+    });
   };
 
-  // Мутация для удаления сотрудника
-  const deleteEmployeeMutation = useMutation({
-    mutationFn: async (employeeId: string) => {
-      const response = await apiRequest('DELETE', `/api/employees/${employeeId}`);
-      return response;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Сотрудник удалён",
-        description: "Сотрудник успешно удалён из компании",
-      });
-      refetchEmployees();
-      setShowDeleteDialog(false);
-      setEmployeeToDelete(null);
-    },
-    onError: (error) => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось удалить сотрудника",
-        variant: "destructive",
-      });
-    },
-  });
+  // Оптимистичная мутация для удаления сотрудника
+  const deleteEmployeeMutation = useOptimisticDeleteEmployee();
 
   const handleDeleteEmployee = (employee: Employee) => {
     setEmployeeToDelete(employee);
@@ -122,17 +108,32 @@ export default function Employees() {
 
   const confirmDeleteEmployee = () => {
     if (employeeToDelete) {
-      deleteEmployeeMutation.mutate(employeeToDelete.id);
+      deleteEmployeeMutation.mutate(employeeToDelete.id, {
+        onSuccess: () => {
+          toast({
+            title: "Сотрудник удалён",
+            description: "Сотрудник успешно удалён из компании",
+          });
+          setShowDeleteDialog(false);
+          setEmployeeToDelete(null);
+        },
+        onError: () => {
+          toast({
+            title: "Ошибка",
+            description: "Не удалось удалить сотрудника",
+            variant: "destructive",
+          });
+        },
+      });
     }
   };
 
   const { data: employees = [], isLoading: employeesLoading, refetch: refetchEmployees } = useQuery<Employee[]>({
     queryKey: ['/api/companies', companyId, 'employees'],
     enabled: !!companyId,
+    ...queryConfig.employees,
     // Регулярно обновляем список сотрудников, чтобы отобразить тех, кто подключился через Telegram
     refetchInterval: 5000,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
   });
 
   const { data: invites = [], isLoading: invitesLoading, refetch: refetchInvites } = useQuery<EmployeeInvite[]>({
@@ -142,10 +143,9 @@ export default function Employees() {
       return response.json();
     },
     enabled: !!companyId,
+    ...queryConfig.employees,
     // После использования инвайта через Telegram быстро подтягиваем изменения
     refetchInterval: 5000,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
   });
 
   const createInviteMutation = useMutation({
@@ -230,13 +230,23 @@ export default function Employees() {
 
   const activeInvites = invites.filter(inv => !inv.used_at);
 
+  // Retry hooks
+  const employeesRetry = useRetry(['/api/companies', companyId, 'employees']);
+  const invitesRetry = useRetry(['/api/companies', companyId, 'employee-invites']);
+
+  // Loading state
   if (authLoading || employeesLoading) {
     return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <Loader2 className="w-8 h-8 animate-spin" />
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-8 w-[200px]" />
+          <Skeleton className="h-10 w-[140px]" />
+        </div>
+        <EmployeeListSkeleton count={6} />
       </div>
     );
   }
+
 
   if (!companyId) {
     return (
@@ -262,7 +272,8 @@ export default function Employees() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
         <Input
-          placeholder="Поиск сотрудников..."
+          ref={searchInputRef}
+          placeholder="Поиск сотрудников... (нажмите / для фокуса)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10"

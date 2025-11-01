@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { ErrorState } from '@/components/ErrorBoundary';
+import { RatingListSkeleton } from '@/components/LoadingSkeletons';
+import { useRetry } from '@/hooks/useRetry';
+import { getContextErrorMessage } from '@/lib/errorMessages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Search, Trophy, Medal, Award, Star, AlertTriangle, ArrowUp } from 'lucide-react';
-import { apiRequest, queryClient } from '@/lib/queryClient';
+import { apiRequest, queryClient, queryConfig } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -130,6 +134,7 @@ export default function Rating() {
       return response.json();
     },
     enabled: !!companyId,
+    ...queryConfig.ratings,
   });
 
   const { data: violationRules = [], isLoading: rulesLoading } = useQuery<ViolationRule[]>({
@@ -273,27 +278,36 @@ export default function Rating() {
     }
   });
 
+  // Retry hooks
+  const employeesRetry = useRetry(['/api/companies', companyId, 'employees']);
+  const ratingsRetry = useRetry(['/api/companies', companyId, 'ratings', periodStart, periodEnd]);
+
+  // Loading state
   if (authLoading || employeesLoading || ratingLoading) {
+    return <RatingListSkeleton />;
+  }
+
+  // Error states
+  if (employeesError) {
     return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Загрузка рейтинга...</p>
-        </div>
-      </div>
+      <ErrorState
+        message={getContextErrorMessage('employees', 'fetch')}
+        onRetry={() => employeesRetry.retry()}
+      />
+    );
+  }
+
+  if (ratingError) {
+    return (
+      <ErrorState
+        message={getContextErrorMessage('ratings', 'fetch')}
+        onRetry={() => ratingsRetry.retry()}
+      />
     );
   }
 
   return (
     <div className="space-y-6">
-      {(employeesError || ratingError) && (
-        <Alert variant="destructive">
-          <AlertTitle>Ошибка загрузки</AlertTitle>
-          <AlertDescription>
-            Не удалось загрузить данные рейтинга. Попробуйте обновить страницу позже.
-          </AlertDescription>
-        </Alert>
-      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Рейтинг сотрудников</h1>

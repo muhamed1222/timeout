@@ -1,21 +1,33 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { shiftMonitor, type ShiftViolation } from '../shiftMonitor';
-import { storage } from '../../storage';
+import { repositories } from '../../repositories/index';
 import type { Shift, Employee } from '../../../shared/schema';
 
-// Mock storage
-vi.mock('../../storage', () => ({
-  storage: {
-    getActiveShiftsByCompany: vi.fn(),
-    getWorkIntervalsByShift: vi.fn(),
-    getBreakIntervalsByShift: vi.fn(),
-    getEmployee: vi.fn(),
-    getExceptionsByCompany: vi.fn(),
-    createException: vi.fn(),
-    getViolationRulesByCompany: vi.fn(),
-    createViolation: vi.fn(),
-    updateEmployeeRatingFromViolations: vi.fn(),
-    getAllCompanies: vi.fn(),
+// Mock repositories
+vi.mock('../../repositories/index', () => ({
+  repositories: {
+    shift: {
+      findActiveByCompanyId: vi.fn(),
+      findWorkIntervalsByShiftId: vi.fn(),
+      findBreakIntervalsByShiftId: vi.fn(),
+    },
+    employee: {
+      findById: vi.fn(),
+    },
+    exception: {
+      findByCompanyId: vi.fn(),
+      create: vi.fn(),
+    },
+    violation: {
+      findByCompanyId: vi.fn(),
+      createViolation: vi.fn(),
+    },
+    rating: {
+      updateFromViolations: vi.fn(),
+    },
+    company: {
+      findAll: vi.fn(),
+    },
   },
 }));
 
@@ -64,9 +76,9 @@ describe('ShiftMonitor', () => {
         source: 'bot',
       };
 
-      vi.mocked(storage.getActiveShiftsByCompany).mockResolvedValue([mockShift]);
-      vi.mocked(storage.getWorkIntervalsByShift).mockResolvedValue([mockWorkInterval]);
-      vi.mocked(storage.getBreakIntervalsByShift).mockResolvedValue([]);
+      vi.mocked(repositories.shift.findActiveByCompanyId).mockResolvedValue([mockShift]);
+      vi.mocked(repositories.shift.findWorkIntervalsByShiftId).mockResolvedValue([mockWorkInterval]);
+      vi.mocked(repositories.shift.findBreakIntervalsByShiftId).mockResolvedValue([]);
 
       const violations = await shiftMonitor.checkShiftViolations('comp-1');
 
@@ -104,9 +116,9 @@ describe('ShiftMonitor', () => {
         source: 'bot',
       };
 
-      vi.mocked(storage.getActiveShiftsByCompany).mockResolvedValue([mockShift]);
-      vi.mocked(storage.getWorkIntervalsByShift).mockResolvedValue([mockWorkInterval]);
-      vi.mocked(storage.getBreakIntervalsByShift).mockResolvedValue([]);
+      vi.mocked(repositories.shift.findActiveByCompanyId).mockResolvedValue([mockShift]);
+      vi.mocked(repositories.shift.findWorkIntervalsByShiftId).mockResolvedValue([mockWorkInterval]);
+      vi.mocked(repositories.shift.findBreakIntervalsByShiftId).mockResolvedValue([]);
 
       const violations = await shiftMonitor.checkShiftViolations('comp-1');
 
@@ -130,9 +142,9 @@ describe('ShiftMonitor', () => {
         employee: mockEmployee,
       } as Shift & { employee: Employee };
 
-      vi.mocked(storage.getActiveShiftsByCompany).mockResolvedValue([mockShift]);
-      vi.mocked(storage.getWorkIntervalsByShift).mockResolvedValue([]);
-      vi.mocked(storage.getBreakIntervalsByShift).mockResolvedValue([]);
+      vi.mocked(repositories.shift.findActiveByCompanyId).mockResolvedValue([mockShift]);
+      vi.mocked(repositories.shift.findWorkIntervalsByShiftId).mockResolvedValue([]);
+      vi.mocked(repositories.shift.findBreakIntervalsByShiftId).mockResolvedValue([]);
 
       const violations = await shiftMonitor.checkShiftViolations('comp-1');
 
@@ -166,9 +178,9 @@ describe('ShiftMonitor', () => {
         source: 'bot',
       };
 
-      vi.mocked(storage.getActiveShiftsByCompany).mockResolvedValue([mockShift]);
-      vi.mocked(storage.getWorkIntervalsByShift).mockResolvedValue([mockWorkInterval]);
-      vi.mocked(storage.getBreakIntervalsByShift).mockResolvedValue([]);
+      vi.mocked(repositories.shift.findActiveByCompanyId).mockResolvedValue([mockShift]);
+      vi.mocked(repositories.shift.findWorkIntervalsByShiftId).mockResolvedValue([mockWorkInterval]);
+      vi.mocked(repositories.shift.findBreakIntervalsByShiftId).mockResolvedValue([]);
 
       const violations = await shiftMonitor.checkShiftViolations('comp-1');
 
@@ -203,9 +215,9 @@ describe('ShiftMonitor', () => {
         source: 'bot',
       };
 
-      vi.mocked(storage.getActiveShiftsByCompany).mockResolvedValue([mockShift]);
-      vi.mocked(storage.getWorkIntervalsByShift).mockResolvedValue([]);
-      vi.mocked(storage.getBreakIntervalsByShift).mockResolvedValue([mockBreakInterval]);
+      vi.mocked(repositories.shift.findActiveByCompanyId).mockResolvedValue([mockShift]);
+      vi.mocked(repositories.shift.findWorkIntervalsByShiftId).mockResolvedValue([]);
+      vi.mocked(repositories.shift.findBreakIntervalsByShiftId).mockResolvedValue([mockBreakInterval]);
 
       const violations = await shiftMonitor.checkShiftViolations('comp-1');
 
@@ -243,9 +255,9 @@ describe('ShiftMonitor', () => {
         source: 'bot',
       };
 
-      vi.mocked(storage.getActiveShiftsByCompany).mockResolvedValue([mockShift]);
-      vi.mocked(storage.getWorkIntervalsByShift).mockResolvedValue([]);
-      vi.mocked(storage.getBreakIntervalsByShift).mockResolvedValue([mockBreakInterval]);
+      vi.mocked(repositories.shift.findActiveByCompanyId).mockResolvedValue([mockShift]);
+      vi.mocked(repositories.shift.findWorkIntervalsByShiftId).mockResolvedValue([]);
+      vi.mocked(repositories.shift.findBreakIntervalsByShiftId).mockResolvedValue([mockBreakInterval]);
 
       const violations = await shiftMonitor.checkShiftViolations('comp-1');
 
@@ -278,9 +290,9 @@ describe('ShiftMonitor', () => {
         source: 'bot',
       };
 
-      vi.mocked(storage.getActiveShiftsByCompany).mockResolvedValue([mockShift]);
-      vi.mocked(storage.getWorkIntervalsByShift).mockResolvedValue([mockWorkInterval]);
-      vi.mocked(storage.getBreakIntervalsByShift).mockResolvedValue([]);
+      vi.mocked(repositories.shift.findActiveByCompanyId).mockResolvedValue([mockShift]);
+      vi.mocked(repositories.shift.findWorkIntervalsByShiftId).mockResolvedValue([mockWorkInterval]);
+      vi.mocked(repositories.shift.findBreakIntervalsByShiftId).mockResolvedValue([]);
 
       const violations = await shiftMonitor.checkShiftViolations('comp-1');
 
@@ -288,7 +300,7 @@ describe('ShiftMonitor', () => {
     });
 
     it('should handle empty shifts list', async () => {
-      vi.mocked(storage.getActiveShiftsByCompany).mockResolvedValue([]);
+      vi.mocked(repositories.shift.findActiveByCompanyId).mockResolvedValue([]);
 
       const violations = await shiftMonitor.checkShiftViolations('comp-1');
 
@@ -296,7 +308,7 @@ describe('ShiftMonitor', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      vi.mocked(storage.getActiveShiftsByCompany).mockRejectedValue(
+      vi.mocked(repositories.shift.findActiveByCompanyId).mockRejectedValue(
         new Error('Database error')
       );
 
@@ -333,10 +345,10 @@ describe('ShiftMonitor', () => {
     };
 
     beforeEach(() => {
-      vi.mocked(storage.getEmployee).mockResolvedValue(mockEmployee);
-      vi.mocked(storage.getExceptionsByCompany).mockResolvedValue([]);
-      vi.mocked(storage.getViolationRulesByCompany).mockResolvedValue([mockRule]);
-      vi.mocked(storage.createViolation).mockResolvedValue({
+      vi.mocked(repositories.employee.findById).mockResolvedValue(mockEmployee);
+      vi.mocked(repositories.exception.findByCompanyId).mockResolvedValue([]);
+      vi.mocked(repositories.violation.findByCompanyId).mockResolvedValue([mockRule]);
+      vi.mocked(repositories.violation.createViolation).mockResolvedValue({
         id: 'viol-1',
         employee_id: 'emp-1',
         company_id: 'comp-1',
@@ -347,8 +359,8 @@ describe('ShiftMonitor', () => {
         created_by: null,
         created_at: new Date(),
       });
-      vi.mocked(storage.updateEmployeeRatingFromViolations).mockResolvedValue(undefined);
-      vi.mocked(storage.createException).mockResolvedValue({
+      vi.mocked(repositories.rating.updateFromViolations).mockResolvedValue(undefined);
+      vi.mocked(repositories.exception.create).mockResolvedValue({
         id: 'exc-1',
         employee_id: 'emp-1',
         date: '2025-10-29',
@@ -364,7 +376,7 @@ describe('ShiftMonitor', () => {
       await shiftMonitor.createExceptionsFromViolations([mockViolation]);
 
       // Verify violation created
-      expect(storage.createViolation).toHaveBeenCalledWith(
+      expect(repositories.violation.createViolation).toHaveBeenCalledWith(
         expect.objectContaining({
           employee_id: 'emp-1',
           company_id: 'comp-1',
@@ -375,14 +387,14 @@ describe('ShiftMonitor', () => {
       );
 
       // Verify rating updated
-      expect(storage.updateEmployeeRatingFromViolations).toHaveBeenCalledWith(
+      expect(repositories.rating.updateFromViolations).toHaveBeenCalledWith(
         'emp-1',
         expect.any(Date),
         expect.any(Date)
       );
 
       // Verify exception created with violation link
-      expect(storage.createException).toHaveBeenCalledWith(
+      expect(repositories.exception.create).toHaveBeenCalledWith(
         expect.objectContaining({
           employee_id: 'emp-1',
           date: '2025-10-29',
@@ -395,7 +407,7 @@ describe('ShiftMonitor', () => {
 
     it('should not create duplicate exceptions', async () => {
       // Mock existing exception
-      vi.mocked(storage.getExceptionsByCompany).mockResolvedValue([
+      vi.mocked(repositories.exception.findByCompanyId).mockResolvedValue([
         {
           id: 'exc-existing',
           employee_id: 'emp-1',
@@ -410,34 +422,34 @@ describe('ShiftMonitor', () => {
 
       await shiftMonitor.createExceptionsFromViolations([mockViolation]);
 
-      expect(storage.createViolation).not.toHaveBeenCalled();
-      expect(storage.createException).not.toHaveBeenCalled();
+      expect(repositories.violation.createViolation).not.toHaveBeenCalled();
+      expect(repositories.exception.create).not.toHaveBeenCalled();
     });
 
     it('should handle missing violation rules gracefully', async () => {
-      vi.mocked(storage.getViolationRulesByCompany).mockResolvedValue([]);
+      vi.mocked(repositories.violation.findByCompanyId).mockResolvedValue([]);
 
       await shiftMonitor.createExceptionsFromViolations([mockViolation]);
 
-      expect(storage.createException).not.toHaveBeenCalled();
+      expect(repositories.exception.create).not.toHaveBeenCalled();
     });
 
     it('should handle employee not found', async () => {
-      vi.mocked(storage.getEmployee).mockResolvedValue(null);
+      vi.mocked(repositories.employee.findById).mockResolvedValue(null);
 
       await shiftMonitor.createExceptionsFromViolations([mockViolation]);
 
-      expect(storage.createViolation).not.toHaveBeenCalled();
-      expect(storage.createException).not.toHaveBeenCalled();
+      expect(repositories.violation.createViolation).not.toHaveBeenCalled();
+      expect(repositories.exception.create).not.toHaveBeenCalled();
     });
 
     it('should create exception even if violation creation fails', async () => {
-      vi.mocked(storage.createViolation).mockRejectedValue(new Error('Failed to create violation'));
+      vi.mocked(repositories.violation.createViolation).mockRejectedValue(new Error('Failed to create violation'));
 
       await shiftMonitor.createExceptionsFromViolations([mockViolation]);
 
       // Should still create exception (without violation_id)
-      expect(storage.createException).toHaveBeenCalledWith(
+      expect(repositories.exception.create).toHaveBeenCalledWith(
         expect.objectContaining({
           employee_id: 'emp-1',
           kind: 'late_start',
@@ -472,8 +484,8 @@ describe('ShiftMonitor', () => {
         created_at: new Date(),
       };
 
-      vi.mocked(storage.getActiveShiftsByCompany).mockResolvedValue([mockShift]);
-      vi.mocked(storage.getWorkIntervalsByShift).mockResolvedValue([
+      vi.mocked(repositories.shift.findActiveByCompanyId).mockResolvedValue([mockShift]);
+      vi.mocked(repositories.shift.findWorkIntervalsByShiftId).mockResolvedValue([
         {
           id: 'wi-1',
           shift_id: 'shift-1',
@@ -482,12 +494,12 @@ describe('ShiftMonitor', () => {
           source: 'bot',
         },
       ]);
-      vi.mocked(storage.getBreakIntervalsByShift).mockResolvedValue([]);
-      vi.mocked(storage.getEmployee).mockResolvedValue(mockEmployee);
+      vi.mocked(repositories.shift.findBreakIntervalsByShiftId).mockResolvedValue([]);
+      vi.mocked(repositories.employee.findById).mockResolvedValue(mockEmployee);
       // getExceptionsByCompany is called 3 times: once to check duplicates, once for initial count, once for final count
-      vi.mocked(storage.getExceptionsByCompany).mockResolvedValue([]); // For duplicate check and initial
-      vi.mocked(storage.getViolationRulesByCompany).mockResolvedValue([mockRule]);
-      vi.mocked(storage.createViolation).mockResolvedValue({
+      vi.mocked(repositories.exception.findByCompanyId).mockResolvedValue([]); // For duplicate check and initial
+      vi.mocked(repositories.violation.findByCompanyId).mockResolvedValue([mockRule]);
+      vi.mocked(repositories.violation.createViolation).mockResolvedValue({
         id: 'viol-1',
         employee_id: 'emp-1',
         company_id: 'comp-1',
@@ -498,8 +510,8 @@ describe('ShiftMonitor', () => {
         created_by: null,
         created_at: new Date(),
       });
-      vi.mocked(storage.updateEmployeeRatingFromViolations).mockResolvedValue(undefined);
-      vi.mocked(storage.createException).mockResolvedValue({
+      vi.mocked(repositories.rating.updateFromViolations).mockResolvedValue(undefined);
+      vi.mocked(repositories.exception.create).mockResolvedValue({
         id: 'exc-1',
         employee_id: 'emp-1',
         date: '2025-10-29',
@@ -517,7 +529,7 @@ describe('ShiftMonitor', () => {
     });
 
     it('should handle errors and return zero counts', async () => {
-      vi.mocked(storage.getActiveShiftsByCompany).mockRejectedValue(new Error('DB error'));
+      vi.mocked(repositories.shift.findActiveByCompanyId).mockRejectedValue(new Error('DB error'));
 
       const result = await shiftMonitor.processCompanyShifts('comp-1');
 
@@ -530,12 +542,12 @@ describe('ShiftMonitor', () => {
 
   describe('runGlobalMonitoring', () => {
     it('should process all companies', async () => {
-      vi.mocked(storage.getAllCompanies).mockResolvedValue([
+      vi.mocked(repositories.company.findAll).mockResolvedValue([
         { id: 'comp-1', name: 'Company 1', timezone: 'UTC', locale: 'en', privacy_settings: {}, created_at: new Date() },
         { id: 'comp-2', name: 'Company 2', timezone: 'UTC', locale: 'en', privacy_settings: {}, created_at: new Date() },
       ]);
 
-      vi.mocked(storage.getActiveShiftsByCompany).mockResolvedValue([]);
+      vi.mocked(repositories.shift.findActiveByCompanyId).mockResolvedValue([]);
 
       const result = await shiftMonitor.runGlobalMonitoring();
 
@@ -545,11 +557,11 @@ describe('ShiftMonitor', () => {
         totalExceptions: 0,
       });
 
-      expect(storage.getActiveShiftsByCompany).toHaveBeenCalledTimes(2);
+      expect(repositories.shift.findActiveByCompanyId).toHaveBeenCalledTimes(2);
     });
 
     it('should handle errors in global monitoring', async () => {
-      vi.mocked(storage.getAllCompanies).mockRejectedValue(new Error('DB error'));
+      vi.mocked(repositories.company.findAll).mockRejectedValue(new Error('DB error'));
 
       const result = await shiftMonitor.runGlobalMonitoring();
 

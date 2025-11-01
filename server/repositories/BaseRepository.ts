@@ -1,6 +1,6 @@
-import type { PgDatabase } from 'drizzle-orm/pg-core';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { eq, sql } from 'drizzle-orm';
+import type { PgTable } from 'drizzle-orm/pg-core';
+import { eq, sql, type SQL } from 'drizzle-orm';
 import * as schema from '../../shared/schema.js';
 
 /**
@@ -12,7 +12,8 @@ import * as schema from '../../shared/schema.js';
 export abstract class BaseRepository<T, TInsert> {
   protected constructor(
     protected readonly db: PostgresJsDatabase<typeof schema>,
-    protected readonly table: any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    protected readonly table: PgTable<any>
   ) {}
 
   /**
@@ -22,7 +23,8 @@ export abstract class BaseRepository<T, TInsert> {
     const results = await this.db
       .select()
       .from(this.table)
-      .where(eq(this.table.id, id))
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      .where(eq((this.table as any).id, id))
       .limit(1);
     
     return results[0] as T | undefined;
@@ -45,10 +47,26 @@ export abstract class BaseRepository<T, TInsert> {
   async create(data: TInsert): Promise<T> {
     const results = await this.db
       .insert(this.table)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .values(data as any)
       .returning();
     
     return results[0] as T;
+  }
+
+  /**
+   * Bulk create entities (much faster than individual creates)
+   */
+  async createMany(dataArray: TInsert[]): Promise<T[]> {
+    if (dataArray.length === 0) return [];
+    
+    const results = await this.db
+      .insert(this.table)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .values(dataArray as any)
+      .returning();
+    
+    return results as T[];
   }
 
   /**
@@ -57,8 +75,10 @@ export abstract class BaseRepository<T, TInsert> {
   async update(id: string, updates: Partial<TInsert>): Promise<T | undefined> {
     const results = await this.db
       .update(this.table)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .set(updates as any)
-      .where(eq(this.table.id, id))
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      .where(eq((this.table as any).id, id))
       .returning();
     
     return results[0] as T | undefined;
@@ -70,13 +90,14 @@ export abstract class BaseRepository<T, TInsert> {
   async delete(id: string): Promise<void> {
     await this.db
       .delete(this.table)
-      .where(eq(this.table.id, id));
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      .where(eq((this.table as any).id, id));
   }
 
   /**
    * Count entities with optional where clause
    */
-  async count(whereClause?: any): Promise<number> {
+  async count(whereClause?: SQL): Promise<number> {
     const baseQuery = this.db
       .select({ count: sql<number>`count(*)` })
       .from(this.table);
@@ -96,4 +117,3 @@ export abstract class BaseRepository<T, TInsert> {
     return result !== undefined;
   }
 }
-

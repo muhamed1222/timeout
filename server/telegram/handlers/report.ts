@@ -1,6 +1,6 @@
 import { Context } from 'telegraf';
 import { SessionData } from '../types.js';
-import { storage } from '../../storage.js';
+import { repositories } from '../../repositories/index.js';
 import { logger } from '../../lib/logger.js';
 
 export async function handleReport(ctx: Context & { session: SessionData }, shiftId?: string) {
@@ -10,7 +10,7 @@ export async function handleReport(ctx: Context & { session: SessionData }, shif
     return ctx.reply('❌ Ошибка: смена для отчёта не найдена');
   }
 
-  const text = (ctx as any)?.message?.text as string | undefined;
+  const text = ctx.message && 'text' in ctx.message ? ctx.message.text : undefined;
   
   if (!text || text.trim().length < 10) {
     return ctx.reply(`
@@ -28,7 +28,7 @@ export async function handleReport(ctx: Context & { session: SessionData }, shif
 
   try {
     // Создаем отчёт
-    await storage.createDailyReport({
+    await repositories.shift.createDailyReport({
       shift_id: reportShiftId,
       done_items: [text.trim()],
       submitted_at: new Date()

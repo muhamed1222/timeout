@@ -5,10 +5,11 @@ import { handleShiftActions } from './handlers/shiftActions.js';
 import { handleAbsence } from './handlers/absence.js';
 import { handleReport } from './handlers/report.js';
 import { sendShiftReminder } from './handlers/reminders.js';
-import { storage } from '../storage.js';
+import { repositories } from '../repositories/index.js';
 import { logger } from '../lib/logger.js';
+import { getSecret } from '../lib/secrets.js';
 
-const bot = new Telegraf<Context & { session: SessionData }>(process.env.TELEGRAM_BOT_TOKEN!);
+const bot = new Telegraf<Context & { session: SessionData }>(getSecret('TELEGRAM_BOT_TOKEN'));
 
 // Настройка сессий
 bot.use(session({
@@ -36,7 +37,7 @@ bot.use(async (ctx, next) => {
   // Если сессия пустая, попробуем найти сотрудника по Telegram ID
   if (!ctx.session?.employeeId) {
     try {
-      const employee = await storage.getEmployeeByTelegramId(telegramId);
+      const employee = await repositories.employee.findByTelegramId(telegramId);
       if (employee) {
         logger.info("Auto-restoring session for employee", { employeeId: employee.id });
         ctx.session = {
@@ -80,7 +81,7 @@ bot.command('status', async (ctx) => {
   if (!telegramId) return;
 
   try {
-    const employee = await storage.getEmployeeByTelegramId(telegramId);
+    const employee = await repositories.employee.findByTelegramId(telegramId);
     if (!employee) {
       return ctx.reply('❌ Вы не зарегистрированы в системе. Обратитесь к администратору.');
     }
@@ -88,7 +89,7 @@ bot.command('status', async (ctx) => {
     // Получаем текущую смену
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const shifts = await storage.getShiftsByEmployee(employee.id);
+    const shifts = await repositories.shift.findByEmployeeId(employee.id);
     const todayShift = shifts.find(s => {
       const shiftDate = new Date(s.planned_start_at);
       shiftDate.setHours(0, 0, 0, 0);
@@ -100,8 +101,8 @@ bot.command('status', async (ctx) => {
     }
 
     // Получаем интервалы работы и перерывов
-    const workIntervals = await storage.getWorkIntervalsByShift(todayShift.id);
-    const breakIntervals = await storage.getBreakIntervalsByShift(todayShift.id);
+    const workIntervals = await repositories.shift.findWorkIntervalsByShiftId(todayShift.id);
+    const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(todayShift.id);
 
     const activeWork = workIntervals.find(wi => !wi.end_at);
     const activeBreak = breakIntervals.find(bi => !bi.end_at);
@@ -133,9 +134,9 @@ ${activeBreak ? `🍽 Перерыв с: ${new Date(activeBreak.start_at).toLoca
 });
 
 // Обработчики callback-кнопок
-bot.action(/^(start_shift|start_break|end_break|end_shift|report_shift)$/, (ctx) => handleShiftActions(ctx as any));
-bot.action(/^absence_(.+)$/, (ctx) => handleAbsence(ctx as any));
-bot.action(/^report_(.+)$/, (ctx) => handleReport(ctx as any));
+bot.action(/^(start_shift|start_break|end_break|end_shift|report_shift)$/, (ctx) => handleShiftActions(ctx));
+bot.action(/^absence_(.+)$/, (ctx) => handleAbsence(ctx));
+bot.action(/^report_(.+)$/, (ctx) => handleReport(ctx));
 
 // Обработчик текстовых сообщений (для отчётов)
 bot.on('text', async (ctx) => {

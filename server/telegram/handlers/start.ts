@@ -1,6 +1,6 @@
 import { Context } from 'telegraf';
 import { SessionData } from '../types.js';
-import { storage } from '../../storage.js';
+import { repositories } from '../../repositories/index.js';
 import { logger } from '../../lib/logger.js';
 
 export async function handleStart(ctx: Context & { session: SessionData }) {
@@ -44,7 +44,7 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
   try {
     logger.info('Processing invite code', { code: startParam });
     // Проверяем инвайт-код
-    const invite = await storage.getEmployeeInviteByCode(startParam);
+    const invite = await repositories.invite.findByCode(startParam);
     
     if (!invite) {
       logger.warn('Invite not found', { code: startParam });
@@ -59,7 +59,7 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
     // Сначала проверяем, есть ли уже сотрудник с этим Telegram ID
     const currentTelegramId = ctx.from.id.toString();
     logger.info('Checking for existing employee with Telegram ID', { telegramId: currentTelegramId });
-    let existingEmployee = await storage.getEmployeeByTelegramId(currentTelegramId);
+    let existingEmployee = await repositories.employee.findByTelegramId(currentTelegramId);
     logger.info('Found existing employee', existingEmployee ? {
       id: existingEmployee.id,
       company_id: existingEmployee.company_id,
@@ -73,7 +73,7 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
       const needsCompanyTransfer = existingEmployee.company_id !== invite.company_id;
       logger.info('Company transfer needed', { needsTransfer: needsCompanyTransfer, fromCompany: existingEmployee.company_id, toCompany: invite.company_id });
       
-      const updated = await storage.updateEmployee(existingEmployee.id, {
+      const updated = await repositories.employee.update(existingEmployee.id, {
         company_id: invite.company_id,
         full_name: invite.full_name || existingEmployee.full_name,
         position: invite.position || existingEmployee.position,
@@ -88,7 +88,7 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
 
       // Помечаем инвайт как использованный
       logger.info('Marking invite as used', { inviteCode: invite.code, employeeId: existingEmployee.id });
-      await storage.useEmployeeInvite(invite.code, existingEmployee.id);
+      await repositories.invite.useInvite(invite.code, existingEmployee.id);
       logger.info('Invite marked as used successfully');
 
       // Сохраняем в сессию и продолжаем стандартный флоу
@@ -96,7 +96,7 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
       ctx.session.employeeId = (updated || existingEmployee).id;
       ctx.session.companyId = invite.company_id;
 
-      const company = await storage.getCompany(invite.company_id);
+      const company = await repositories.company.findById(invite.company_id);
       await ctx.reply(`
 🎉 *Добро пожаловать!*
 
@@ -137,11 +137,11 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
 
     logger.info('Creating/updating employee for Telegram ID', { telegramId: ctx.from.id });
     // Создаем или обновляем сотрудника
-    let employee = await storage.getEmployeeByTelegramId(ctx.from.id.toString());
+    let employee = await repositories.employee.findByTelegramId(ctx.from.id.toString());
     
     if (!employee) {
       // Создаем нового сотрудника
-      employee = await storage.createEmployee({
+      employee = await repositories.employee.create({
         company_id: invite.company_id,
         full_name: invite.full_name || 'Сотрудник',
         position: invite.position,
@@ -152,7 +152,7 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
     } else {
       // Перенос сотрудника в компанию из инвайта, если отличается
       const needsCompanyTransfer = employee.company_id !== invite.company_id;
-      const updated = await storage.updateEmployee(employee.id, {
+      const updated = await repositories.employee.update(employee.id, {
         company_id: needsCompanyTransfer ? invite.company_id : employee.company_id,
         full_name: invite.full_name || employee.full_name,
         position: invite.position || employee.position,
@@ -167,7 +167,7 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
     }
 
     // Отмечаем инвайт как использованный
-    await storage.useEmployeeInvite(startParam, employee!.id);
+    await repositories.invite.useInvite(startParam, employee!.id);
     logger.info('Marked invite as used', { code: startParam });
 
     // Сохраняем данные в сессию
@@ -178,7 +178,7 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
     ctx.session.companyId = employee!.company_id;
 
     // Получаем информацию о компании
-    const company = await storage.getCompany(employee!.company_id);
+    const company = await repositories.company.findById(employee!.company_id);
 
     logger.info('Sending welcome message to user', { userId: ctx.from.id });
     await ctx.reply(`
@@ -229,7 +229,7 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
     // Получаем текущую смену
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const shifts = await storage.getShiftsByEmployee(employeeId);
+    const shifts = await repositories.shift.findByEmployeeId(employeeId);
     const todayShift = shifts.find(s => {
       const shiftDate = new Date(s.planned_start_at);
       shiftDate.setHours(0, 0, 0, 0);
@@ -245,13 +245,13 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
     }
 
     // Определяем доступные действия в зависимости от статуса смены
-    const workIntervals = await storage.getWorkIntervalsByShift(todayShift.id);
-    const breakIntervals = await storage.getBreakIntervalsByShift(todayShift.id);
+    const workIntervals = await repositories.shift.findWorkIntervalsByShiftId(todayShift.id);
+    const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(todayShift.id);
     
     const activeWork = workIntervals.find(wi => !wi.end_at);
     const activeBreak = breakIntervals.find(bi => !bi.end_at);
 
-    let keyboard: any[] = [];
+    let keyboard: InlineKeyboard = [];
 
     if (todayShift.status === 'planned') {
       keyboard = [

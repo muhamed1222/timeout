@@ -11,13 +11,8 @@ import { logger } from '../lib/logger.js';
 import { isProduction } from '../lib/secrets.js';
 
 // Extend Express Request to include user/employee
-declare global {
-  namespace Express {
-    interface Request {
-      employee?: { id: string; telegram_user_id?: string };
-    }
-  }
-}
+// Note: Employee type is already defined in middleware/auth.ts
+// This declaration just ensures it's available here too
 
 interface RateLimitConfig {
   windowMs: number;        // Time window in milliseconds
@@ -95,12 +90,13 @@ class RedisStore {
   }
 
   private async connect(): Promise<void> {
-    if (!isProduction() || !process.env.REDIS_URL) {
+    const redisUrl = getSecret('REDIS_URL');
+    if (!isProduction() || !redisUrl) {
       return;
     }
 
     try {
-      this.client = createClient({ url: process.env.REDIS_URL });
+      this.client = createClient({ url: redisUrl });
       await this.client.connect();
       logger.info('Redis rate limiter connected');
     } catch (error) {

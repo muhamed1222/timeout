@@ -14,6 +14,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useOptimisticCreateInvite } from "@/hooks/useOptimisticMutations";
 import { Loader2, QrCode, Copy, Check } from "lucide-react";
 
 interface AddEmployeeModalProps {
@@ -42,6 +43,8 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
   const { companyId } = useAuth();
   const queryClient = useQueryClient();
 
+  const createInviteMutation = useOptimisticCreateInvite();
+  
   const createEmployeeMutation = useMutation({
     mutationFn: async (data: { full_name: string; position: string }) => {
       // Создаем только инвайт для сотрудника
@@ -218,11 +221,19 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
                   variant="outline" 
                   onClick={handleCopyLink}
                   disabled={copied}
+                  aria-label={copied ? "Ссылка скопирована" : "Копировать ссылку"}
+                  aria-pressed={copied}
                 >
                   {copied ? (
-                    <Check className="h-4 w-4" />
+                    <>
+                      <Check className="h-4 w-4" aria-hidden="true" />
+                      <span className="sr-only">Скопировано</span>
+                    </>
                   ) : (
-                    <Copy className="h-4 w-4" />
+                    <>
+                      <Copy className="h-4 w-4" aria-hidden="true" />
+                      <span className="sr-only">Копировать</span>
+                    </>
                   )}
                 </Button>
               </div>

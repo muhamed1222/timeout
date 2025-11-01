@@ -1,4 +1,5 @@
 import { logger } from '../lib/logger.js';
+import { getSecret, isProduction } from '../lib/secrets.js';
 
 interface TelegramMessageOptions {
   reply_markup?: {
@@ -45,7 +46,7 @@ export class TelegramBotService {
         }),
       });
 
-      const data: TelegramApiResponse = await response.json();
+      const data = await response.json() as TelegramApiResponse;
 
       if (!data.ok) {
         logger.error('Telegram API error', undefined, { description: data.description, errorCode: data.error_code });
@@ -69,7 +70,7 @@ export class TelegramBotService {
         body: JSON.stringify({ url }),
       });
 
-      const data: TelegramApiResponse = await response.json();
+      const data = await response.json() as TelegramApiResponse;
       return data.ok;
     } catch (error) {
       logger.error('Error setting webhook', error);
@@ -80,7 +81,7 @@ export class TelegramBotService {
   async getWebhookInfo(): Promise<any> {
     try {
       const response = await fetch(`${this.baseUrl}/getWebhookInfo`);
-      const data: TelegramApiResponse = await response.json();
+      const data = await response.json() as TelegramApiResponse;
       return data.result;
     } catch (error) {
       logger.error('Error getting webhook info', error);
@@ -93,10 +94,10 @@ export class TelegramBotService {
 let botService: TelegramBotService | null = null;
 
 export function getTelegramBotService(): TelegramBotService | null {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const botToken = getSecret('TELEGRAM_BOT_TOKEN');
   
   if (!botToken) {
-    if (process.env.NODE_ENV === 'production') {
+    if (isProduction()) {
       logger.error('TELEGRAM_BOT_TOKEN is not set in production!');
     }
     return null;

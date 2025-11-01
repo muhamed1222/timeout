@@ -136,15 +136,44 @@ echo -e "${GREEN}✅ Metadata created${NC}\n"
 # Apply retention policy
 echo -e "${BLUE}🗑️  Applying retention policy...${NC}"
 
-# Remove daily backups older than 7 days
-find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime +${DAILY_RETENTION} -delete
-echo "• Removed daily backups older than ${DAILY_RETENTION} days"
+# Get current date info
+CURRENT_DAY=$(date +%d)
+CURRENT_DOW=$(date +%u)  # 1=Monday, 7=Sunday
 
-# Keep one weekly backup (Sundays)
-# TODO: Implement weekly retention logic
+# Remove daily backups older than retention period
+# But keep weekly backups (Sundays) and monthly backups (1st of month)
+find "$BACKUP_DIR" -name "*.sql.gz" -type f | while read -r backup_file; do
+  FILE_DATE=$(stat -f "%Sm" -t "%Y-%m-%d" "$backup_file" 2>/dev/null || stat -c "%y" "$backup_file" | cut -d' ' -f1)
+  FILE_DAY=$(echo "$FILE_DATE" | cut -d'-' -f3 | sed 's/^0//')
+  FILE_DOW=$(date -j -f "%Y-%m-%d" "$FILE_DATE" +%u 2>/dev/null || date -d "$FILE_DATE" +%u)
+  
+  # Calculate days since backup
+  DAYS_OLD=$(( ($(date +%s) - $(date -j -f "%Y-%m-%d" "$FILE_DATE" +%s 2>/dev/null || date -d "$FILE_DATE" +%s)) / 86400 ))
+  
+  # Keep monthly backups (1st of month) for MONTHLY_RETENTION days
+  if [ "$FILE_DAY" = "1" ] && [ "$DAYS_OLD" -le "$MONTHLY_RETENTION" ]; then
+    continue
+  fi
+  
+  # Keep weekly backups (Sundays) for WEEKLY_RETENTION days
+  if [ "$FILE_DOW" = "7" ] && [ "$DAYS_OLD" -le "$WEEKLY_RETENTION" ]; then
+    continue
+  fi
+  
+  # Remove daily backups older than DAILY_RETENTION days
+  if [ "$DAYS_OLD" -gt "$DAILY_RETENTION" ]; then
+    rm -f "$backup_file" "$backup_file.sha256" "$backup_file.meta" 2>/dev/null || true
+  fi
+done
 
-# Keep one monthly backup (1st of month)
-# TODO: Implement monthly retention logic
+# Count remaining backups
+DAILY_COUNT=$(find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime -${DAILY_RETENTION} | wc -l | tr -d ' ')
+WEEKLY_COUNT=$(find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime +${DAILY_RETENTION} -mtime -${WEEKLY_RETENTION} | wc -l | tr -d ' ')
+MONTHLY_COUNT=$(find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime +${WEEKLY_RETENTION} | wc -l | tr -d ' ')
+
+echo "• Daily backups (last ${DAILY_RETENTION} days): ${DAILY_COUNT}"
+echo "• Weekly backups (${DAILY_RETENTION}-${WEEKLY_RETENTION} days): ${WEEKLY_COUNT}"
+echo "• Monthly backups (${WEEKLY_RETENTION}-${MONTHLY_RETENTION} days): ${MONTHLY_COUNT}"
 
 BACKUP_COUNT=$(find "$BACKUP_DIR" -name "*.sql.gz" -type f | wc -l)
 echo -e "${GREEN}✅ ${BACKUP_COUNT} backups in ${BACKUP_DIR}${NC}\n"
@@ -218,6 +247,7 @@ if [ "$2" == "--test" ]; then
 fi
 
 echo -e "${GREEN}✅ Done!${NC}"
+
 
 
 

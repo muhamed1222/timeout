@@ -1,6 +1,7 @@
-import { storage } from "../storage.js";
+import { repositories } from "../repositories/index.js";
 import { type InsertException, type Shift, type Employee } from "../../shared/schema.js";
 import { logger } from "../lib/logger.js";
+import { violationsCounter, monitoringRunsCounter, monitoringDuration } from "../lib/metrics.js";
 
 export interface ShiftViolation {
   type: 'late_start' | 'early_end' | 'missed_shift' | 'long_break' | 'no_break_end';
@@ -29,7 +30,7 @@ export class ShiftMonitor {
     
     try {
       // Get active shifts for the company
-      const activeShifts = await storage.getActiveShiftsByCompany(companyId);
+      const activeShifts = await repositories.shift.findActiveByCompanyId(companyId);
       
       for (const shiftWithEmployee of activeShifts) {
         const shiftViolations = await this.checkSingleShift(shiftWithEmployee);
@@ -49,8 +50,8 @@ export class ShiftMonitor {
     const now = new Date();
 
     // Get work intervals and breaks for this shift
-    const workIntervals = await storage.getWorkIntervalsByShift(shift.id);
-    const breakIntervals = await storage.getBreakIntervalsByShift(shift.id);
+    const workIntervals = await repositories.shift.findWorkIntervalsByShiftId(shift.id);
+    const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(shift.id);
 
     // Check for late start or missed shift
     const plannedStart = new Date(shift.planned_start_at);
@@ -172,14 +173,14 @@ export class ShiftMonitor {
     for (const violation of violations) {
       try {
         // Get employee to access company_id
-        const employee = await storage.getEmployee(violation.employeeId);
+        const employee = await repositories.employee.findById(violation.employeeId);
         if (!employee) {
           logger.error("Employee not found", { employeeId: violation.employeeId });
           continue;
         }
 
         // Check if exception already exists for this violation
-        const existingExceptions = await storage.getExceptionsByCompany(employee.company_id);
+        const existingExceptions = await repositories.exception.findByCompanyId(employee.company_id);
         
         const alreadyExists = existingExceptions.some(ex => 
           ex.employee_id === violation.employeeId &&
@@ -194,7 +195,7 @@ export class ShiftMonitor {
           
           try {
             // Get violation rules for company
-            const rules = await storage.getViolationRulesByCompany(employee.company_id);
+            const rules = await repositories.violation.findByCompanyId(employee.company_id);
             
             // Map violation type to rule code
             const ruleCodeMap: Record<string, string> = {
@@ -219,7 +220,7 @@ export class ShiftMonitor {
             }
 
             // Create violation record
-            const createdViolation = await storage.createViolation({
+            const createdViolation = await repositories.violation.createViolation({
               employee_id: violation.employeeId,
               company_id: employee.company_id,
               rule_id: rule.id,
@@ -229,6 +230,13 @@ export class ShiftMonitor {
             } as any);
 
             violationId = createdViolation.id;
+            
+            // Track violation in Prometheus metrics
+            violationsCounter.labels(
+              violation.type,
+              String(rule.penalty_percent || 0),
+              'auto'
+            ).inc();
             logger.info("Created violation", { 
               violationType: violation.type, 
               employeeId: violation.employeeId,
@@ -240,10 +248,12 @@ export class ShiftMonitor {
             const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
             const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             
-            await storage.updateEmployeeRatingFromViolations(
+            await repositories.rating.updateFromViolations(
               violation.employeeId,
               periodStart,
-              periodEnd
+              periodEnd,
+              repositories.violation,
+              repositories.employee
             );
 
             logger.info("Updated rating for employee", { employeeId: violation.employeeId });
@@ -253,7 +263,7 @@ export class ShiftMonitor {
           }
 
           // Create exception with link to violation
-          const exception: InsertException = {
+          const exception: any = {
             employee_id: violation.employeeId,
             date: violation.shiftDate,
             kind: violation.type,
@@ -266,7 +276,7 @@ export class ShiftMonitor {
             violation_id: violationId
           };
 
-          await storage.createException(exception);
+          await repositories.exception.create(exception);
           logger.info("Created exception", { 
             violationType: violation.type, 
             employeeId: violation.employeeId,
@@ -284,13 +294,14 @@ export class ShiftMonitor {
     violationsFound: number;
     exceptionsCreated: number;
   }> {
+    const timer = monitoringDuration.startTimer();
     try {
       const violations = await this.checkShiftViolations(companyId);
-      const initialExceptions = await storage.getExceptionsByCompany(companyId);
+      const initialExceptions = await repositories.exception.findByCompanyId(companyId);
       
       await this.createExceptionsFromViolations(violations);
       
-      const finalExceptions = await storage.getExceptionsByCompany(companyId);
+      const finalExceptions = await repositories.exception.findByCompanyId(companyId);
       const exceptionsCreated = finalExceptions.length - initialExceptions.length;
 
       logger.info("Processed company shifts", { 
@@ -299,12 +310,21 @@ export class ShiftMonitor {
         exceptionsCreated 
       });
       
+      // Track successful monitoring run
+      monitoringRunsCounter.labels('success').inc();
+      timer();
+      
       return {
         violationsFound: violations.length,
         exceptionsCreated
       };
     } catch (error) {
       logger.error("Failed to process shifts for company", { companyId, error });
+      
+      // Track failed monitoring run
+      monitoringRunsCounter.labels('error').inc();
+      timer();
+      
       return { violationsFound: 0, exceptionsCreated: 0 };
     }
   }
@@ -327,7 +347,7 @@ export class ShiftMonitor {
     try {
       logger.info("Starting global shift monitoring");
       
-      const companies = await storage.getAllCompanies();
+      const companies = await repositories.company.findAll();
       let totalViolations = 0;
       let totalExceptions = 0;
       

@@ -1,27 +1,36 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { storage } from '../../storage';
+import { repositories } from '../../repositories/index';
 import type { Employee, Shift, EmployeeInvite } from '../../../shared/schema';
 
-// Mock storage
-vi.mock('../../storage', () => ({
-  storage: {
-    getEmployeeInviteByCode: vi.fn(),
-    updateEmployee: vi.fn(),
-    updateEmployeeInvite: vi.fn(),
-    getEmployeeByTelegramId: vi.fn(),
-    getShiftsByEmployee: vi.fn(),
-    getShift: vi.fn(),
-    createWorkInterval: vi.fn(),
-    updateShift: vi.fn(),
-    getWorkIntervalsByShift: vi.fn(),
-    getBreakIntervalsByShift: vi.fn(),
-    updateWorkInterval: vi.fn(),
-    updateBreakInterval: vi.fn(),
-    createBreakInterval: vi.fn(),
-    createDailyReport: vi.fn(),
-    createException: vi.fn(),
-    getEmployee: vi.fn(),
-    getEmployeesByCompany: vi.fn(),
+// Mock repositories
+vi.mock('../../repositories/index', () => ({
+  repositories: {
+    invite: {
+      findByCode: vi.fn(),
+      updateByCode: vi.fn(),
+    },
+    employee: {
+      update: vi.fn(),
+      findByTelegramId: vi.fn(),
+      findByEmployeeId: vi.fn(),
+      findByCompanyId: vi.fn(),
+      findById: vi.fn(),
+    },
+    shift: {
+      findByEmployeeId: vi.fn(),
+      findById: vi.fn(),
+      createWorkInterval: vi.fn(),
+      update: vi.fn(),
+      findWorkIntervalsByShiftId: vi.fn(),
+      findBreakIntervalsByShiftId: vi.fn(),
+      updateWorkInterval: vi.fn(),
+      updateBreakInterval: vi.fn(),
+      createBreakInterval: vi.fn(),
+      createDailyReport: vi.fn(),
+    },
+    exception: {
+      create: vi.fn(),
+    },
   },
 }));
 
@@ -145,8 +154,8 @@ describe('Bot API Routes', () => {
     };
 
     it('should link employee to Telegram successfully', async () => {
-      vi.mocked(storage.getEmployeeInviteByCode).mockResolvedValue(mockInvite);
-      vi.mocked(storage.updateEmployee).mockResolvedValue(mockEmployee);
+      vi.mocked(repositories.invite.findByCode).mockResolvedValue(mockInvite);
+      vi.mocked(repositories.employee.update).mockResolvedValue(mockEmployee);
 
       mockRequest.params = { code: 'TEST123' };
       mockRequest.body = {
@@ -157,8 +166,8 @@ describe('Bot API Routes', () => {
       // Simulate route handler execution
       // In actual implementation, you would extract the route handler and call it
       
-      expect(storage.getEmployeeInviteByCode).toHaveBeenCalledWith('TEST123');
-      expect(storage.updateEmployee).toHaveBeenCalledWith(
+      expect(repositories.invite.findByCode).toHaveBeenCalledWith('TEST123');
+      expect(repositories.employee.update).toHaveBeenCalledWith(
         'emp-1',
         expect.objectContaining({
           telegram_user_id: '123456789',
@@ -175,7 +184,7 @@ describe('Bot API Routes', () => {
     });
 
     it('should return 404 if invite not found', async () => {
-      vi.mocked(storage.getEmployeeInviteByCode).mockResolvedValue(null);
+      vi.mocked(repositories.invite.findByCode).mockResolvedValue(null);
 
       mockRequest.params = { code: 'INVALID' };
       mockRequest.body = { telegram_id: '123456789' };
@@ -189,7 +198,7 @@ describe('Bot API Routes', () => {
         used_at: new Date(),
       };
 
-      vi.mocked(storage.getEmployeeInviteByCode).mockResolvedValue(usedInvite);
+      vi.mocked(repositories.invite.findByCode).mockResolvedValue(usedInvite);
 
       mockRequest.params = { code: 'TEST123' };
       mockRequest.body = { telegram_id: '123456789' };
@@ -211,15 +220,15 @@ describe('Bot API Routes', () => {
         created_at: new Date(),
       };
 
-      vi.mocked(storage.getEmployeeByTelegramId).mockResolvedValue(mockEmployee);
+      vi.mocked(repositories.employee.findByTelegramId).mockResolvedValue(mockEmployee);
 
       mockRequest.params = { telegramId: '123456789' };
 
-      expect(storage.getEmployeeByTelegramId).toBeDefined();
+      expect(repositories.employee.findByTelegramId).toBeDefined();
     });
 
     it('should return 404 if employee not found', async () => {
-      vi.mocked(storage.getEmployeeByTelegramId).mockResolvedValue(null);
+      vi.mocked(repositories.employee.findByTelegramId).mockResolvedValue(null);
 
       mockRequest.params = { telegramId: '999999999' };
 
@@ -240,15 +249,15 @@ describe('Bot API Routes', () => {
     };
 
     it('should start shift successfully', async () => {
-      vi.mocked(storage.getShift).mockResolvedValue(mockShift);
-      vi.mocked(storage.createWorkInterval).mockResolvedValue({
+      vi.mocked(repositories.shift.findById).mockResolvedValue(mockShift);
+      vi.mocked(repositories.shift.createWorkInterval).mockResolvedValue({
         id: 'wi-1',
         shift_id: 'shift-1',
         start_at: new Date(),
         end_at: null,
         source: 'bot',
       });
-      vi.mocked(storage.updateShift).mockResolvedValue({
+      vi.mocked(repositories.shift.update).mockResolvedValue({
         ...mockShift,
         status: 'active',
         actual_start_at: new Date(),
@@ -256,13 +265,13 @@ describe('Bot API Routes', () => {
 
       mockRequest.params = { id: 'shift-1' };
 
-      expect(storage.getShift).toBeDefined();
-      expect(storage.createWorkInterval).toBeDefined();
-      expect(storage.updateShift).toBeDefined();
+      expect(repositories.shift.findById).toBeDefined();
+      expect(repositories.shift.createWorkInterval).toBeDefined();
+      expect(repositories.shift.update).toBeDefined();
     });
 
     it('should return 404 if shift not found', async () => {
-      vi.mocked(storage.getShift).mockResolvedValue(null);
+      vi.mocked(repositories.shift.findById).mockResolvedValue(null);
 
       mockRequest.params = { id: 'invalid-shift' };
 
@@ -275,7 +284,7 @@ describe('Bot API Routes', () => {
         status: 'active',
       };
 
-      vi.mocked(storage.getShift).mockResolvedValue(activeShift);
+      vi.mocked(repositories.shift.findById).mockResolvedValue(activeShift);
 
       mockRequest.params = { id: 'shift-1' };
 
@@ -296,8 +305,8 @@ describe('Bot API Routes', () => {
     };
 
     it('should end shift successfully', async () => {
-      vi.mocked(storage.getShift).mockResolvedValue(mockShift);
-      vi.mocked(storage.getWorkIntervalsByShift).mockResolvedValue([
+      vi.mocked(repositories.shift.findById).mockResolvedValue(mockShift);
+      vi.mocked(repositories.shift.findWorkIntervalsByShiftId).mockResolvedValue([
         {
           id: 'wi-1',
           shift_id: 'shift-1',
@@ -306,15 +315,15 @@ describe('Bot API Routes', () => {
           source: 'bot',
         },
       ]);
-      vi.mocked(storage.getBreakIntervalsByShift).mockResolvedValue([]);
-      vi.mocked(storage.updateWorkInterval).mockResolvedValue({
+      vi.mocked(repositories.shift.findBreakIntervalsByShiftId).mockResolvedValue([]);
+      vi.mocked(repositories.shift.updateWorkInterval).mockResolvedValue({
         id: 'wi-1',
         shift_id: 'shift-1',
         start_at: new Date('2025-10-29T09:00:00'),
         end_at: new Date(),
         source: 'bot',
       });
-      vi.mocked(storage.updateShift).mockResolvedValue({
+      vi.mocked(repositories.shift.update).mockResolvedValue({
         ...mockShift,
         status: 'completed',
         actual_end_at: new Date(),
@@ -322,7 +331,7 @@ describe('Bot API Routes', () => {
 
       mockRequest.params = { id: 'shift-1' };
 
-      expect(storage.getShift).toBeDefined();
+      expect(repositories.shift.findById).toBeDefined();
     });
 
     it('should return 400 if shift is not active', async () => {
@@ -332,7 +341,7 @@ describe('Bot API Routes', () => {
         actual_end_at: new Date(),
       };
 
-      vi.mocked(storage.getShift).mockResolvedValue(completedShift);
+      vi.mocked(repositories.shift.findById).mockResolvedValue(completedShift);
 
       mockRequest.params = { id: 'shift-1' };
 
@@ -340,9 +349,9 @@ describe('Bot API Routes', () => {
     });
 
     it('should close active break when ending shift', async () => {
-      vi.mocked(storage.getShift).mockResolvedValue(mockShift);
-      vi.mocked(storage.getWorkIntervalsByShift).mockResolvedValue([]);
-      vi.mocked(storage.getBreakIntervalsByShift).mockResolvedValue([
+      vi.mocked(repositories.shift.findById).mockResolvedValue(mockShift);
+      vi.mocked(repositories.shift.findWorkIntervalsByShiftId).mockResolvedValue([]);
+      vi.mocked(repositories.shift.findBreakIntervalsByShiftId).mockResolvedValue([
         {
           id: 'bi-1',
           shift_id: 'shift-1',
@@ -352,7 +361,7 @@ describe('Bot API Routes', () => {
           source: 'bot',
         },
       ]);
-      vi.mocked(storage.updateBreakInterval).mockResolvedValue({
+      vi.mocked(repositories.shift.updateBreakInterval).mockResolvedValue({
         id: 'bi-1',
         shift_id: 'shift-1',
         start_at: new Date('2025-10-29T12:00:00'),
@@ -380,9 +389,9 @@ describe('Bot API Routes', () => {
         created_at: new Date(),
       };
 
-      vi.mocked(storage.getShift).mockResolvedValue(mockShift);
-      vi.mocked(storage.getBreakIntervalsByShift).mockResolvedValue([]);
-      vi.mocked(storage.createBreakInterval).mockResolvedValue({
+      vi.mocked(repositories.shift.findById).mockResolvedValue(mockShift);
+      vi.mocked(repositories.shift.findBreakIntervalsByShiftId).mockResolvedValue([]);
+      vi.mocked(repositories.shift.createBreakInterval).mockResolvedValue({
         id: 'bi-1',
         shift_id: 'shift-1',
         start_at: new Date(),
@@ -394,7 +403,7 @@ describe('Bot API Routes', () => {
       mockRequest.params = { id: 'shift-1' };
       mockRequest.body = { type: 'lunch' };
 
-      expect(storage.createBreakInterval).toBeDefined();
+      expect(repositories.shift.createBreakInterval).toBeDefined();
     });
 
     it('should return 400 if break already in progress', async () => {
@@ -409,8 +418,8 @@ describe('Bot API Routes', () => {
         created_at: new Date(),
       };
 
-      vi.mocked(storage.getShift).mockResolvedValue(mockShift);
-      vi.mocked(storage.getBreakIntervalsByShift).mockResolvedValue([
+      vi.mocked(repositories.shift.findById).mockResolvedValue(mockShift);
+      vi.mocked(repositories.shift.findBreakIntervalsByShiftId).mockResolvedValue([
         {
           id: 'bi-1',
           shift_id: 'shift-1',
@@ -441,8 +450,8 @@ describe('Bot API Routes', () => {
         created_at: new Date(),
       };
 
-      vi.mocked(storage.getShift).mockResolvedValue(mockShift);
-      vi.mocked(storage.createDailyReport).mockResolvedValue({
+      vi.mocked(repositories.shift.findById).mockResolvedValue(mockShift);
+      vi.mocked(repositories.shift.createDailyReport).mockResolvedValue({
         id: 'report-1',
         shift_id: 'shift-1',
         planned_items: null,
@@ -460,7 +469,7 @@ describe('Bot API Routes', () => {
         content: 'Task completed',
       };
 
-      expect(storage.createDailyReport).toBeDefined();
+      expect(repositories.shift.createDailyReport).toBeDefined();
     });
 
     it('should return 400 if required fields are missing', async () => {
@@ -486,7 +495,7 @@ describe('Bot API Routes', () => {
         created_at: new Date(),
       };
 
-      vi.mocked(storage.getEmployee).mockResolvedValue(mockEmployee);
+      vi.mocked(repositories.employee.findById).mockResolvedValue(mockEmployee);
 
       mockRequest.body = {
         employee_id: 'emp-1',
@@ -494,7 +503,7 @@ describe('Bot API Routes', () => {
         urgent: true,
       };
 
-      expect(storage.getEmployee).toBeDefined();
+      expect(repositories.employee.findById).toBeDefined();
     });
 
     it('should return 400 if employee has no Telegram linked', async () => {
@@ -509,7 +518,7 @@ describe('Bot API Routes', () => {
         created_at: new Date(),
       };
 
-      vi.mocked(storage.getEmployee).mockResolvedValue(mockEmployee);
+      vi.mocked(repositories.employee.findById).mockResolvedValue(mockEmployee);
 
       mockRequest.body = {
         employee_id: 'emp-1',
@@ -555,7 +564,7 @@ describe('Bot API Routes', () => {
         },
       ];
 
-      vi.mocked(storage.getEmployeesByCompany).mockResolvedValue(mockEmployees);
+      vi.mocked(repositories.employee.findByIdsByCompany).mockResolvedValue(mockEmployees);
 
       mockRequest.body = {
         company_id: 'comp-1',
@@ -563,10 +572,11 @@ describe('Bot API Routes', () => {
       };
 
       // Should return 2 telegram_ids (emp-1 and emp-2)
-      expect(storage.getEmployeesByCompany).toBeDefined();
+      expect(repositories.employee.findByIdsByCompany).toBeDefined();
     });
   });
 });
+
 
 
 

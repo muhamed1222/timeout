@@ -1,9 +1,9 @@
-import { storage } from '../../storage.js';
+import { repositories } from '../../repositories/index.js';
 import { logger } from '../../lib/logger.js';
 
 export async function sendShiftReminder(employeeId: string, message: string) {
   try {
-    const employee = await storage.getEmployee(employeeId);
+    const employee = await repositories.employee.findById(employeeId);
     if (!employee?.telegram_user_id) {
       logger.debug('No telegram ID for employee', { employeeId });
       return;

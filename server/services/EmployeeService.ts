@@ -2,21 +2,27 @@
  * EmployeeService - Business logic for employee management
  */
 
-import { storage } from "../storage.js";
-import { cache } from "../lib/cache.js";
+import type { DIContainer } from "../lib/di/container.js";
+import { getContainer } from "../lib/di/container.js";
+import { invalidateCompanyStatsByEmployeeId } from "../lib/utils/cache.js";
 import { logger } from "../lib/logger.js";
 import type { InsertEmployee } from "../../shared/schema.js";
 
 export class EmployeeService {
+  constructor(private readonly container: DIContainer) {}
+
+  private get repositories() {
+    return this.container.repositories;
+  }
   /**
    * Create a new employee
    */
   async createEmployee(data: InsertEmployee) {
     try {
-      const employee = await storage.createEmployee(data);
+      const employee = await this.repositories.employee.create(data);
       
       // Invalidate company stats cache
-      cache.delete(`company:${employee.company_id}:stats`);
+      await invalidateCompanyStatsByEmployeeId(employee.id);
       
       logger.info("Employee created", { 
         employeeId: employee.id, 
@@ -36,7 +42,7 @@ export class EmployeeService {
    */
   async getEmployee(employeeId: string) {
     try {
-      const employee = await storage.getEmployee(employeeId);
+      const employee = await this.repositories.employee.findById(employeeId);
       
       if (!employee) {
         logger.warn("Employee not found", { employeeId });
@@ -55,7 +61,7 @@ export class EmployeeService {
    */
   async getEmployeeByTelegramId(telegramId: string) {
     try {
-      const employee = await storage.getEmployeeByTelegramId(telegramId);
+      const employee = await this.repositories.employee.findByTelegramId(telegramId);
       
       if (!employee) {
         logger.warn("Employee not found by Telegram ID", { telegramId });
@@ -74,11 +80,11 @@ export class EmployeeService {
    */
   async updateEmployee(employeeId: string, data: Partial<InsertEmployee>) {
     try {
-      const employee = await storage.updateEmployee(employeeId, data);
+      const employee = await this.repositories.employee.update(employeeId, data);
       
       // Invalidate company stats cache if employee changed
       if (employee) {
-        cache.delete(`company:${employee.company_id}:stats`);
+        await invalidateCompanyStatsByEmployeeId(employee.id);
       }
       
       logger.info("Employee updated", { employeeId });
@@ -95,16 +101,16 @@ export class EmployeeService {
    */
   async deactivateEmployee(employeeId: string) {
     try {
-      const employee = await storage.getEmployee(employeeId);
+      const employee = await this.repositories.employee.findById(employeeId);
       
       if (!employee) {
         throw new Error("Employee not found");
       }
       
-      await storage.updateEmployee(employeeId, { status: 'inactive' });
+      await this.repositories.employee.update(employeeId, { status: 'inactive' } as any);
       
       // Invalidate company stats cache
-      cache.delete(`company:${employee.company_id}:stats`);
+      await invalidateCompanyStatsByEmployeeId(employee.id);
       
       logger.info("Employee deactivated", { employeeId, companyId: employee.company_id });
       
@@ -120,7 +126,7 @@ export class EmployeeService {
    */
   async getEmployeesByCompany(companyId: string) {
     try {
-      const employees = await storage.getEmployeesByCompany(companyId);
+      const employees = await this.repositories.employee.findByCompanyId(companyId);
       
       logger.debug("Employees fetched", { companyId, count: employees.length });
       
@@ -136,7 +142,7 @@ export class EmployeeService {
    */
   async linkTelegramAccount(employeeId: string, telegramUserId: string) {
     try {
-      const employee = await storage.updateEmployee(employeeId, {
+      const employee = await this.repositories.employee.update(employeeId, {
         telegram_user_id: telegramUserId
       });
       
@@ -157,7 +163,7 @@ export class EmployeeService {
    */
   async unlinkTelegramAccount(employeeId: string) {
     try {
-      const employee = await storage.updateEmployee(employeeId, {
+      const employee = await this.repositories.employee.update(employeeId, {
         telegram_user_id: null
       });
       
@@ -175,7 +181,7 @@ export class EmployeeService {
    */
   async getEmployeeShifts(employeeId: string) {
     try {
-      const shifts = await storage.getShiftsByEmployee(employeeId);
+      const shifts = await this.repositories.shift.findByEmployeeId(employeeId);
       
       logger.debug("Employee shifts fetched", { employeeId, count: shifts.length });
       
@@ -191,7 +197,7 @@ export class EmployeeService {
    */
   async getActiveShift(employeeId: string) {
     try {
-      const shifts = await storage.getShiftsByEmployee(employeeId);
+      const shifts = await this.repositories.shift.findByEmployeeId(employeeId);
       const now = new Date();
       
       const activeShift = shifts.find(shift => 
@@ -213,6 +219,6 @@ export class EmployeeService {
   }
 }
 
-// Singleton instance
-export const employeeService = new EmployeeService();
+// Singleton instance (backward compatibility)
+export const employeeService = new EmployeeService(getContainer());
 

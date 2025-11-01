@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { storage } from "../storage.js";
+import { repositories } from "../repositories/index.js";
 import { insertScheduleTemplateSchema } from "../../shared/schema.js";
 import { logger } from "../lib/logger.js";
 
@@ -10,7 +10,7 @@ const router = Router();
 router.post("/", async (req, res) => {
   try {
     const validatedData = insertScheduleTemplateSchema.parse(req.body);
-    const template = await storage.createScheduleTemplate(validatedData as any);
+    const template = await repositories.schedule.create(validatedData as any);
     res.json(template);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -25,7 +25,7 @@ router.post("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const template = await storage.getScheduleTemplate(id);
+    const template = await repositories.schedule.findById(id);
     if (!template) {
       return res.status(404).json({ error: "Schedule template not found" });
     }
@@ -41,7 +41,7 @@ router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updates = insertScheduleTemplateSchema.partial().parse(req.body);
-    const template = await storage.updateScheduleTemplate(id, updates as any);
+    const template = await repositories.schedule.update(id, updates as any);
     if (!template) {
       return res.status(404).json({ error: "Schedule template not found" });
     }
@@ -59,7 +59,7 @@ router.put("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    await storage.deleteScheduleTemplate(id);
+    await repositories.schedule.delete(id);
     res.json({ success: true });
   } catch (error) {
     logger.error("Error deleting schedule template", error);
@@ -74,7 +74,7 @@ router.post("/assign", async (req, res) => {
     if (!employee_id || !schedule_id || !valid_from) {
       return res.status(400).json({ error: "employee_id, schedule_id, and valid_from are required" });
     }
-    await storage.assignScheduleToEmployee(
+    await repositories.schedule.assignToEmployee(
       employee_id, 
       schedule_id, 
       new Date(valid_from),
@@ -91,7 +91,7 @@ router.post("/assign", async (req, res) => {
 router.get("/employee/:employeeId", async (req, res) => {
   try {
     const { employeeId } = req.params;
-    const schedules = await storage.getEmployeeSchedules(employeeId);
+    const schedules = await repositories.schedule.findEmployeeSchedules(employeeId);
     res.json(schedules);
   } catch (error) {
     logger.error("Error fetching employee schedules", error);
@@ -104,7 +104,7 @@ router.get("/employee/:employeeId/active", async (req, res) => {
   try {
     const { employeeId } = req.params;
     const date = req.query.date ? new Date(req.query.date as string) : new Date();
-    const schedule = await storage.getActiveEmployeeSchedule(employeeId, date);
+    const schedule = await repositories.schedule.findActiveEmployeeSchedule(employeeId, date);
     res.json(schedule || null);
   } catch (error) {
     logger.error("Error fetching active employee schedule", error);

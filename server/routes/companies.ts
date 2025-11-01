@@ -1,63 +1,39 @@
 import { Router } from "express";
-import { z } from "zod";
-import { storage } from "../storage.js";
-import { insertCompanySchema } from "../../shared/schema.js";
+import { repositories } from "../repositories/index.js";
 import { logger } from "../lib/logger.js";
-import { cache } from "../lib/cache.js";
+import { getOrSet } from "../lib/utils/cache.js";
 import { requireCompanyAccess } from "../middleware/auth.js";
+import { NotFoundError, asyncHandler } from "../lib/errorHandler.js";
+import { validateBody, validateParams } from "../middleware/validate.js";
+import { createCompanySchema, updateCompanySchema, companyIdParamSchema } from "../lib/schemas/index.js";
+import { invalidateCompanyStats } from "../lib/utils/index.js";
 
 const router = Router();
 
 // Create company
-router.post("/", async (req, res) => {
-  try {
-    const validatedData = insertCompanySchema.parse(req.body);
-    const company = await storage.createCompany(validatedData as any);
-    // Invalidate cache
-    cache.delete(`company:${company.id}:stats`);
-    res.json(company);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation failed", details: error.errors });
-    }
-    logger.error("Error creating company", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+router.post("/", validateBody(createCompanySchema), asyncHandler(async (req, res) => {
+  const company = await repositories.company.create(req.body as any);
+  await invalidateCompanyStats(company.id);
+  res.json(company);
+}));
 
 // Get company by ID
-router.get("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const company = await storage.getCompany(id);
-    if (!company) {
-      return res.status(404).json({ error: "Company not found" });
-    }
-    res.json(company);
-  } catch (error) {
-    logger.error("Error fetching company", error);
-    res.status(500).json({ error: "Internal server error" });
+router.get("/:id", validateParams(companyIdParamSchema), asyncHandler(async (req, res) => {
+  const company = await repositories.company.findById(req.params.id);
+  if (!company) {
+    throw new NotFoundError("Company");
   }
-});
+  res.json(company);
+}));
 
 // Update company
-router.put("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updates = insertCompanySchema.partial().parse(req.body);
-    const company = await storage.updateCompany(id, updates as any);
-    if (!company) {
-      return res.status(404).json({ error: "Company not found" });
-    }
-    res.json(company);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation failed", details: error.errors });
-    }
-    logger.error("Error updating company", error);
-    res.status(500).json({ error: "Internal server error" });
+router.put("/:id", validateParams(companyIdParamSchema), validateBody(updateCompanySchema), asyncHandler(async (req, res) => {
+  const company = await repositories.company.update(req.params.id, req.body as any);
+  if (!company) {
+    throw new NotFoundError("Company");
   }
-});
+  res.json(company);
+}));
 
 // Get company statistics (with caching)
 router.get("/:companyId/stats", async (req, res) => {
@@ -65,42 +41,40 @@ router.get("/:companyId/stats", async (req, res) => {
     const { companyId } = req.params;
     const cacheKey = `company:${companyId}:stats`;
     
-    // Try to get from cache
-    const cached = cache.get(cacheKey);
-    if (cached) {
-      return res.json(cached);
-    }
-    
-    const employees = await storage.getEmployeesByCompany(companyId);
-    const activeShifts = await storage.getActiveShiftsByCompany(companyId);
-    const exceptions = await storage.getExceptionsByCompany(companyId);
-    const violations = await storage.getViolationsByCompany(companyId);
-    
-    const today = new Date().toISOString().split('T')[0];
-    const todayShifts = activeShifts.filter(shift => {
-      const start = new Date((shift as any).planned_start_at);
-      if (isNaN(start.getTime())) return false;
-      return start.toISOString().split('T')[0] === today;
-    });
-    
-    const completedShifts = todayShifts.filter(shift => shift.status === 'completed').length;
-    
-    const stats = {
-      totalEmployees: employees.length,
-      activeShifts: activeShifts.length,
-      completedShifts,
-      // Frontend ожидает поле exceptions, используем количество нарушений
-      exceptions: violations.length
-    };
-    
-    // Cache for 2 minutes
-    cache.set(cacheKey, stats, 120);
+    // Use cache utility with async cache
+    const stats = await getOrSet(
+      cacheKey,
+      async () => {
+        const employees = await repositories.employee.findByCompanyId(companyId);
+        const activeShifts = await repositories.shift.findActiveByCompanyId(companyId);
+        const exceptions = await repositories.exception.findByCompanyId(companyId);
+        const violations = await repositories.violation.findViolationsByCompany(companyId);
+        
+        const today = new Date().toISOString().split('T')[0];
+        const todayShifts = activeShifts.filter(shift => {
+          const start = new Date((shift as any).planned_start_at);
+          if (isNaN(start.getTime())) return false;
+          return start.toISOString().split('T')[0] === today;
+        });
+        
+        const completedShifts = todayShifts.filter(shift => shift.status === 'completed').length;
+        
+        return {
+          totalEmployees: employees.length,
+          activeShifts: activeShifts.length,
+          completedShifts,
+          // Frontend ожидает поле exceptions, используем количество нарушений
+          exceptions: violations.length
+        };
+      },
+      120 // Cache for 2 minutes
+    );
     
     res.json(stats);
   } catch (error) {
     logger.error("Error fetching company stats", error);
     // Soft fallback to keep UI functional even if storage fails
-    res.status(200).json({
+    res.json({
       totalEmployees: 0,
       activeShifts: 0,
       completedShifts: 0,
@@ -119,12 +93,12 @@ router.post("/:companyId/generate-shifts", async (req, res) => {
       return res.status(400).json({ error: "startDate and endDate are required" });
     }
 
-    const templates = await storage.getScheduleTemplatesByCompany(companyId);
+    const templates = await repositories.schedule.findByCompanyId(companyId);
     if (templates.length === 0) {
       return res.status(400).json({ error: "No schedule templates found for company" });
     }
 
-    const employees = await storage.getEmployeesByCompany(companyId);
+    const employees = await repositories.employee.findByCompanyId(companyId);
     const targetEmployees = employeeIds ? 
       employees.filter(emp => employeeIds.includes(emp.id)) : 
       employees;
@@ -132,10 +106,19 @@ router.post("/:companyId/generate-shifts", async (req, res) => {
     const createdShifts = [];
     
     // Optimization: Load all existing shifts at once to avoid N+1 queries
-    const employeeShiftsMap = new Map();
-    for (const employee of targetEmployees) {
-      const shifts = await storage.getShiftsByEmployee(employee.id);
-      employeeShiftsMap.set(employee.id, shifts);
+    const targetEmployeeIds = targetEmployees.map(emp => emp.id);
+    const allShifts = targetEmployeeIds.length > 0
+      ? await repositories.shift.findByEmployeeIds(targetEmployeeIds)
+      : [];
+    
+    // Group shifts by employee_id
+    const employeeShiftsMap = new Map<string, typeof allShifts>();
+    for (const shift of allShifts) {
+      const employeeId = (shift as any).employee_id;
+      if (!employeeShiftsMap.has(employeeId)) {
+        employeeShiftsMap.set(employeeId, []);
+      }
+      employeeShiftsMap.get(employeeId)!.push(shift);
     }
 
     // Prepare shifts to be created in batch
@@ -181,14 +164,14 @@ router.post("/:companyId/generate-shifts", async (req, res) => {
       }
     }
 
-    // Batch create shifts
-    for (const shiftData of shiftsToCreate) {
-      const shift = await storage.createShift(shiftData);
-      createdShifts.push(shift);
+    // Batch create shifts using bulk insert for better performance
+    if (shiftsToCreate.length > 0) {
+      const created = await repositories.shift.createMany(shiftsToCreate as any);
+      createdShifts.push(...created);
     }
     
     // Invalidate cache
-    cache.delete(`company:${companyId}:stats`);
+      await invalidateCompanyStats(companyId);
 
     res.json({ 
       message: `Created ${createdShifts.length} shifts`,
@@ -233,7 +216,7 @@ router.get("/:companyId/violations", async (req, res) => {
 router.get("/:companyId/exceptions", async (req, res) => {
   try {
     const { companyId } = req.params;
-    const exceptions = await storage.getExceptionsByCompany(companyId);
+    const exceptions = await repositories.exception.findByCompanyId(companyId);
     res.json(exceptions);
   } catch (error) {
     logger.error("Error fetching exceptions", error);
@@ -245,7 +228,7 @@ router.get("/:companyId/exceptions", async (req, res) => {
 router.post("/:companyId/exceptions/:exceptionId/resolve", async (req, res) => {
   try {
     const { exceptionId } = req.params;
-    const exception = await storage.resolveException(exceptionId);
+    const exception = await repositories.exception.resolve(exceptionId);
     if (!exception) {
       return res.status(404).json({ error: "Exception not found" });
     }
@@ -263,7 +246,7 @@ router.get("/:companyId/daily-reports", async (req, res) => {
   try {
     const { companyId } = req.params;
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
-    const reports = await storage.getDailyReportsByCompany(companyId, limit);
+    const reports = await repositories.shift.findDailyReportsByCompanyId(companyId, limit);
     res.json(reports);
   } catch (error) {
     logger.error("Error fetching daily reports", error);
@@ -275,7 +258,7 @@ router.get("/:companyId/daily-reports", async (req, res) => {
 router.get("/:companyId/violation-rules", async (req, res) => {
   try {
     const { companyId } = req.params;
-    const rules = await storage.getViolationRulesByCompany(companyId);
+    const rules = await repositories.violation.findByCompanyId(companyId);
     res.json(rules);
   } catch (error) {
     logger.error("Error fetching violation rules", error);
@@ -296,7 +279,7 @@ router.get("/:companyId/ratings", async (req, res) => {
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       return res.status(400).json({ error: "Invalid periodStart or periodEnd" });
     }
-    const ratings = await storage.getEmployeeRatingsByCompany(companyId, start, end);
+    const ratings = await repositories.rating.findByCompanyId(companyId, start, end);
     res.json(ratings);
   } catch (error) {
     logger.error("Error fetching ratings", error);
@@ -308,7 +291,7 @@ router.get("/:companyId/ratings", async (req, res) => {
 router.get("/:companyId/employees", async (req, res) => {
   try {
     const { companyId } = req.params;
-    const employees = await storage.getEmployeesByCompany(companyId);
+    const employees = await repositories.employee.findByCompanyId(companyId);
     res.json(employees);
   } catch (error) {
     logger.error("Error fetching employees", error);
@@ -320,7 +303,7 @@ router.get("/:companyId/employees", async (req, res) => {
 router.get("/:companyId/employee-invites", async (req, res) => {
   try {
     const { companyId } = req.params;
-    const invites = await storage.getEmployeeInvitesByCompany(companyId);
+    const invites = await repositories.invite.findByCompanyId(companyId);
     res.json(invites);
   } catch (error) {
     logger.error("Error fetching employee invites", error);

@@ -1,13 +1,15 @@
 /**
  * Validation middleware using Zod schemas
+ * Integrated with standardized error handling
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';
-import { logger } from '../lib/logger.js';
+import { ValidationError } from '../lib/errorHandler.js';
 
 /**
  * Validates request body against a Zod schema
+ * Throws ValidationError on failure (handled by error handler middleware)
  */
 export function validateBody<T>(schema: ZodSchema<T>) {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -17,20 +19,12 @@ export function validateBody<T>(schema: ZodSchema<T>) {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const errors = error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message,
-        }));
-        
-        logger.warn('Validation error (body)', {
-          path: req.path,
-          method: req.method,
-          errors,
-        });
-        
-        return res.status(400).json({
-          error: 'Validation failed',
-          details: errors,
+        throw new ValidationError('Validation failed', {
+          errors: error.errors.map(err => ({
+            field: err.path.join('.'),
+            message: err.message,
+            code: err.code,
+          })),
         });
       }
       
@@ -41,6 +35,7 @@ export function validateBody<T>(schema: ZodSchema<T>) {
 
 /**
  * Validates request query parameters against a Zod schema
+ * Throws ValidationError on failure (handled by error handler middleware)
  */
 export function validateQuery<T extends Record<string, unknown>>(schema: ZodSchema<T>) {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -50,20 +45,12 @@ export function validateQuery<T extends Record<string, unknown>>(schema: ZodSche
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const errors = error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message,
-        }));
-        
-        logger.warn('Validation error (query)', {
-          path: req.path,
-          method: req.method,
-          errors,
-        });
-        
-        return res.status(400).json({
-          error: 'Validation failed',
-          details: errors,
+        throw new ValidationError('Query validation failed', {
+          errors: error.errors.map(err => ({
+            field: err.path.join('.'),
+            message: err.message,
+            code: err.code,
+          })),
         });
       }
       
@@ -74,6 +61,7 @@ export function validateQuery<T extends Record<string, unknown>>(schema: ZodSche
 
 /**
  * Validates request params against a Zod schema
+ * Throws ValidationError on failure (handled by error handler middleware)
  */
 export function validateParams<T extends Record<string, string>>(schema: ZodSchema<T>) {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -83,20 +71,12 @@ export function validateParams<T extends Record<string, string>>(schema: ZodSche
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const errors = error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message,
-        }));
-        
-        logger.warn('Validation error (params)', {
-          path: req.path,
-          method: req.method,
-          errors,
-        });
-        
-        return res.status(400).json({
-          error: 'Validation failed',
-          details: errors,
+        throw new ValidationError('Path parameter validation failed', {
+          errors: error.errors.map(err => ({
+            field: err.path.join('.'),
+            message: err.message,
+            code: err.code,
+          })),
         });
       }
       
@@ -107,6 +87,7 @@ export function validateParams<T extends Record<string, string>>(schema: ZodSche
 
 /**
  * Validates multiple parts of request (body, query, params)
+ * Throws ValidationError on failure (handled by error handler middleware)
  */
 export function validate<TBody = unknown, TQuery = Record<string, unknown>, TParams = Record<string, string>>(schemas: {
   body?: ZodSchema<TBody>;
@@ -133,20 +114,12 @@ export function validate<TBody = unknown, TQuery = Record<string, unknown>, TPar
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const errors = error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message,
-        }));
-        
-        logger.warn('Validation error', {
-          path: req.path,
-          method: req.method,
-          errors,
-        });
-        
-        return res.status(400).json({
-          error: 'Validation failed',
-          details: errors,
+        throw new ValidationError('Validation failed', {
+          errors: error.errors.map(err => ({
+            field: err.path.join('.'),
+            message: err.message,
+            code: err.code,
+          })),
         });
       }
       

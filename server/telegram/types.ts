@@ -53,7 +53,7 @@ export interface DailyReport {
   done_items?: string[];
   blockers?: string;
   tasks_links?: string[];
-  time_spent?: any;
-  attachments?: any;
+  time_spent?: Record<string, number>; // Task ID -> time in minutes
+  attachments?: Array<{ url: string; type: string; name?: string }>;
   submitted_at?: Date;
 }

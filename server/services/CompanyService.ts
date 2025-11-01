@@ -3,21 +3,27 @@
  * Separates business logic from HTTP layer
  */
 
-import { storage } from "../storage.js";
-import { cache } from "../lib/cache.js";
+import type { DIContainer } from "../lib/di/container.js";
+import { getContainer } from "../lib/di/container.js";
+import { invalidateCompanyStats, getOrSet } from "../lib/utils/cache.js";
 import { logger } from "../lib/logger.js";
 import type { InsertCompany } from "../../shared/schema.js";
 
 export class CompanyService {
+  constructor(private readonly container: DIContainer) {}
+
+  private get repositories() {
+    return this.container.repositories;
+  }
   /**
    * Create a new company
    */
   async createCompany(data: InsertCompany) {
     try {
-      const company = await storage.createCompany(data);
+      const company = await this.repositories.company.create(data);
       
       // Invalidate related caches
-      cache.delete(`company:${company.id}:stats`);
+      await invalidateCompanyStats(company.id);
       
       logger.info("Company created", { companyId: company.id, name: company.name });
       
@@ -33,7 +39,7 @@ export class CompanyService {
    */
   async getCompany(companyId: string) {
     try {
-      const company = await storage.getCompany(companyId);
+      const company = await this.repositories.company.findById(companyId);
       
       if (!company) {
         logger.warn("Company not found", { companyId });
@@ -52,10 +58,10 @@ export class CompanyService {
    */
   async updateCompany(companyId: string, data: Partial<InsertCompany>) {
     try {
-      const company = await storage.updateCompany(companyId, data);
+      const company = await this.repositories.company.update(companyId, data);
       
       // Invalidate related caches
-      cache.delete(`company:${companyId}:stats`);
+      await invalidateCompanyStats(companyId);
       
       logger.info("Company updated", { companyId });
       
@@ -72,44 +78,35 @@ export class CompanyService {
   async getCompanyStats(companyId: string) {
     const cacheKey = `company:${companyId}:stats`;
     
-    // Try cache first
-    const cached = cache.get(cacheKey);
-    if (cached) {
-      logger.debug("Company stats cache hit", { companyId });
-      return cached;
-    }
-
-    try {
-      const [employees, activeShifts, exceptions] = await Promise.all([
-        storage.getEmployeesByCompany(companyId),
-        storage.getActiveShiftsByCompany(companyId),
-        storage.getExceptionsByCompany(companyId)
-      ]);
-      
-      const today = new Date().toISOString().split('T')[0];
-      const todayShifts = activeShifts.filter(shift => 
-        shift.planned_start_at.toISOString().split('T')[0] === today
-      );
-      
-      const completedShifts = todayShifts.filter(shift => shift.status === 'completed').length;
-      
-      const stats = {
-        totalEmployees: employees.length,
-        activeShifts: activeShifts.length,
-        completedShifts,
-        exceptions: exceptions.length
-      };
-      
-      // Cache for 2 minutes
-      cache.set(cacheKey, stats, 120);
-      
-      logger.debug("Company stats calculated", { companyId, stats });
-      
-      return stats;
-    } catch (error) {
-      logger.error("Failed to calculate company stats", error);
-      throw error;
-    }
+    return await getOrSet(
+      cacheKey,
+      async () => {
+        const [employees, activeShifts, exceptions] = await Promise.all([
+          this.repositories.employee.findByCompanyId(companyId),
+          this.repositories.shift.findActiveByCompanyId(companyId),
+          this.repositories.exception.findByCompanyId(companyId)
+        ]);
+        
+        const today = new Date().toISOString().split('T')[0];
+        const todayShifts = activeShifts.filter(shift => 
+          shift.planned_start_at.toISOString().split('T')[0] === today
+        );
+        
+        const completedShifts = todayShifts.filter(shift => shift.status === 'completed').length;
+        
+        const stats = {
+          totalEmployees: employees.length,
+          activeShifts: activeShifts.length,
+          completedShifts,
+          exceptions: exceptions.length
+        };
+        
+        logger.debug("Company stats calculated", { companyId, stats });
+        
+        return stats;
+      },
+      120 // Cache for 2 minutes
+    );
   }
 
   /**
@@ -122,13 +119,13 @@ export class CompanyService {
     employeeIds?: string[]
   ) {
     try {
-      const templates = await storage.getScheduleTemplatesByCompany(companyId);
+      const templates = await this.repositories.schedule.findByCompanyId(companyId);
       
       if (templates.length === 0) {
         throw new Error("No schedule templates found for company");
       }
 
-      const employees = await storage.getEmployeesByCompany(companyId);
+      const employees = await this.repositories.employee.findByCompanyId(companyId);
       const targetEmployees = employeeIds ? 
         employees.filter(emp => employeeIds.includes(emp.id)) : 
         employees;
@@ -141,7 +138,7 @@ export class CompanyService {
       const employeeShiftsMap = new Map();
       await Promise.all(
         targetEmployees.map(async (employee) => {
-          const shifts = await storage.getShiftsByEmployee(employee.id);
+          const shifts = await this.repositories.shift.findByEmployeeId(employee.id);
           employeeShiftsMap.set(employee.id, shifts);
         })
       );
@@ -188,15 +185,13 @@ export class CompanyService {
         }
       }
 
-      // Batch create shifts
-      const createdShifts = [];
-      for (const shiftData of shiftsToCreate) {
-        const shift = await storage.createShift(shiftData);
-        createdShifts.push(shift);
-      }
+      // Batch create shifts using bulk insert for better performance
+      const createdShifts = shiftsToCreate.length > 0
+        ? await this.repositories.shift.createMany(shiftsToCreate as any)
+        : [];
       
       // Invalidate cache
-      cache.delete(`company:${companyId}:stats`);
+      await invalidateCompanyStats(companyId);
       
       logger.info("Shifts generated", { 
         companyId, 
@@ -213,6 +208,6 @@ export class CompanyService {
   }
 }
 
-// Singleton instance
-export const companyService = new CompanyService();
+// Singleton instance (backward compatibility)
+export const companyService = new CompanyService(getContainer());
 

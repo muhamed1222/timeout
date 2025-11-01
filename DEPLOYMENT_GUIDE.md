@@ -36,72 +36,119 @@
 
 ## ⚡ QUICK START
 
-### 1. Clone and Setup
+### Option 1: Vercel (5 minutes) ⚡
 
-```bash
-# Clone repository
-git clone <your-repo-url>
-cd timeout
+1. **Install Vercel CLI**
+   ```bash
+   npm i -g vercel
+   vercel login
+   ```
 
-# Install dependencies
-npm install
+2. **Deploy**
+   ```bash
+   vercel
+   ```
 
-# Copy environment file
-cp .env.production.example .env.production
+3. **Set Environment Variables**
+   ```bash
+   vercel env add NODE_ENV production
+   vercel env add DATABASE_URL <your-supabase-url>
+   vercel env add SUPABASE_URL <url>
+   vercel env add SUPABASE_ANON_KEY <key>
+   vercel env add SUPABASE_SERVICE_ROLE_KEY <key>
+   vercel env add TELEGRAM_BOT_TOKEN <token>
+   vercel env add TELEGRAM_BOT_USERNAME <username>
+   vercel env add BOT_API_SECRET <generate-with: openssl rand -hex 32>
+   vercel env add SESSION_SECRET <generate-with: openssl rand -hex 32>
+   vercel env add REDIS_URL <upstash-redis-url>
+   ```
 
-# Edit with your values
-nano .env.production
-```
+4. **Deploy to Production**
+   ```bash
+   vercel --prod
+   ```
 
-### 2. Configure Environment Variables
+5. **Setup Telegram Webhook**
+   ```bash
+   curl -X POST https://your-domain.vercel.app/api/telegram/webhook/setup \
+     -H "X-Bot-Secret: YOUR_BOT_SECRET"
+   ```
 
-**Required variables in `.env.production`:**
-
-```bash
-# Database
-DATABASE_URL=postgresql://user:password@host:5432/database
-
-# Supabase
-SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# Telegram
-TELEGRAM_BOT_TOKEN=your-bot-token
-TELEGRAM_BOT_USERNAME=YourBotUsername
-
-# Security (generate with: openssl rand -hex 32)
-BOT_API_SECRET=your-32-char-secret
-SESSION_SECRET=your-32-char-secret
-
-# URLs
-APP_URL=https://your-domain.com
-FRONTEND_URL=https://your-domain.com
-```
-
-### 3. Deploy
-
-```bash
-# Run automated deployment
-./scripts/deploy.sh production
-
-# Or manually with Docker Compose
-docker-compose -f docker-compose.prod.yml --env-file .env.production up -d
-```
-
-### 4. Verify
-
-```bash
-# Check health
-curl http://localhost:5000/api/health
-
-# View logs
-docker-compose -f docker-compose.prod.yml logs -f app
-```
+✅ **Done!** Your app is live at: `https://your-domain.vercel.app`
 
 ---
 
-## 🔧 MANUAL DEPLOYMENT
+### Option 2: Docker (10 minutes) 🐳
+
+1. **Clone Repository**
+   ```bash
+   git clone <your-repo>
+   cd timeout
+   ```
+
+2. **Configure Environment**
+   ```bash
+   cp .env.example .env
+   nano .env  # Add your values
+   ```
+
+3. **Start Services**
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Run Migrations**
+   ```bash
+   docker-compose exec app npm run db:push
+   ```
+
+5. **Check Status**
+   ```bash
+   docker-compose ps
+   curl http://localhost:5000/api/health
+   ```
+
+✅ **Done!** Your app is running at: `http://localhost:5000`
+
+---
+
+### Option 3: VPS (15 minutes) 🖥️
+
+1. **Connect to Server**
+   ```bash
+   ssh root@your-server-ip
+   ```
+
+2. **Install Docker**
+   ```bash
+   curl -fsSL https://get.docker.com | sh
+   ```
+
+3. **Clone and Setup**
+   ```bash
+   mkdir -p /opt/shiftmanager
+   cd /opt/shiftmanager
+   git clone <your-repo> .
+   cp .env.example .env
+   nano .env  # Configure
+   ```
+
+4. **Start Application**
+   ```bash
+   docker-compose up -d
+   ```
+
+5. **Setup Nginx & SSL**
+   ```bash
+   apt install nginx certbot python3-certbot-nginx -y
+   certbot --nginx -d your-domain.com
+   ```
+
+✅ **Done!** Your app is live at: `https://your-domain.com`
+
+---
+
+## 🔧 MANUAL DEPLOYMENT (Detailed Steps)
 
 ### Step 1: Pre-deployment Checks
 

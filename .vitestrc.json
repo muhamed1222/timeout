@@ -1,0 +1,40 @@
+{
+  "coverage": {
+    "provider": "v8",
+    "reporter": ["text", "json", "html", "lcov"],
+    "reportsDirectory": "./coverage",
+    "exclude": [
+      "node_modules/",
+      "dist/",
+      "**/*.config.ts",
+      "**/*.config.js",
+      "**/*.d.ts",
+      "tests/e2e/**",
+      "tests/integration/helpers/**",
+      "api/",
+      "**/*.stories.tsx",
+      "**/__tests__/**",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.spec.ts",
+      "**/*.spec.tsx",
+      "client/src/main.tsx",
+      "client/src/index.css",
+      "server/index.ts"
+    ],
+    "include": [
+      "server/**/*.ts",
+      "client/src/**/*.{ts,tsx}",
+      "shared/**/*.ts"
+    ],
+    "thresholds": {
+      "lines": 80,
+      "functions": 80,
+      "branches": 75,
+      "statements": 80
+    },
+    "all": true,
+    "skipFull": false
+  }
+}
+

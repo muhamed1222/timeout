@@ -2,11 +2,16 @@
  * Secrets Management
  * 
  * Securely loads secrets from environment variables with validation and encryption support.
- * Supports dotenv-vault for production secret management.
+ * Supports AWS Secrets Manager for production secret management.
  */
 
 import { z } from 'zod';
 import { logger } from './logger.js';
+import { 
+  loadSecretsFromAWS, 
+  isAWSSecretsManagerEnabled,
+  clearSecretsCache 
+} from './secretsManager.js';
 
 /**
  * Secret schema for validation
@@ -59,13 +64,28 @@ let cachedSecrets: Secrets | null = null;
 
 /**
  * Load and validate secrets
+ * In production with AWS Secrets Manager enabled, loads from AWS first
  */
-export function loadSecrets(): Secrets {
+export async function loadSecretsAsync(): Promise<Secrets> {
   if (cachedSecrets) {
     return cachedSecrets;
   }
 
   try {
+    // In production, try AWS Secrets Manager first
+    if (process.env.NODE_ENV === 'production' && isAWSSecretsManagerEnabled()) {
+      try {
+        logger.info('Loading secrets from AWS Secrets Manager');
+        const awsSecrets = await loadSecretsFromAWS();
+        
+        // Merge AWS secrets into process.env for backward compatibility
+        Object.assign(process.env, awsSecrets);
+      } catch (error) {
+        logger.error('Failed to load from AWS Secrets Manager, falling back to env vars', { error });
+        // Fall through to environment variables
+      }
+    }
+
     // In test environment, provide sensible defaults to avoid hard .env deps
     const isTestEnv = process.env.NODE_ENV === 'test';
     const envSource: NodeJS.ProcessEnv = { ...process.env };
@@ -83,7 +103,60 @@ export function loadSecrets(): Secrets {
     // Cache for subsequent calls
     cachedSecrets = secrets;
     
-    logger.info('Secrets loaded and validated successfully');
+    logger.info('Secrets loaded and validated successfully', {
+      source: isProduction() && isAWSSecretsManagerEnabled() ? 'AWS Secrets Manager' : 'Environment Variables',
+    });
+    
+    return secrets;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const missingSecrets = error.errors.map(e => e.path.join('.')).join(', ');
+      logger.error('Missing or invalid secrets', { missing: missingSecrets });
+      
+      throw new Error(
+        `Missing or invalid environment variables: ${missingSecrets}\n` +
+        'Please check your .env file or environment configuration.'
+      );
+    }
+    
+    throw error;
+  }
+}
+
+/**
+ * Synchronous version (for backward compatibility)
+ * In production, ensure loadSecretsAsync() is called at startup
+ */
+export function loadSecrets(): Secrets {
+  if (cachedSecrets) {
+    return cachedSecrets;
+  }
+
+  // If in production and AWS is enabled, this should not be called directly
+  // (use loadSecretsAsync instead at startup)
+  if (process.env.NODE_ENV === 'production' && isAWSSecretsManagerEnabled() && !cachedSecrets) {
+    logger.warn('loadSecrets() called synchronously in production with AWS enabled. Use loadSecretsAsync() at startup.');
+  }
+
+  try {
+    // In test environment, provide sensible defaults
+    const isTestEnv = process.env.NODE_ENV === 'test';
+    const envSource: NodeJS.ProcessEnv = { ...process.env };
+
+    if (isTestEnv) {
+      envSource.DATABASE_URL ||= 'http://localhost:5432/test-db';
+      envSource.TELEGRAM_BOT_TOKEN ||= 'test-telegram-bot-token';
+      envSource.BOT_API_SECRET ||= '0123456789abcdef0123456789abcdef';
+      envSource.NODE_ENV = 'test';
+    }
+
+    // Parse and validate environment variables
+    const secrets = secretsSchema.parse(envSource);
+    
+    // Cache for subsequent calls
+    cachedSecrets = secrets;
+    
+    logger.info('Secrets loaded and validated successfully (sync)');
     
     return secrets;
   } catch (error) {
@@ -136,6 +209,25 @@ export function isTest(): boolean {
  */
 export async function rotateSecret(secretName: keyof Secrets, newValue: string): Promise<void> {
   if (isProduction()) {
+    if (isAWSSecretsManagerEnabled()) {
+      // Use AWS Secrets Manager rotation
+      const { rotateSecretInAWS } = await import('./secretsManager.js');
+      const secretId = process.env.AWS_SECRETS_MANAGER_SECRET_NAME || 'shiftmanager/production';
+      
+      // Get current secrets
+      const currentSecrets = await loadSecretsAsync();
+      const updatedSecrets = { ...currentSecrets, [secretName]: newValue };
+      
+      await rotateSecretInAWS(secretId, updatedSecrets as Record<string, string>);
+      
+      // Clear cache to force reload
+      cachedSecrets = null;
+      clearSecretsCache();
+      
+      logger.info('Secret rotated in AWS Secrets Manager', { secretName });
+      return;
+    }
+    
     throw new Error('Secret rotation must be done through AWS Secrets Manager in production');
   }
   

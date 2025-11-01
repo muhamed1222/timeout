@@ -30,4 +30,5 @@ vite.config.ts.*
 
 # Database
 *.db
-*.sqlite
+*.sqlitecoverage/
+*.lcov

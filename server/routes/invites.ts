@@ -1,203 +1,164 @@
 import { Router } from "express";
 import { z } from "zod";
 import { randomBytes } from "crypto";
-import { storage } from "../storage.js";
+import { repositories } from "../repositories/index.js";
 import { insertEmployeeInviteSchema } from "../../shared/schema.js";
 import { logger } from "../lib/logger.js";
+import { NotFoundError, ValidationError, ConflictError, asyncHandler } from "../lib/errorHandler.js";
 
 const router = Router();
 
 // Create employee invite
-router.post("/", async (req, res) => {
+router.post("/", asyncHandler(async (req, res) => {
+  const data = { ...req.body };
+  // Generate unique invite code
+  data.code = randomBytes(16).toString('hex');
+  let validatedData;
   try {
-    const data = { ...req.body };
-    // Generate unique invite code
-    data.code = randomBytes(16).toString('hex');
-    const validatedData = insertEmployeeInviteSchema.parse(data);
-    const invite = await storage.createEmployeeInvite(validatedData as any);
-    res.json(invite);
+    validatedData = insertEmployeeInviteSchema.parse(data);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation failed", details: error.errors });
+      throw new ValidationError("Validation failed", { errors: error.errors });
     }
-    logger.error("Error creating employee invite", error);
-    res.status(500).json({ error: "Internal server error" });
+    throw error;
   }
-});
+  const invite = await repositories.invite.create(validatedData as any);
+  res.json(invite);
+}));
 
 // Get invites by company
-router.get("/company/:companyId", async (req, res) => {
-  try {
-    const { companyId } = req.params;
-    const invites = await storage.getEmployeeInvitesByCompany(companyId);
-    res.json(invites);
-  } catch (error) {
-    logger.error("Error getting employee invites", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+router.get("/company/:companyId", asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  const invites = await repositories.invite.findByCompanyId(companyId);
+  res.json(invites);
+}));
 
 // Get invite by code
-router.get("/:code", async (req, res) => {
-  try {
-    const { code } = req.params;
-    const invite = await storage.getEmployeeInviteByCode(code);
-    if (!invite) {
-      return res.status(404).json({ error: "Invite not found" });
-    }
-    res.json(invite);
-  } catch (error) {
-    logger.error("Error fetching employee invite", error);
-    res.status(500).json({ error: "Internal server error" });
+router.get("/:code", asyncHandler(async (req, res) => {
+  const { code } = req.params;
+  const invite = await repositories.invite.findByCode(code);
+  if (!invite) {
+    throw new NotFoundError("Invite");
   }
-});
+  res.json(invite);
+}));
 
 // Use invite
-router.post("/:code/use", async (req, res) => {
-  try {
-    const { code } = req.params;
-    const { employee_id } = req.body;
-    if (!employee_id) {
-      return res.status(400).json({ error: "employee_id is required" });
-    }
-    const invite = await storage.useEmployeeInvite(code, employee_id);
-    if (!invite) {
-      return res.status(404).json({ error: "Invite not found or already used" });
-    }
-    res.json(invite);
-  } catch (error) {
-    logger.error("Error using employee invite", error);
-    res.status(500).json({ error: "Internal server error" });
+router.post("/:code/use", asyncHandler(async (req, res) => {
+  const { code } = req.params;
+  const { employee_id } = req.body;
+  if (!employee_id) {
+    throw new ValidationError("employee_id is required");
   }
-});
+  const invite = await repositories.invite.useInvite(code, employee_id);
+  if (!invite) {
+    throw new NotFoundError("Invite (not found or already used)");
+  }
+  res.json(invite);
+}));
 
 // Accept invite (for Telegram bot)
-router.post("/:code/accept", async (req, res) => {
-  try {
-    const { code } = req.params;
-    const { telegram_user_id, telegram_username } = req.body;
-    
-    if (!telegram_user_id) {
-      return res.status(400).json({ error: "telegram_user_id is required" });
-    }
-
-    // Получаем инвайт
-    const invite = await storage.getEmployeeInviteByCode(code);
-    if (!invite) {
-      return res.status(404).json({ error: "Invite not found" });
-    }
-
-    if (invite.used_at) {
-      return res.status(400).json({ error: "Invite already used" });
-    }
-
-    // Проверяем, есть ли уже сотрудник с этим Telegram ID
-    let employee = await storage.getEmployeeByTelegramId(telegram_user_id);
-    
-    if (employee) {
-      // Обновляем существующего сотрудника
-      employee = await storage.updateEmployee(employee.id, {
-        company_id: invite.company_id,
-        full_name: invite.full_name || employee.full_name,
-        position: invite.position || employee.position,
-        telegram_user_id,
-        status: 'active'
-      });
-    } else {
-      // Создаем нового сотрудника
-      employee = await storage.createEmployee({
-        company_id: invite.company_id,
-        full_name: invite.full_name || 'Сотрудник',
-        position: invite.position,
-        telegram_user_id,
-        status: 'active'
-      });
-    }
-
-    // Отмечаем инвайт как использованный
-    await storage.useEmployeeInvite(code, employee!.id);
-
-    res.json(employee);
-  } catch (error) {
-    logger.error("Error accepting invite", error);
-    res.status(500).json({ error: "Internal server error" });
+router.post("/:code/accept", asyncHandler(async (req, res) => {
+  const { code } = req.params;
+  const { telegram_user_id, telegram_username } = req.body;
+  
+  if (!telegram_user_id) {
+    throw new ValidationError("telegram_user_id is required");
   }
-});
+
+  // Получаем инвайт
+  const invite = await repositories.invite.findByCode(code);
+  if (!invite) {
+    throw new NotFoundError("Invite");
+  }
+
+  if (invite.used_at) {
+    throw new ConflictError("Invite already used");
+  }
+
+  // Проверяем, есть ли уже сотрудник с этим Telegram ID
+  let employee = await repositories.employee.findByTelegramId(telegram_user_id);
+  
+  if (employee) {
+    // Обновляем существующего сотрудника
+    employee = await repositories.employee.update(employee.id, {
+      company_id: invite.company_id,
+      full_name: invite.full_name || employee.full_name,
+      position: invite.position || employee.position,
+      telegram_user_id,
+      status: 'active'
+    } as any);
+  } else {
+    // Создаем нового сотрудника
+    employee = await repositories.employee.create({
+      company_id: invite.company_id,
+      full_name: invite.full_name || 'Сотрудник',
+      position: invite.position,
+      telegram_user_id,
+      status: 'active'
+    } as any);
+  }
+
+  // Отмечаем инвайт как использованный
+  await repositories.invite.useInvite(code, employee!.id);
+
+  res.json(employee);
+}));
 
 // Generate Telegram deep link for invite
-router.get("/:code/link", async (req, res) => {
-  try {
-    const { code } = req.params;
-    
-    if (!code) {
-      return res.status(400).json({ error: "Invite code is required" });
-    }
-    
-    let invite;
-    try {
-      invite = await storage.getEmployeeInviteByCode(code);
-    } catch (storageError) {
-      // Log storage error but return user-friendly 404
-      if (logger && typeof logger.error === 'function') {
-        logger.error("Error fetching invite from storage", storageError);
-      }
-      return res.status(404).json({ error: "Invite not found" });
-    }
-    
-    if (!invite) {
-      return res.status(404).json({ error: "Invite not found" });
-    }
-    
-    if (invite.used_at) {
-      return res.status(400).json({ error: "Invite already used" });
-    }
-    
-    const botUsername = process.env.TELEGRAM_BOT_USERNAME;
-    if (!botUsername) {
-      // Return 404 instead of 500 to prevent UI errors
-      return res.status(404).json({ error: "Invite not found" });
-    }
-    
-    // Remove @ symbol if present
-    const cleanBotUsername = botUsername.replace('@', '');
-    const deepLink = `https://t.me/${cleanBotUsername}?start=${code}`;
-    
-    res.json({ 
-      code,
-      deep_link: deepLink,
-      qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(deepLink)}`
-    });
-  } catch (error) {
-    // Soft fallback: return 404 instead of 500 to prevent UI breaking
-    if (logger && typeof logger.error === 'function') {
-      logger.error("Error generating invite link", error);
-    }
-    res.status(404).json({ error: "Invite not found" });
+router.get("/:code/link", asyncHandler(async (req, res) => {
+  const { code } = req.params;
+  
+  if (!code) {
+    throw new ValidationError("Invite code is required");
   }
-});
+  
+  let invite;
+  try {
+    invite = await repositories.invite.findByCode(code);
+  } catch (storageError) {
+    // Log storage error but return user-friendly 404
+    logger.error("Error fetching invite from storage", storageError);
+    throw new NotFoundError("Invite");
+  }
+  
+  if (!invite) {
+    throw new NotFoundError("Invite");
+  }
+  
+  if (invite.used_at) {
+    throw new ConflictError("Invite already used");
+  }
+  
+  const botUsername = process.env.TELEGRAM_BOT_USERNAME;
+  if (!botUsername) {
+    // Return 404 instead of 500 to prevent UI errors
+    throw new NotFoundError("Invite (bot not configured)");
+  }
+  
+  // Remove @ symbol if present
+  const cleanBotUsername = botUsername.replace('@', '');
+  const deepLink = `https://t.me/${cleanBotUsername}?start=${code}`;
+  
+  res.json({ 
+    code,
+    deep_link: deepLink,
+    qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(deepLink)}`
+  });
+}));
 
 // Delete invite
-router.delete("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    await storage.deleteEmployeeInvite(id);
-    res.json({ message: "Invite deleted successfully" });
-  } catch (error) {
-    logger.error("Error deleting employee invite", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+router.delete("/:id", asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  await repositories.invite.delete(id);
+  res.json({ message: "Invite deleted successfully" });
+}));
 
 // Cleanup expired invites
-router.post("/cleanup", async (req, res) => {
-  try {
-    const deletedCount = await storage.cleanupExpiredInvites();
-    res.json({ message: `Deleted ${deletedCount} expired invites` });
-  } catch (error) {
-    logger.error("Error cleaning up expired invites", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+router.post("/cleanup", asyncHandler(async (req, res) => {
+  const deletedCount = await repositories.invite.cleanupExpired();
+  res.json({ message: `Deleted ${deletedCount} expired invites` });
+}));
 
 export default router;
 

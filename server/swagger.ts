@@ -202,8 +202,8 @@ Authorization: Bearer <your-jwt-token>
     ],
   },
   apis: [
-    './server/routes/*.ts',
-    './server/routes.ts',
+    './server/routes/**/*.ts',
+    './dist/server/routes/**/*.js',
   ],
 };
 

@@ -7,6 +7,10 @@ import { Search, Download, Loader2, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useRetry } from "@/hooks/useRetry";
+import { ErrorState } from "@/components/ErrorBoundary";
+import { ReportsSkeleton } from "@/components/LoadingSkeletons";
+import { getContextErrorMessage } from "@/lib/errorMessages";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -48,10 +52,12 @@ export default function Reports() {
   const { toast } = useToast();
   const { companyId, loading: authLoading } = useAuth();
 
-  const { data: reports = [], isLoading } = useQuery<DailyReport[]>({
+  const { data: reports = [], isLoading, error } = useQuery<DailyReport[]>({
     queryKey: ['/api/companies', companyId, 'daily-reports'],
     enabled: !!companyId,
   });
+
+  const reportsRetry = useRetry(['/api/companies', companyId, 'daily-reports']);
 
   const handleExport = () => {
     if (!filteredReports.length) {
@@ -100,11 +106,18 @@ export default function Reports() {
     return matchesSearch && matchesDate;
   });
 
+  // Loading state
   if (authLoading || isLoading) {
+    return <ReportsSkeleton />;
+  }
+
+  // Error state
+  if (error) {
     return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
+      <ErrorState
+        message={getContextErrorMessage('dashboard', 'fetch')}
+        onRetry={() => reportsRetry.retry()}
+      />
     );
   }
 

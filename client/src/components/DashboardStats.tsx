@@ -72,6 +72,14 @@ export default function DashboardStats({
           color={exceptions > 0 ? "text-shift-missed" : "text-shift-active"}
         />
       </div>
+      {/* Live region for screen reader announcements */}
+      <div 
+        role="status" 
+        aria-live="polite" 
+        aria-atomic="true" 
+        className="sr-only"
+        id="dashboard-announcements"
+      />
     </div>
   );
 }

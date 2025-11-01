@@ -2,25 +2,32 @@
  * RatingService - Business logic for rating and violation management
  */
 
-import { storage } from "../storage.js";
+import type { DIContainer } from "../lib/di/container.js";
+import { getContainer } from "../lib/di/container.js";
 import { logger } from "../lib/logger.js";
 import type { InsertViolations, InsertCompanyViolationRules } from "../../shared/schema.js";
 
 export class RatingService {
+  constructor(private readonly container: DIContainer) {}
+
+  private get repositories() {
+    return this.container.repositories;
+  }
+
   /**
    * Create a violation rule for a company
    */
   async createViolationRule(data: InsertCompanyViolationRules) {
     try {
       // Check for duplicate code in company
-      const existingRules = await storage.getViolationRulesByCompany(data.company_id);
+      const existingRules = await this.repositories.violation.findByCompanyId(data.company_id);
       const duplicate = existingRules.find((rule: any) => rule.code === data.code);
       
       if (duplicate) {
         throw new Error(`Violation rule with code '${data.code}' already exists`);
       }
 
-      const rule = await storage.createViolationRule(data);
+      const rule = await this.repositories.violation.create(data);
       
       logger.info("Violation rule created", { 
         ruleId: rule.id, 
@@ -40,7 +47,7 @@ export class RatingService {
    */
   async getViolationRules(companyId: string) {
     try {
-      const rules = await storage.getViolationRulesByCompany(companyId);
+      const rules = await this.repositories.violation.findByCompanyId(companyId);
       
       logger.debug("Violation rules fetched", { companyId, count: rules.length });
       
@@ -56,7 +63,7 @@ export class RatingService {
    */
   async updateViolationRule(ruleId: string, data: Partial<InsertCompanyViolationRules>) {
     try {
-      const rule = await storage.updateViolationRule(ruleId, data);
+      const rule = await this.repositories.violation.update(ruleId, data);
       
       logger.info("Violation rule updated", { ruleId });
       
@@ -72,7 +79,7 @@ export class RatingService {
    */
   async deleteViolationRule(ruleId: string) {
     try {
-      await storage.deleteViolationRule(ruleId);
+      await this.repositories.violation.delete(ruleId);
       
       logger.info("Violation rule deleted", { ruleId });
       
@@ -88,7 +95,7 @@ export class RatingService {
    */
   async createViolation(data: InsertViolations) {
     try {
-      const violation = await storage.createViolation(data);
+      const violation = await this.repositories.violation.createViolation(data);
       
       // Recalculate rating for the current period
       const now = new Date();
@@ -120,7 +127,7 @@ export class RatingService {
    */
   async getViolationsByEmployee(employeeId: string, periodStart?: string, periodEnd?: string) {
     try {
-      const allViolations = await storage.getViolationsByEmployee(employeeId);
+      const allViolations = await this.repositories.violation.findViolationsByEmployee(employeeId);
       
       let violations = allViolations;
       
@@ -158,7 +165,7 @@ export class RatingService {
     periodEnd: string
   ) {
     try {
-      const employee = await storage.getEmployee(employeeId);
+      const employee = await this.repositories.employee.findById(employeeId);
       if (!employee) {
         throw new Error("Employee not found");
       }
@@ -167,7 +174,7 @@ export class RatingService {
       const violations = await this.getViolationsByEmployee(employeeId, periodStart, periodEnd);
       
       // Get violation rules
-      const rules = await storage.getViolationRulesByCompany(employee.company_id);
+      const rules = await this.repositories.violation.findByCompanyId(employee.company_id);
       const rulesMap = new Map(rules.map((r: any) => [r.id, r]));
       
       // Calculate total penalty
@@ -186,17 +193,17 @@ export class RatingService {
       const isBlocked = rating <= 30;
       
       // Update or create rating record
-      const existingRating = await storage.getEmployeeRating(employeeId, new Date(periodStart), new Date(periodEnd));
+      const existingRating = await this.repositories.rating.findByEmployeeAndPeriod(employeeId, new Date(periodStart), new Date(periodEnd));
       
       const status = rating >= 80 ? 'active' : rating >= 50 ? 'warning' : 'terminated';
       
       if (existingRating) {
-        await storage.updateEmployeeRating(existingRating.id, {
+        await this.repositories.rating.update(existingRating.id, {
           rating: rating.toString(),
           status
         });
       } else {
-        await storage.createEmployeeRating({
+        await this.repositories.rating.create({
           employee_id: employeeId,
           company_id: employee.company_id,
           period_start: periodStart,
@@ -208,7 +215,7 @@ export class RatingService {
       
       // Update employee status if critical
       if (isBlocked && employee.status !== 'terminated') {
-        await storage.updateEmployee(employeeId, { status: 'terminated' });
+        await this.repositories.employee.update(employeeId, { status: 'terminated' } as any);
       }
       
       logger.info("Rating recalculated", { 
@@ -240,7 +247,7 @@ export class RatingService {
       const start = periodStart || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const end = periodEnd || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
       
-      const employees = await storage.getEmployeesByCompany(companyId);
+      const employees = await this.repositories.employee.findByCompanyId(companyId);
       
       const results = [];
       for (const employee of employees) {
@@ -267,12 +274,12 @@ export class RatingService {
    */
   async getCompanyRatings(companyId: string, periodStart: string, periodEnd: string) {
     try {
-      const employees = await storage.getEmployeesByCompany(companyId);
+      const employees = await this.repositories.employee.findByCompanyId(companyId);
       const ratings = [];
       
       // Get ratings for each employee
       for (const employee of employees) {
-        const rating = await storage.getEmployeeRating(employee.id, new Date(periodStart), new Date(periodEnd));
+        const rating = await this.repositories.rating.findByEmployeeAndPeriod(employee.id, new Date(periodStart), new Date(periodEnd));
         if (rating) {
           ratings.push({
             ...rating,
@@ -301,6 +308,6 @@ export class RatingService {
   }
 }
 
-// Singleton instance
-export const ratingService = new RatingService();
+// Singleton instance (backward compatibility)
+export const ratingService = new RatingService(getContainer());
 

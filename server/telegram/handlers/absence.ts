@@ -1,6 +1,6 @@
 import { Context } from 'telegraf';
 import { SessionData } from '../types.js';
-import { storage } from '../../storage.js';
+import { repositories } from '../../repositories/index.js';
 import { logger } from '../../lib/logger.js';
 
 export async function handleAbsence(ctx: Context & { session: SessionData }) {
@@ -15,7 +15,7 @@ export async function handleAbsence(ctx: Context & { session: SessionData }) {
     // Получаем текущую смену
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const shifts = await storage.getShiftsByEmployee(employeeId);
+    const shifts = await repositories.shift.findByEmployeeId(employeeId);
     const todayShift = shifts.find(s => {
       const shiftDate = new Date(s.planned_start_at);
       shiftDate.setHours(0, 0, 0, 0);
@@ -51,12 +51,12 @@ export async function handleAbsence(ctx: Context & { session: SessionData }) {
     }
 
     // Отменяем смену
-    await storage.updateShift(todayShift.id, {
+    await repositories.shift.update(todayShift.id, {
       status: 'cancelled'
     });
 
     // Создаем запись об отсутствии
-    await storage.createException({
+    await repositories.exception.create({
       employee_id: employeeId,
       date: today.toISOString().split('T')[0],
       kind: 'absence',

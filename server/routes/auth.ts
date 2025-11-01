@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { storage } from "../storage.js";
+import { repositories } from "../repositories/index.js";
 import { supabaseAdmin, hasServiceRoleKey } from "../lib/supabase.js";
 import { logger } from "../lib/logger.js";
 import rateLimit from "express-rate-limit";
@@ -35,7 +35,7 @@ router.post("/register", authLimiter, async (req, res) => {
       });
     }
     
-    const company = await storage.createCompany({ name: company_name });
+    const company = await repositories.company.create({ name: company_name } as any);
     
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -48,7 +48,7 @@ router.post("/register", authLimiter, async (req, res) => {
     });
     
     if (authError) {
-      await storage.deleteCompany(company.id);
+      await repositories.company.delete(company.id);
       if (authError.message.includes('already registered')) {
         return res.status(400).json({ error: "Пользователь с таким email уже зарегистрирован" });
       }
@@ -57,7 +57,7 @@ router.post("/register", authLimiter, async (req, res) => {
     }
     
     if (!authData.user) {
-      await storage.deleteCompany(company.id);
+      await repositories.company.delete(company.id);
       return res.status(500).json({ error: "Не удалось создать пользователя" });
     }
     

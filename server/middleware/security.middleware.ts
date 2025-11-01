@@ -136,13 +136,14 @@ export const securityLogger = (
     /delete.*from/i,
   ];
 
-  const checkSuspicious = (data: any): boolean => {
+  const checkSuspicious = (data: unknown): boolean => {
     if (typeof data === 'string') {
       return suspiciousPatterns.some(pattern => pattern.test(data));
     }
 
     if (typeof data === 'object' && data !== null) {
-      return Object.values(data).some(checkSuspicious);
+      const obj = data as Record<string, unknown>;
+      return Object.values(obj).some(checkSuspicious);
     }
 
     return false;

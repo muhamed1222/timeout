@@ -3,7 +3,7 @@
  */
 
 import { shiftMonitor } from "./shiftMonitor.js";
-import { storage } from "../storage.js";
+import { repositories } from "../repositories/index.js";
 import { logger } from "../lib/logger.js";
 
 class Scheduler {
@@ -97,7 +97,7 @@ class Scheduler {
   private async sendPendingReminders(): Promise<void> {
     try {
       const now = new Date();
-      const reminders = await storage.getPendingReminders(now);
+      const reminders = await repositories.reminder.findPending(now);
       
       if (reminders.length === 0) {
         return;
@@ -109,7 +109,7 @@ class Scheduler {
         try {
           // TODO: Implement actual reminder sending via Telegram
           // For now just mark as sent
-          await storage.markReminderSent(reminder.id);
+          await repositories.reminder.markAsSent(reminder.id);
           logger.info(`Reminder sent: ${reminder.type} to employee ${reminder.employee_id}`);
         } catch (error) {
           logger.error(`Failed to send reminder ${reminder.id}`, error);

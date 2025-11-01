@@ -1,4 +1,4 @@
-import { storage } from "../storage.js";
+import { repositories } from "../repositories/index.js";
 import { getTelegramBotService } from "../services/telegramBot.js";
 import { 
   TELEGRAM_MESSAGES, 
@@ -36,7 +36,7 @@ export async function handleInviteCode(
 ): Promise<void> {
   try {
     // Check if employee with this telegram ID already exists
-    let employee = await storage.getEmployeeByTelegramId(userId.toString());
+    let employee = await repositories.employee.findByTelegramId(userId.toString());
     
     if (employee) {
       await sendTelegramMessage(chatId, TELEGRAM_MESSAGES.ALREADY_LINKED);
@@ -44,7 +44,7 @@ export async function handleInviteCode(
     }
     
     // Get invite info before attempting to use it
-    const invite = await storage.getEmployeeInviteByCode(inviteCode);
+    const invite = await repositories.invite.findByCode(inviteCode);
     
     if (!invite) {
       await sendTelegramMessage(chatId, TELEGRAM_MESSAGES.INVALID_INVITE);
@@ -55,7 +55,7 @@ export async function handleInviteCode(
     if (invite.used_by_employee) {
       try {
         // First, atomically claim the invite
-        const usedInvite = await storage.useEmployeeInvite(inviteCode, invite.used_by_employee);
+        const usedInvite = await repositories.invite.useInvite(inviteCode, invite.used_by_employee);
         
         if (!usedInvite) {
           // Invite already used or invalid
@@ -65,11 +65,11 @@ export async function handleInviteCode(
         
         // Now it's safe to link Telegram ID to the employee
         try {
-          await storage.updateEmployee(invite.used_by_employee, {
+          await repositories.employee.update(invite.used_by_employee, {
             telegram_user_id: userId.toString()
           });
           
-          employee = await storage.getEmployee(invite.used_by_employee);
+          employee = await repositories.employee.findById(invite.used_by_employee);
           
           if (employee) {
             await sendTelegramMessage(
@@ -101,7 +101,7 @@ export async function handleInviteCode(
     // Case 2: New employee needs to be created
     try {
       // Create employee
-      employee = await storage.createEmployee({
+      employee = await repositories.employee.create({
         company_id: invite.company_id,
         full_name: invite.full_name || "Новый сотрудник",
         position: invite.position || undefined,
@@ -110,7 +110,7 @@ export async function handleInviteCode(
       });
       
       // Atomically mark invite as used
-      const usedInvite = await storage.useEmployeeInvite(inviteCode, employee.id);
+      const usedInvite = await repositories.invite.useInvite(inviteCode, employee.id);
       
       if (!usedInvite) {
         // Invite was claimed by another request - rollback
@@ -118,7 +118,7 @@ export async function handleInviteCode(
         
         // Clean up: we can't reliably delete the employee because it might have
         // related data, so we mark it as inactive instead
-        await storage.updateEmployee(employee.id, {
+        await repositories.employee.update(employee.id, {
           status: "inactive",
           telegram_user_id: null
         });
@@ -167,14 +167,14 @@ export async function handleStatusCommand(
   chatId: number,
   userId: number
 ): Promise<void> {
-  const employee = await storage.getEmployeeByTelegramId(userId.toString());
+  const employee = await repositories.employee.findByTelegramId(userId.toString());
   
   if (!employee) {
     await sendTelegramMessage(chatId, TELEGRAM_MESSAGES.EMPLOYEE_NOT_FOUND);
     return;
   }
   
-  const shifts = await storage.getShiftsByEmployee(employee.id);
+  const shifts = await repositories.shift.findByEmployeeId(employee.id);
   const activeShift = shifts.find(s => s.status === 'active');
   
   if (activeShift) {

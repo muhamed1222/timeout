@@ -5,7 +5,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { logger } from './logger.js';
-import { storage } from '../storage.js';
+// Storage not used in this file - audit logs are handled by AuditRepository elsewhere
 
 export type AuditAction = 
   // Auth actions
@@ -61,7 +61,7 @@ export interface AuditLogEntry {
   company_id?: string;
   resource_type?: string;
   resource_id?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   result: 'success' | 'failure';
   error_message?: string;
   timestamp: Date;
@@ -124,7 +124,7 @@ class AuditLogger {
     companyId?: string;
     resourceType: string;
     resourceId: string;
-    changes?: Record<string, any>;
+    changes?: Record<string, unknown>;
     ip?: string;
     userAgent?: string;
   }): Promise<void> {
@@ -150,7 +150,7 @@ class AuditLogger {
     actorId?: string;
     actorType: 'user' | 'employee' | 'system' | 'bot';
     error: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
     ip?: string;
   }): Promise<void> {
     await this.log({

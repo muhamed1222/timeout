@@ -1,0 +1,14 @@
+name: Nightly Full Test Suite
+
+on:
+  schedule:
+    # Run every night at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  full-test-suite:
+    name: Full Test Suite
+    uses: ./.github/workflows/ci-comprehensive.yml
+    secrets: inherit
+

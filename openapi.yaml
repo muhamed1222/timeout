@@ -1,0 +1,759 @@
+openapi: 3.0.0
+info:
+  title: ShiftManager API
+  version: 1.0.0
+  description: |
+    Comprehensive REST API для управления сменами сотрудников с интеграцией Telegram.
+    
+    ## Features
+    
+    - 👥 **Employee Management** - CRUD операции для сотрудников
+    - ⏰ **Shift Management** - Планирование и отслеживание смен
+    - ☕ **Break Management** - Управление перерывами
+    - 🚨 **Violation System** - Автоматическое обнаружение нарушений
+    - ⭐ **Rating System** - Динамический расчет рейтингов
+    - 📱 **Telegram Integration** - WebApp и Bot API
+    - 📊 **Analytics** - Статистика и отчеты
+    
+    ## Authentication
+    
+    API использует Supabase Auth для аутентификации.
+    Для большинства endpoints требуется JWT token в заголовке Authorization.
+    
+    ```
+    Authorization: Bearer <your-jwt-token>
+    ```
+    
+    ## Rate Limiting
+    
+    - Standard API: 100 requests/minute
+    - Auth endpoints: 5 attempts/15 minutes
+    - Bot API: 120 requests/minute
+  contact:
+    name: API Support
+    email: support@shiftmanager.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: https://your-domain.vercel.app
+    description: Production server (Vercel)
+
+tags:
+  - name: Auth
+    description: Authentication endpoints
+  - name: Companies
+    description: Company management
+  - name: Employees
+    description: Employee management
+  - name: Shifts
+    description: Shift management
+  - name: Violations
+    description: Violation and rating system
+  - name: Violation Rules
+    description: Violation rule management
+  - name: Invites
+    description: Employee invitation system
+  - name: Schedules
+    description: Schedule template management
+  - name: Telegram
+    description: Telegram WebApp and Bot API
+  - name: Health
+    description: Health checks and monitoring
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Supabase Auth
+    telegramAuth:
+      type: apiKey
+      in: header
+      name: x-telegram-init-data
+      description: Telegram WebApp initData for authentication
+    botSecret:
+      type: apiKey
+      in: header
+      name: x-bot-secret
+      description: Bot API secret key
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            name:
+              type: string
+            message:
+              type: string
+            statusCode:
+              type: integer
+            code:
+              type: string
+            details:
+              type: object
+          description: Error details
+      example:
+        error:
+          name: ValidationError
+          message: Validation failed
+          statusCode: 400
+          code: VALIDATION_FAILED
+          details:
+            errors:
+              - field: email
+                message: Invalid email format
+
+    Company:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        timezone:
+          type: string
+          default: Europe/Amsterdam
+        locale:
+          type: string
+          default: ru
+        privacy_settings:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - timezone
+        - locale
+        - created_at
+
+    Employee:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company_id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        position:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+        phone_number:
+          type: string
+          nullable: true
+        telegram_user_id:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, inactive, on_leave]
+          default: active
+        tz:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - company_id
+        - full_name
+        - status
+        - created_at
+
+    Shift:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employee_id:
+          type: string
+          format: uuid
+        planned_start_at:
+          type: string
+          format: date-time
+        planned_end_at:
+          type: string
+          format: date-time
+        actual_start_at:
+          type: string
+          format: date-time
+          nullable: true
+        actual_end_at:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [scheduled, active, paused, completed, cancelled]
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - employee_id
+        - planned_start_at
+        - planned_end_at
+        - status
+
+    CompanyStats:
+      type: object
+      properties:
+        totalEmployees:
+          type: integer
+        activeShifts:
+          type: integer
+        completedShifts:
+          type: integer
+        exceptions:
+          type: integer
+      required:
+        - totalEmployees
+        - activeShifts
+        - completedShifts
+        - exceptions
+
+    Violation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employee_id:
+          type: string
+          format: uuid
+        company_id:
+          type: string
+          format: uuid
+        rule_id:
+          type: string
+          format: uuid
+        shift_id:
+          type: string
+          format: uuid
+          nullable: true
+        type:
+          type: string
+          enum: [late_start, early_end, long_break, missed_shift, unauthorized_absence, other]
+        severity:
+          type: integer
+          minimum: 1
+          maximum: 10
+        description:
+          type: string
+          nullable: true
+        source:
+          type: string
+          enum: [auto, manual]
+        penalty:
+          type: number
+          format: float
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - employee_id
+        - company_id
+        - rule_id
+        - source
+        - created_at
+
+    ViolationRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        penalty_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+        auto_detectable:
+          type: boolean
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - company_id
+        - code
+        - name
+        - is_active
+
+    EmployeeRating:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employee_id:
+          type: string
+          format: uuid
+        company_id:
+          type: string
+          format: uuid
+        period_start:
+          type: string
+          format: date
+        period_end:
+          type: string
+          format: date
+        rating:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        status:
+          type: string
+          enum: [active, warning, terminated]
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - employee_id
+        - company_id
+        - period_start
+        - period_end
+        - rating
+
+    EmployeeInvite:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        full_name:
+          type: string
+          nullable: true
+        position:
+          type: string
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        used_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - company_id
+        - code
+        - created_at
+
+  parameters:
+    CompanyId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Company UUID
+    EmployeeId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Employee UUID
+    ShiftId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Shift UUID
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized - Invalid or missing authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Returns application health status
+      responses:
+        '200':
+          description: Application is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /api/companies:
+    post:
+      tags: [Companies]
+      summary: Create a new company
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                timezone:
+                  type: string
+                  default: Europe/Amsterdam
+                locale:
+                  type: string
+                  default: ru
+      responses:
+        '201':
+          description: Company created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/companies/{id}:
+    get:
+      tags: [Companies]
+      summary: Get company by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CompanyId'
+      responses:
+        '200':
+          description: Company found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      tags: [Companies]
+      summary: Update company
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CompanyId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                timezone:
+                  type: string
+                locale:
+                  type: string
+      responses:
+        '200':
+          description: Company updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/companies/{companyId}/stats:
+    get:
+      tags: [Companies]
+      summary: Get company statistics
+      description: Returns aggregated statistics for a company
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: companyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Company statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyStats'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/employees:
+    post:
+      tags: [Employees]
+      summary: Create a new employee
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [company_id, full_name]
+              properties:
+                company_id:
+                  type: string
+                  format: uuid
+                full_name:
+                  type: string
+                position:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone_number:
+                  type: string
+                telegram_user_id:
+                  type: string
+                status:
+                  type: string
+                  enum: [active, inactive, on_leave]
+                  default: active
+      responses:
+        '201':
+          description: Employee created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Employee'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/employees/{id}:
+    get:
+      tags: [Employees]
+      summary: Get employee by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EmployeeId'
+      responses:
+        '200':
+          description: Employee found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Employee'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Employees]
+      summary: Update employee
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EmployeeId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name:
+                  type: string
+                position:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                status:
+                  type: string
+                  enum: [active, inactive, on_leave]
+      responses:
+        '200':
+          description: Employee updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Employee'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Employees]
+      summary: Delete employee
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EmployeeId'
+      responses:
+        '200':
+          description: Employee deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/shifts:
+    post:
+      tags: [Shifts]
+      summary: Create a new shift
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [employee_id, planned_start_at, planned_end_at]
+              properties:
+                employee_id:
+                  type: string
+                  format: uuid
+                planned_start_at:
+                  type: string
+                  format: date-time
+                planned_end_at:
+                  type: string
+                  format: date-time
+                notes:
+                  type: string
+      responses:
+        '201':
+          description: Shift created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shift'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/shifts/{id}:
+    get:
+      tags: [Shifts]
+      summary: Get shift by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ShiftId'
+      responses:
+        '200':
+          description: Shift found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shift'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Shifts]
+      summary: Update shift
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ShiftId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                planned_start_at:
+                  type: string
+                  format: date-time
+                planned_end_at:
+                  type: string
+                  format: date-time
+                status:
+                  type: string
+                  enum: [scheduled, active, paused, completed, cancelled]
+      responses:
+        '200':
+          description: Shift updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shift'
+

@@ -14,6 +14,9 @@ async function initializeApp() {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
   
+  // Input sanitization (must be imported after routes are registered)
+  // This will be handled in routes.ts via registerRoutes
+  
   // CORS middleware для Vercel
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');

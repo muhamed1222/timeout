@@ -1,7 +1,9 @@
 import { bot } from './bot.js';
 import { logger } from '../lib/logger.js';
 
-export async function handleTelegramWebhook(update: any) {
+import type { Update } from '@telegraf/types';
+
+export async function handleTelegramWebhook(update: Update) {
   try {
     await bot.handleUpdate(update);
   } catch (error) {

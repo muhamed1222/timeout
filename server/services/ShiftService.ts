@@ -2,23 +2,29 @@
  * ShiftService - Business logic for shift management
  */
 
-import { storage } from "../storage.js";
-import { cache } from "../lib/cache.js";
+import type { DIContainer } from "../lib/di/container.js";
+import { getContainer } from "../lib/di/container.js";
+import { invalidateCompanyStatsByShift } from "../lib/utils/cache.js";
 import { logger } from "../lib/logger.js";
 import type { InsertShift, InsertWorkInterval, InsertBreakInterval } from "../../shared/schema.js";
 
 export class ShiftService {
+  constructor(private readonly container: DIContainer) {}
+
+  private get repositories() {
+    return this.container.repositories;
+  }
   /**
    * Create a new shift
    */
   async createShift(data: InsertShift) {
     try {
-      const shift = await storage.createShift(data);
+      const shift = await this.repositories.shift.create(data);
       
       // Get employee to invalidate company cache
-      const employee = await storage.getEmployee(data.employee_id);
+      const employee = await this.repositories.employee.findById(data.employee_id);
       if (employee) {
-        cache.delete(`company:${employee.company_id}:stats`);
+        await invalidateCompanyStatsByShift({ employee_id: employee.id });
       }
       
       logger.info("Shift created", { 
@@ -39,7 +45,7 @@ export class ShiftService {
    */
   async getShift(shiftId: string) {
     try {
-      const shift = await storage.getShift(shiftId);
+      const shift = await this.repositories.shift.findById(shiftId);
       
       if (!shift) {
         logger.warn("Shift not found", { shiftId });
@@ -58,7 +64,7 @@ export class ShiftService {
    */
   async startShift(shiftId: string) {
     try {
-      const shift = await storage.updateShift(shiftId, {
+      const shift = await this.repositories.shift.update(shiftId, {
         status: 'active',
         actual_start_at: new Date()
       });
@@ -68,9 +74,9 @@ export class ShiftService {
       }
       
       // Get employee to invalidate company cache
-      const employee = await storage.getEmployee(shift.employee_id);
+      const employee = await this.repositories.employee.findById(shift.employee_id);
       if (employee) {
-        cache.delete(`company:${employee.company_id}:stats`);
+        await invalidateCompanyStatsByShift({ employee_id: employee.id });
       }
       
       logger.info("Shift started", { 
@@ -91,7 +97,7 @@ export class ShiftService {
    */
   async endShift(shiftId: string) {
     try {
-      const shift = await storage.updateShift(shiftId, {
+      const shift = await this.repositories.shift.update(shiftId, {
         status: 'completed',
         actual_end_at: new Date()
       });
@@ -101,9 +107,9 @@ export class ShiftService {
       }
       
       // Get employee to invalidate company cache
-      const employee = await storage.getEmployee(shift.employee_id);
+      const employee = await this.repositories.employee.findById(shift.employee_id);
       if (employee) {
-        cache.delete(`company:${employee.company_id}:stats`);
+        await invalidateCompanyStatsByShift({ employee_id: employee.id });
       }
       
       logger.info("Shift ended", { 
@@ -129,7 +135,7 @@ export class ShiftService {
         start_at: new Date()
       };
 
-      const interval = await storage.createWorkInterval(workInterval);
+      const interval = await this.repositories.shift.createWorkInterval(workInterval);
       
       logger.info("Work interval started", { 
         shiftId, 
@@ -148,7 +154,7 @@ export class ShiftService {
    */
   async endWorkInterval(intervalId: string) {
     try {
-      const interval = await storage.updateWorkInterval(intervalId, {
+      const interval = await this.repositories.shift.updateWorkInterval(intervalId, {
         end_at: new Date()
       });
       
@@ -166,13 +172,13 @@ export class ShiftService {
    */
   async startBreak(shiftId: string, breakType: 'lunch' | 'short' = 'short') {
     try {
-      const breakInterval: InsertBreakInterval = {
+      const breakInterval: any = {
         shift_id: shiftId,
         start_at: new Date(),
         type: breakType
       };
 
-      const interval = await storage.createBreakInterval(breakInterval);
+      const interval = await this.repositories.shift.createBreakInterval(breakInterval);
       
       logger.info("Break started", { 
         shiftId, 
@@ -192,7 +198,7 @@ export class ShiftService {
    */
   async endBreak(intervalId: string) {
     try {
-      const interval = await storage.updateBreakInterval(intervalId, {
+      const interval = await this.repositories.shift.updateBreakInterval(intervalId, {
         end_at: new Date()
       });
       
@@ -210,7 +216,7 @@ export class ShiftService {
    */
   async getWorkIntervals(shiftId: string) {
     try {
-      const intervals = await storage.getWorkIntervalsByShift(shiftId);
+      const intervals = await this.repositories.shift.findWorkIntervalsByShiftId(shiftId);
       
       logger.debug("Work intervals fetched", { shiftId, count: intervals.length });
       
@@ -226,7 +232,7 @@ export class ShiftService {
    */
   async getBreakIntervals(shiftId: string) {
     try {
-      const intervals = await storage.getBreakIntervalsByShift(shiftId);
+      const intervals = await this.repositories.shift.findBreakIntervalsByShiftId(shiftId);
       
       logger.debug("Break intervals fetched", { shiftId, count: intervals.length });
       
@@ -242,7 +248,7 @@ export class ShiftService {
    */
   async getActiveShiftsByCompany(companyId: string) {
     try {
-      const shifts = await storage.getActiveShiftsByCompany(companyId);
+      const shifts = await this.repositories.shift.findActiveByCompanyId(companyId);
       
       logger.debug("Active shifts fetched", { companyId, count: shifts.length });
       
@@ -298,6 +304,6 @@ export class ShiftService {
   }
 }
 
-// Singleton instance
-export const shiftService = new ShiftService();
+// Singleton instance (backward compatibility)
+export const shiftService = new ShiftService(getContainer());
 

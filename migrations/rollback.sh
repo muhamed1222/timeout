@@ -98,11 +98,34 @@ echo ""
 # Perform rollback
 echo -e "${BLUE}🔄 Rolling back migrations...${NC}"
 
-# Drizzle doesn't have built-in rollback, so we need to do it manually
-# This is a simplified version - in production, you'd want to track down migrations
+# Get applied migration IDs from database (ordered by created_at DESC)
+MIGRATION_IDS=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+  -t -c "SELECT id FROM __drizzle_migrations ORDER BY created_at DESC LIMIT ${STEPS};" \
+  2>/dev/null | tr -d ' ' | grep -v '^$')
 
-# Get last N migration files
-MIGRATION_FILES=$(ls -t migrations/*.sql 2>/dev/null | head -n $STEPS)
+if [ -z "$MIGRATION_IDS" ]; then
+  echo -e "${YELLOW}⚠️  No migrations found to rollback${NC}"
+  unset PGPASSWORD
+  exit 0
+fi
+
+# Find corresponding migration files
+MIGRATION_FILES=""
+for MIGRATION_ID in $MIGRATION_IDS; do
+  # Find migration file matching the ID pattern
+  MIGRATION_FILE=$(find migrations -name "${MIGRATION_ID}*.sql" -type f 2>/dev/null | head -n 1)
+  if [ -n "$MIGRATION_FILE" ]; then
+    MIGRATION_FILES="$MIGRATION_FILES $MIGRATION_FILE"
+  else
+    echo -e "${YELLOW}⚠️  Migration file not found for ID: ${MIGRATION_ID}${NC}"
+  fi
+done
+
+# If no files found, try fallback to latest files
+if [ -z "$MIGRATION_FILES" ]; then
+  echo -e "${YELLOW}⚠️  No migration files found, trying fallback...${NC}"
+  MIGRATION_FILES=$(ls -t migrations/*.sql 2>/dev/null | grep -v "rollback" | head -n $STEPS)
+fi
 
 if [ -z "$MIGRATION_FILES" ]; then
   echo -e "${YELLOW}⚠️  No migration files found to rollback${NC}"
@@ -175,6 +198,7 @@ echo "3. If rollback caused issues, restore from backup:"
 echo "   ./scripts/restore-database.sh ${BACKUP_FILE} ${ENVIRONMENT}"
 echo ""
 echo -e "${GREEN}✅ Done!${NC}"
+
 
 
 

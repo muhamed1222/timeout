@@ -1,17 +1,20 @@
-import { Router } from "express";
-import { storage } from "../storage.js";
+import { Router, type Request, type Response, type NextFunction } from "express";
+import { repositories } from "../repositories/index.js";
 import { logger } from "../lib/logger.js";
 import { validateTelegramWebAppData } from "../services/telegramAuth.js";
+import { getSecret, isDevelopment } from '../lib/secrets.js';
+import type { Shift, WorkInterval, BreakInterval } from "../../shared/schema.js";
 
 const router = Router();
 
 // Middleware для аутентификации Telegram WebApp
-function authenticateTelegramWebApp(req: any, res: any, next: any) {
+
+function authenticateTelegramWebApp(req: Request, res: Response, next: NextFunction) {
   const initData = req.headers['x-telegram-init-data'];
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const botToken = getSecret('TELEGRAM_BOT_TOKEN');
   
   // В development режиме без токена разрешаем запросы
-  if (!botToken && process.env.NODE_ENV === 'development') {
+  if (!botToken && isDevelopment()) {
     logger.warn('TELEGRAM_BOT_TOKEN not set - skipping WebApp auth validation (development mode)');
     return next();
   }
@@ -19,7 +22,7 @@ function authenticateTelegramWebApp(req: any, res: any, next: any) {
   if (!initData) {
     // Если нет initData, проверяем telegramId в body/params
     const telegramId = req.body.telegramId || req.params.telegramId;
-    if (telegramId && process.env.NODE_ENV === 'development') {
+    if (telegramId && isDevelopment()) {
       logger.warn(`Development mode: accepting request with telegramId ${telegramId}`);
       return next();
     }
@@ -40,7 +43,11 @@ function authenticateTelegramWebApp(req: any, res: any, next: any) {
 }
 
 // Вспомогательная функция для определения статуса сотрудника
-function getEmployeeStatus(activeShift: any, workIntervals: any[], breakIntervals: any[]) {
+function getEmployeeStatus(
+  activeShift: Shift | undefined,
+  workIntervals: WorkInterval[],
+  breakIntervals: BreakInterval[]
+) {
   if (!activeShift) {
     return 'off_work';
   }
@@ -67,7 +74,7 @@ router.get("/employee/:telegramId", authenticateTelegramWebApp, async (req, res)
     const { telegramId } = req.params;
     
     // Найти сотрудника по telegram_user_id
-    const employee = await storage.getEmployeeByTelegramId(telegramId);
+    const employee = await repositories.employee.findByTelegramId(telegramId);
     
     if (!employee) {
       return res.status(404).json({ 
@@ -82,7 +89,7 @@ router.get("/employee/:telegramId", authenticateTelegramWebApp, async (req, res)
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    const shifts = await storage.getShiftsByEmployeeAndDateRange(
+    const shifts = await repositories.shift.findByEmployeeIdAndDateRange(
       employee.id,
       today,
       tomorrow
@@ -91,12 +98,12 @@ router.get("/employee/:telegramId", authenticateTelegramWebApp, async (req, res)
     const activeShift = shifts.find(s => s.status === 'active' || s.status === 'scheduled');
     
     // Получить интервалы работы и перерывов
-    let workIntervals: any[] = [];
-    let breakIntervals: any[] = [];
+    let workIntervals: WorkInterval[] = [];
+    let breakIntervals: BreakInterval[] = [];
     
     if (activeShift) {
-      workIntervals = await storage.getWorkIntervalsByShift(activeShift.id);
-      breakIntervals = await storage.getBreakIntervalsByShift(activeShift.id);
+      workIntervals = await repositories.shift.findWorkIntervalsByShiftId(activeShift.id);
+      breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(activeShift.id);
     }
     
     // Определить статус
@@ -132,7 +139,7 @@ router.post("/shift/start", authenticateTelegramWebApp, async (req, res) => {
     }
     
     // Найти сотрудника
-    const employee = await storage.getEmployeeByTelegramId(telegramId);
+    const employee = await repositories.employee.findByTelegramId(telegramId);
     
     if (!employee) {
       return res.status(404).json({ error: "Employee not found" });
@@ -144,7 +151,7 @@ router.post("/shift/start", authenticateTelegramWebApp, async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    const existingShifts = await storage.getShiftsByEmployeeAndDateRange(
+    const existingShifts = await repositories.shift.findByEmployeeIdAndDateRange(
       employee.id,
       today,
       tomorrow
@@ -168,7 +175,7 @@ router.post("/shift/start", authenticateTelegramWebApp, async (req, res) => {
       const endOfDay = new Date(now);
       endOfDay.setHours(23, 59, 59, 999);
       
-      shift = await storage.createShift({
+      shift = await repositories.shift.create({
         employee_id: employee.id,
         planned_start_at: now,
         planned_end_at: endOfDay,
@@ -176,7 +183,7 @@ router.post("/shift/start", authenticateTelegramWebApp, async (req, res) => {
       });
     } else {
       // Обновить статус запланированной смены
-      shift = await storage.updateShift(shift.id, { 
+      shift = await repositories.shift.update(shift.id, { 
         status: 'active',
         actual_start_at: new Date()
       });
@@ -187,7 +194,7 @@ router.post("/shift/start", authenticateTelegramWebApp, async (req, res) => {
     }
     
     // Создать интервал работы
-    const workInterval = await storage.createWorkInterval({
+    const workInterval = await repositories.shift.createWorkInterval({
       shift_id: shift.id,
       start_at: new Date(),
       source: "webapp"
@@ -224,7 +231,7 @@ router.post("/shift/end", authenticateTelegramWebApp, async (req, res) => {
     }
     
     // Найти сотрудника
-    const employee = await storage.getEmployeeByTelegramId(telegramId);
+    const employee = await repositories.employee.findByTelegramId(telegramId);
     
     if (!employee) {
       return res.status(404).json({ error: "Employee not found" });
@@ -236,7 +243,7 @@ router.post("/shift/end", authenticateTelegramWebApp, async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    const shifts = await storage.getShiftsByEmployeeAndDateRange(
+    const shifts = await repositories.shift.findByEmployeeIdAndDateRange(
       employee.id,
       today,
       tomorrow
@@ -252,27 +259,27 @@ router.post("/shift/end", authenticateTelegramWebApp, async (req, res) => {
     }
     
     // Завершить активный интервал работы
-    const workIntervals = await storage.getWorkIntervalsByShift(activeShift.id);
+    const workIntervals = await repositories.shift.findWorkIntervalsByShiftId(activeShift.id);
     const activeWorkInterval = workIntervals.find(wi => !wi.end_at);
     
     if (activeWorkInterval) {
-      await storage.updateWorkInterval(activeWorkInterval.id, { 
+      await repositories.shift.updateWorkInterval(activeWorkInterval.id, { 
         end_at: new Date() 
       });
     }
     
     // Завершить активный перерыв (если есть)
-    const breakIntervals = await storage.getBreakIntervalsByShift(activeShift.id);
+    const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(activeShift.id);
     const activeBreak = breakIntervals.find(bi => !bi.end_at);
     
     if (activeBreak) {
-      await storage.updateBreakInterval(activeBreak.id, { 
+      await repositories.shift.updateBreakInterval(activeBreak.id, { 
         end_at: new Date() 
       });
     }
     
     // Обновить статус смены
-    const updatedShift = await storage.updateShift(activeShift.id, { 
+    const updatedShift = await repositories.shift.update(activeShift.id, { 
       status: 'completed',
       actual_end_at: new Date()
     });
@@ -306,7 +313,7 @@ router.post("/break/start", authenticateTelegramWebApp, async (req, res) => {
     }
     
     // Найти сотрудника
-    const employee = await storage.getEmployeeByTelegramId(telegramId);
+    const employee = await repositories.employee.findByTelegramId(telegramId);
     
     if (!employee) {
       return res.status(404).json({ error: "Employee not found" });
@@ -318,7 +325,7 @@ router.post("/break/start", authenticateTelegramWebApp, async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    const shifts = await storage.getShiftsByEmployeeAndDateRange(
+    const shifts = await repositories.shift.findByEmployeeIdAndDateRange(
       employee.id,
       today,
       tomorrow
@@ -334,7 +341,7 @@ router.post("/break/start", authenticateTelegramWebApp, async (req, res) => {
     }
     
     // Проверить, нет ли уже активного перерыва
-    const breakIntervals = await storage.getBreakIntervalsByShift(activeShift.id);
+    const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(activeShift.id);
     const activeBreak = breakIntervals.find(bi => !bi.end_at);
     
     if (activeBreak) {
@@ -345,17 +352,17 @@ router.post("/break/start", authenticateTelegramWebApp, async (req, res) => {
     }
     
     // Завершить активный интервал работы
-    const workIntervals = await storage.getWorkIntervalsByShift(activeShift.id);
+    const workIntervals = await repositories.shift.findWorkIntervalsByShiftId(activeShift.id);
     const activeWorkInterval = workIntervals.find(wi => !wi.end_at);
     
     if (activeWorkInterval) {
-      await storage.updateWorkInterval(activeWorkInterval.id, { 
+      await repositories.shift.updateWorkInterval(activeWorkInterval.id, { 
         end_at: new Date() 
       });
     }
     
     // Создать интервал перерыва
-    const breakInterval = await storage.createBreakInterval({
+    const breakInterval = await repositories.shift.createBreakInterval({
       shift_id: activeShift.id,
       start_at: new Date(),
       type: "lunch",
@@ -392,7 +399,7 @@ router.post("/break/end", authenticateTelegramWebApp, async (req, res) => {
     }
     
     // Найти сотрудника
-    const employee = await storage.getEmployeeByTelegramId(telegramId);
+    const employee = await repositories.employee.findByTelegramId(telegramId);
     
     if (!employee) {
       return res.status(404).json({ error: "Employee not found" });
@@ -404,7 +411,7 @@ router.post("/break/end", authenticateTelegramWebApp, async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    const shifts = await storage.getShiftsByEmployeeAndDateRange(
+    const shifts = await repositories.shift.findByEmployeeIdAndDateRange(
       employee.id,
       today,
       tomorrow
@@ -420,7 +427,7 @@ router.post("/break/end", authenticateTelegramWebApp, async (req, res) => {
     }
     
     // Найти активный перерыв
-    const breakIntervals = await storage.getBreakIntervalsByShift(activeShift.id);
+    const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(activeShift.id);
     const activeBreak = breakIntervals.find(bi => !bi.end_at);
     
     if (!activeBreak) {
@@ -431,12 +438,12 @@ router.post("/break/end", authenticateTelegramWebApp, async (req, res) => {
     }
     
     // Завершить перерыв
-    await storage.updateBreakInterval(activeBreak.id, { 
+    await repositories.shift.updateBreakInterval(activeBreak.id, { 
       end_at: new Date() 
     });
     
     // Начать новый интервал работы
-    const workInterval = await storage.createWorkInterval({
+    const workInterval = await repositories.shift.createWorkInterval({
       shift_id: activeShift.id,
       start_at: new Date(),
       source: "webapp"

@@ -14,6 +14,10 @@ import { Loader2, User, Bell, Globe, Building2, AlertTriangle, Plus, Edit, Trash
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { SettingsSkeleton } from "@/components/LoadingSkeletons";
+import { ErrorState } from "@/components/ErrorBoundary";
+import { useRetry } from "@/hooks/useRetry";
+import { getContextErrorMessage } from "@/lib/errorMessages";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -294,12 +298,13 @@ export default function Settings() {
     }
   };
 
+  // Retry hooks
+  const companyRetry = useRetry(['/api/companies', companyId]);
+  const rulesRetry = useRetry(['/api/companies', companyId, 'violation-rules']);
+
+  // Loading state
   if (authLoading || companyLoading) {
-    return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
-    );
+    return <SettingsSkeleton />;
   }
 
   if (!user) {

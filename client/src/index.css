@@ -2,6 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  /* Screen reader only class - hides visually but accessible to screen readers */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  .sr-only:focus,
+  .not-sr-only {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    :root {
+      --border: 0 0% 0%;
+      --border-opacity: 1;
+    }
+
+    * {
+      border-color: currentColor !important;
+      outline-width: 2px !important;
+      outline-offset: 2px !important;
+    }
+
+    button,
+    a,
+    input,
+    select,
+    textarea {
+      border-width: 2px !important;
+    }
+
+    .card {
+      border-width: 2px !important;
+    }
+  }
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0, .10);

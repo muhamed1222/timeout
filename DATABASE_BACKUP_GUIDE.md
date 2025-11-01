@@ -23,6 +23,9 @@ Comprehensive backup and recovery system for PostgreSQL database.
 # Backup production database
 ./scripts/backup-database.sh production
 
+# Or using npm script
+npm run db:backup
+
 # Backup with integrity test
 ./scripts/backup-database.sh production --test
 ```
@@ -32,6 +35,19 @@ Comprehensive backup and recovery system for PostgreSQL database.
 ```bash
 # Restore production database
 ./scripts/restore-database.sh backups/production/backup_20251029.sql.gz production
+
+# Or using npm script (interactive)
+npm run db:restore <backup_file> <environment>
+```
+
+### Verify Backup
+
+```bash
+# Verify backup integrity
+./scripts/verify-backup.sh backups/production/backup.sql.gz production
+
+# Or using npm script
+npm run db:verify <backup_file> <environment>
 ```
 
 ### Rollback Migration
@@ -42,6 +58,9 @@ Comprehensive backup and recovery system for PostgreSQL database.
 
 # Rollback last 3 migrations
 ./migrations/rollback.sh 3
+
+# Or using npm script
+npm run db:rollback 1
 ```
 
 ---

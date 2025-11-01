@@ -9,6 +9,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { CommandPalette } from "@/components/CommandPalette";
 import Dashboard from "@/pages/Dashboard";
 import Exceptions from "@/pages/Exceptions";
 import Rating from "@/pages/Rating";
@@ -84,16 +85,36 @@ function AppContent() {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
+      {/* Skip to main content link for keyboard users */}
+      <a 
+        href="#main-content" 
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:ring-2 focus:ring-ring"
+        aria-label="Перейти к основному контенту"
+      >
+        Перейти к основному контенту
+      </a>
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1">
-          <header className="flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
+          <header 
+            className="flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+            role="banner"
+          >
+            <SidebarTrigger 
+              data-testid="button-sidebar-toggle"
+              aria-label="Переключить боковую панель"
+            />
             <ThemeToggle />
           </header>
-          <main className="flex-1 overflow-auto p-6">
-            <MainRouter />
-          </main>
+        <main
+          id="main-content"
+          className="flex-1 overflow-auto p-6"
+          role="main"
+          aria-label="Основной контент"
+        >
+          <MainRouter />
+          <CommandPalette />
+        </main>
         </div>
       </div>
     </SidebarProvider>

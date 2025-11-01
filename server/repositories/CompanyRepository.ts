@@ -13,21 +13,29 @@ export class CompanyRepository extends BaseRepository<Company, InsertCompany> {
   }
 
   /**
-   * Get company with employee count
+   * Get company with employee count (optimized with single query using JOIN)
    */
   async findByIdWithStats(id: string): Promise<(Company & { employeeCount: number }) | undefined> {
-    const company = await this.findById(id);
-    if (!company) return undefined;
+    const result = await this.db
+      .select({
+        company: this.table,
+        employeeCount: sql<number>`count(${schema.employee.id})`.as('employee_count'),
+      })
+      .from(this.table)
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      .leftJoin(schema.employee, eq(schema.employee.company_id, (this.table as any).id))
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      .where(eq((this.table as any).id, id))
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      .groupBy((this.table as any).id)
+      .limit(1);
 
-    const employeeCount = await this.db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.employee)
-      .where(eq(schema.employee.company_id, id));
+    if (result.length === 0) return undefined;
 
     return {
-      ...company,
-      employeeCount: Number(employeeCount[0]?.count || 0),
-    };
+      ...result[0].company,
+      employeeCount: Number(result[0].employeeCount || 0),
+    } as Company & { employeeCount: number };
   }
 
   /**
@@ -65,7 +73,8 @@ export class CompanyRepository extends BaseRepository<Company, InsertCompany> {
     const results = await this.db
       .select()
       .from(this.table)
-      .where(sql`${this.table.name} ILIKE ${`%${query}%`}`);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      .where(sql`${(this.table as any).name} ILIKE ${`%${query.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`}`);
 
     return results as Company[];
   }

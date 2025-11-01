@@ -11,7 +11,12 @@ import RecentActivity, { type ActivityItem } from "@/components/RecentActivity";
 import { AddEmployeeModal } from "@/components/AddEmployeeModal";
 import ShiftDetailsModal from "@/components/ShiftDetailsModal";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
+import { ErrorState } from "@/components/ErrorBoundary";
+import { useRetry } from "@/hooks/useRetry";
+import { getErrorMessage, getContextErrorMessage } from "@/lib/errorMessages";
+import { ErrorType } from "@/lib/errorHandling";
 import { EmptyState } from "@/components/EmptyState";
+import { queryConfig } from "@/lib/queryClient";
 
 interface CompanyStats {
   totalEmployees: number;
@@ -55,6 +60,7 @@ export default function Dashboard() {
 
   // Fetch company stats
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<CompanyStats>({
+    ...queryConfig.dashboard,
     queryKey: ['/api/companies', companyId, 'stats'],
     queryFn: async () => {
       const res = await fetch(`/api/companies/${companyId}/stats`);
@@ -68,6 +74,7 @@ export default function Dashboard() {
 
   // Fetch active shifts
   const { data: activeShifts = [], isLoading: shiftsLoading, error: shiftsError } = useQuery<ActiveShift[]>({
+    ...queryConfig.live,
     queryKey: ['/api/companies', companyId, 'shifts', 'active'],
     queryFn: async () => {
       const res = await fetch(`/api/companies/${companyId}/shifts/active`);
@@ -209,9 +216,32 @@ export default function Dashboard() {
     })
     .slice(0, 10);
 
+  // Retry hooks for failed queries
+  const statsRetry = useRetry(['/api/companies', companyId, 'stats']);
+  const shiftsRetry = useRetry(['/api/companies', companyId, 'shifts', 'active']);
+
   // Loading state
   if (authLoading || statsLoading || shiftsLoading) {
     return <DashboardSkeleton />;
+  }
+
+  // Error states with retry
+  if (statsError) {
+    return (
+      <ErrorState
+        message={getContextErrorMessage('dashboard', 'stats')}
+        onRetry={() => statsRetry.retry()}
+      />
+    );
+  }
+
+  if (shiftsError) {
+    return (
+      <ErrorState
+        message={getContextErrorMessage('shifts', 'fetch')}
+        onRetry={() => shiftsRetry.retry()}
+      />
+    );
   }
 
   // Not authenticated
@@ -244,12 +274,21 @@ export default function Dashboard() {
           <p className="text-muted-foreground">Обзор активности сотрудников</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport} data-testid="button-export">
-            <Download className="w-4 h-4 mr-2" />
+          <Button 
+            variant="outline" 
+            onClick={handleExport} 
+            data-testid="button-export"
+            aria-label="Экспортировать данные в CSV"
+          >
+            <Download className="w-4 h-4 mr-2" aria-hidden="true" />
             Экспорт
           </Button>
-          <Button onClick={handleAddEmployee} data-testid="button-add-employee">
-            <Plus className="w-4 h-4 mr-2" />
+          <Button 
+            onClick={handleAddEmployee} 
+            data-testid="button-add-employee"
+            aria-label="Добавить нового сотрудника"
+          >
+            <Plus className="w-4 h-4 mr-2" aria-hidden="true" />
             Добавить
           </Button>
         </div>
@@ -267,7 +306,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Shift Cards */}
         <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-xl font-semibold">Активные смены</h2>
+          <h2 className="text-xl font-semibold" id="active-shifts-heading">Активные смены</h2>
           {filteredShifts.length === 0 ? (
             <EmptyState
               icon={Users}
@@ -279,7 +318,12 @@ export default function Dashboard() {
               }}
             />
           ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div 
+              className="grid grid-cols-1 xl:grid-cols-2 gap-4"
+              role="list"
+              aria-labelledby="active-shifts-heading"
+              aria-label={`Список активных смен. Всего: ${filteredShifts.length}`}
+            >
               {filteredShifts.map((shift) => (
                 <ShiftCard 
                   key={shift.id} 

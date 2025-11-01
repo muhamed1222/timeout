@@ -10,10 +10,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Run tests before deploying
+  # Run comprehensive tests before deploying
   tests:
-    name: Run Tests
-    uses: ./.github/workflows/test.yml
+    name: Run Comprehensive Tests
+    uses: ./.github/workflows/ci-comprehensive.yml
     secrets: inherit
 
   # Deploy to Vercel
@@ -209,6 +209,7 @@ jobs:
             echo "❌ Deployment failed or health checks did not pass"
             exit 1
           fi
+
 
 
 

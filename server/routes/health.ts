@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { storage } from '../storage.js';
-import { cache } from '../lib/cache.js';
+import { db } from '../repositories/index.js';
+import { sql } from 'drizzle-orm';
+import { cacheAsync } from '../lib/cache.js';
 import { scheduler } from '../services/scheduler.js';
 import { getMetrics } from '../lib/metrics.js';
 import { logger } from '../lib/logger.js';
@@ -180,7 +181,7 @@ async function checkDatabase(): Promise<ServiceStatus> {
   
   try {
     // Simple query to check DB connectivity
-    await (storage as any).db?.execute('SELECT 1');
+    await db.execute(sql`SELECT 1`);
     
     const responseTime = Date.now() - start;
     
@@ -209,13 +210,13 @@ async function checkCache(): Promise<ServiceStatus> {
     const testValue = Date.now().toString();
     
     // Test write
-    cache.set(testKey, testValue, 10);
+    await cacheAsync.set(testKey, testValue, 10);
     
     // Test read
-    const retrieved = cache.get(testKey);
+    const retrieved = await cacheAsync.get<string>(testKey);
     
     // Clean up
-    cache.delete(testKey);
+    await cacheAsync.delete(testKey);
     
     const responseTime = Date.now() - start;
     

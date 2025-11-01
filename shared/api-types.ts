@@ -173,8 +173,13 @@ export interface TelegramEmployeeStatus {
 
 // ===== Error Response =====
 export interface ErrorResponse {
-  error: string;
-  details?: any;
+  error: {
+    name: string;
+    message: string;
+    statusCode: number;
+    code?: string;
+    details?: Record<string, unknown>;
+  };
 }
 
 export interface ValidationErrorResponse {

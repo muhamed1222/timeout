@@ -64,7 +64,8 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
       .where(
         and(
           eq(schema.employee.company_id, companyId),
-          sql`${this.table.role} = ${role}`
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          sql`${(this.table as any).role} = ${role}`
         )
       );
 
@@ -82,8 +83,10 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
         and(
           eq(schema.employee.company_id, companyId),
           or(
-            sql`${this.table.full_name} ILIKE ${`%${query}%`}`,
-            sql`${this.table.phone} ILIKE ${`%${query}%`}`
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+            sql`${(this.table as any).full_name} ILIKE ${`%${query.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`}`,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+            sql`${(this.table as any).phone} ILIKE ${`%${query.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`}`
           )
         )
       );

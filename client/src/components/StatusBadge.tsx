@@ -48,9 +48,14 @@ export default function StatusBadge({ status, text, showIcon = true }: StatusBad
   const displayText = text || config.defaultText;
 
   return (
-    <Badge className={`${config.color} gap-1 font-medium`} data-testid={`badge-status-${status}`}>
-      {showIcon && <Icon className="w-3 h-3" />}
-      {displayText}
+    <Badge 
+      className={`${config.color} gap-1 font-medium`} 
+      data-testid={`badge-status-${status}`}
+      role="status"
+      aria-label={`Статус: ${displayText}`}
+    >
+      {showIcon && <Icon className="w-3 h-3" aria-hidden="true" />}
+      <span>{displayText}</span>
     </Badge>
   );
 }

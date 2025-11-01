@@ -7,9 +7,12 @@ import type {
   Violations,
   InsertViolations,
   CompanyViolationRules,
-  InsertCompanyViolationRules
+  InsertCompanyViolationRules,
+  Employee
 } from '../../shared/schema.js';
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
+import type { ViolationRepository } from './ViolationRepository.js';
+import type { EmployeeRepository } from './EmployeeRepository.js';
 
 /**
  * Repository for Rating and Violations entities
@@ -45,27 +48,28 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
   /**
    * Find ratings by company
    */
-  async findByCompanyId(companyId: string, limit?: number): Promise<EmployeeRating[]> {
-    let query = this.db
-      .select({
-        rating: this.table,
-      })
+  async findByCompanyId(companyId: string, periodStart?: Date, periodEnd?: Date): Promise<EmployeeRating[]> {
+    const whereExpr = (periodStart && periodEnd)
+      ? and(
+          eq(schema.employee_rating.company_id, companyId),
+          eq(schema.employee_rating.period_start, periodStart.toISOString().split('T')[0] as any),
+          eq(schema.employee_rating.period_end, periodEnd.toISOString().split('T')[0] as any)
+        )
+      : eq(schema.employee_rating.company_id, companyId);
+
+    const results = await this.db
+      .select()
       .from(this.table)
-      .innerJoin(
-        schema.employee,
-        eq(schema.employee_rating.employee_id, schema.employee.id)
-      )
-      .where(eq(schema.employee.company_id, companyId))
+      .where(whereExpr)
       .orderBy(desc(schema.employee_rating.rating));
 
-    const results = limit ? await query.limit(limit) : await query;
-    return results.map((row: any) => row.rating) as EmployeeRating[];
+    return results as EmployeeRating[];
   }
 
   /**
    * Get top rated employees
    */
-  async getTopRated(companyId: string, limit: number = 10): Promise<(EmployeeRating & { employee: any })[]> {
+  async getTopRated(companyId: string, limit: number = 10): Promise<(EmployeeRating & { employee: Employee })[]> {
     const results = await this.db
       .select()
       .from(this.table)
@@ -77,10 +81,10 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
       .orderBy(desc(schema.employee_rating.rating))
       .limit(limit);
 
-    return results.map((row: any) => ({
+    return results.map((row) => ({
       ...row.employee_rating,
       employee: row.employee,
-    }));
+    })) as (EmployeeRating & { employee: Employee })[];
   }
 
   /**
@@ -158,7 +162,7 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
       .orderBy(desc(schema.violations.created_at));
 
     const results = limit ? await query.limit(limit) : await query;
-    return results.map((row: any) => row.violation) as Violations[];
+    return results.map((row) => row.violation) as Violations[];
   }
 
   /**
@@ -252,6 +256,57 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
     await this.db
       .delete(schema.company_violation_rules)
       .where(eq(schema.company_violation_rules.id, id));
+  }
+
+  /**
+   * Calculate rating from violations and update/create employee rating
+   * This method contains business logic and requires access to violations
+   */
+  async updateFromViolations(
+    employeeId: string,
+    periodStart: Date,
+    periodEnd: Date,
+    violationRepo: ViolationRepository,
+    employeeRepo: EmployeeRepository
+  ): Promise<EmployeeRating> {
+    // Calculate rating from violations
+    const violations = await violationRepo.findViolationsByEmployee(employeeId, periodStart, periodEnd);
+    const totalPenalty = violations.reduce((sum: number, violation: Violations) => sum + Number(violation.penalty || 0), 0);
+    const rating = Math.max(0, 100 - totalPenalty);
+
+    // Get or create employee rating
+    let employeeRating = await this.findByEmployeeAndPeriod(employeeId, periodStart, periodEnd);
+
+    if (employeeRating) {
+      employeeRating = await this.update(employeeRating.id, { 
+        rating: rating.toString(),
+        status: rating <= 30 ? 'terminated' : rating <= 50 ? 'warning' : 'active'
+      } as any);
+    } else {
+      // Get employee to get company_id
+      const employee = await employeeRepo.findById(employeeId);
+      if (!employee) {
+        throw new Error('Employee not found');
+      }
+
+      employeeRating = await this.create({
+        employee_id: employeeId,
+        company_id: employee.company_id,
+        period_start: periodStart.toISOString().split('T')[0] as any,
+        period_end: periodEnd.toISOString().split('T')[0] as any,
+        rating: rating.toString(),
+        status: rating <= 30 ? 'terminated' : rating <= 50 ? 'warning' : 'active'
+      } as any);
+    }
+
+    // Update employee status if rating is too low
+    if (rating <= 30) {
+      await employeeRepo.update(employeeId, { 
+        status: 'terminated'
+      } as any);
+    }
+
+    return employeeRating!;
   }
 }
 

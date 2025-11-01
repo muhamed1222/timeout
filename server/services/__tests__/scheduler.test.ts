@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { scheduler } from '../scheduler';
 import { shiftMonitor } from '../shiftMonitor';
-import { storage } from '../../storage';
+import { repositories } from '../../repositories/index';
 
 // Mock dependencies
 vi.mock('../shiftMonitor', () => ({
@@ -10,10 +10,12 @@ vi.mock('../shiftMonitor', () => ({
   },
 }));
 
-vi.mock('../../storage', () => ({
-  storage: {
-    getPendingReminders: vi.fn(),
-    markReminderSent: vi.fn(),
+vi.mock('../../repositories/index', () => ({
+  repositories: {
+    reminder: {
+      findPending: vi.fn(),
+      markAsSent: vi.fn(),
+    },
   },
 }));
 
@@ -166,33 +168,33 @@ describe('Scheduler', () => {
         },
       ];
 
-      vi.mocked(storage.getPendingReminders).mockResolvedValue(mockReminders);
-      vi.mocked(storage.markReminderSent).mockResolvedValue(undefined);
+      vi.mocked(repositories.reminder.findPending).mockResolvedValue(mockReminders as any);
+      vi.mocked(repositories.reminder.markAsSent).mockResolvedValue(undefined);
 
       scheduler.startRemindersSending();
 
       // Should run immediately
       await vi.runOnlyPendingTimersAsync();
-      expect(storage.getPendingReminders).toHaveBeenCalledTimes(1);
-      expect(storage.markReminderSent).toHaveBeenCalledTimes(2);
+      expect(repositories.reminder.findPending).toHaveBeenCalledTimes(1);
+      expect(repositories.reminder.markAsSent).toHaveBeenCalledTimes(2);
 
       // Should run again after 1 minute
-      vi.mocked(storage.getPendingReminders).mockResolvedValue([]);
+      vi.mocked(repositories.reminder.findPending).mockResolvedValue([] as any);
       vi.advanceTimersByTime(1 * 60 * 1000);
       await vi.runOnlyPendingTimersAsync();
-      expect(storage.getPendingReminders).toHaveBeenCalledTimes(2);
+      expect(repositories.reminder.findPending).toHaveBeenCalledTimes(2);
 
       scheduler.stopRemindersSending();
     });
 
     it('should handle no pending reminders', async () => {
-      vi.mocked(storage.getPendingReminders).mockResolvedValue([]);
+      vi.mocked(repositories.reminder.findPending).mockResolvedValue([] as any);
 
       scheduler.startRemindersSending();
 
       await vi.runOnlyPendingTimersAsync();
-      expect(storage.getPendingReminders).toHaveBeenCalledTimes(1);
-      expect(storage.markReminderSent).not.toHaveBeenCalled();
+      expect(repositories.reminder.findPending).toHaveBeenCalledTimes(1);
+      expect(repositories.reminder.markAsSent).not.toHaveBeenCalled();
 
       scheduler.stopRemindersSending();
     });
@@ -215,8 +217,8 @@ describe('Scheduler', () => {
         },
       ];
 
-      vi.mocked(storage.getPendingReminders).mockResolvedValue(mockReminders);
-      vi.mocked(storage.markReminderSent)
+      vi.mocked(repositories.reminder.findPending).mockResolvedValue(mockReminders as any);
+      vi.mocked(repositories.reminder.markAsSent)
         .mockRejectedValueOnce(new Error('Send failed'))
         .mockResolvedValueOnce(undefined);
 
@@ -225,13 +227,13 @@ describe('Scheduler', () => {
       await vi.runOnlyPendingTimersAsync();
 
       // Should try to send both even if one fails
-      expect(storage.markReminderSent).toHaveBeenCalledTimes(2);
+      expect(repositories.reminder.markAsSent).toHaveBeenCalledTimes(2);
 
       scheduler.stopRemindersSending();
     });
 
     it('should handle errors in fetching reminders', async () => {
-      vi.mocked(storage.getPendingReminders).mockRejectedValue(
+      vi.mocked(repositories.reminder.findPending).mockRejectedValue(
         new Error('Database error')
       );
 
@@ -244,7 +246,7 @@ describe('Scheduler', () => {
       vi.advanceTimersByTime(1 * 60 * 1000);
       await vi.runOnlyPendingTimersAsync();
 
-      expect(storage.getPendingReminders).toHaveBeenCalledTimes(2);
+      expect(repositories.reminder.findPending).toHaveBeenCalledTimes(2);
 
       scheduler.stopRemindersSending();
     });
@@ -252,19 +254,19 @@ describe('Scheduler', () => {
 
   describe('stopRemindersSending', () => {
     it('should stop reminders sending', async () => {
-      vi.mocked(storage.getPendingReminders).mockResolvedValue([]);
+      vi.mocked(repositories.reminder.findPending).mockResolvedValue([] as any);
 
       scheduler.startRemindersSending();
 
       await vi.runOnlyPendingTimersAsync();
-      expect(storage.getPendingReminders).toHaveBeenCalledTimes(1);
+      expect(repositories.reminder.findPending).toHaveBeenCalledTimes(1);
 
       scheduler.stopRemindersSending();
 
       // Should not run after stopping
       vi.advanceTimersByTime(1 * 60 * 1000);
       await vi.runOnlyPendingTimersAsync();
-      expect(storage.getPendingReminders).toHaveBeenCalledTimes(1); // Still 1
+      expect(repositories.reminder.findPending).toHaveBeenCalledTimes(1); // Still 1
     });
   });
 
@@ -275,7 +277,7 @@ describe('Scheduler', () => {
         totalViolations: 0,
         totalExceptions: 0,
       });
-      vi.mocked(storage.getPendingReminders).mockResolvedValue([]);
+      vi.mocked(repositories.reminder.findPending).mockResolvedValue([] as any);
 
       scheduler.startAll();
 
@@ -283,7 +285,7 @@ describe('Scheduler', () => {
 
       // Both should have run
       expect(shiftMonitor.runGlobalMonitoring).toHaveBeenCalled();
-      expect(storage.getPendingReminders).toHaveBeenCalled();
+      expect(repositories.reminder.findPending).toHaveBeenCalled();
 
       scheduler.stopAll();
     });
@@ -296,14 +298,14 @@ describe('Scheduler', () => {
         totalViolations: 0,
         totalExceptions: 0,
       });
-      vi.mocked(storage.getPendingReminders).mockResolvedValue([]);
+      vi.mocked(repositories.reminder.findPending).mockResolvedValue([] as any);
 
       scheduler.startAll();
 
       await vi.runOnlyPendingTimersAsync();
 
       const initialMonitoringCalls = vi.mocked(shiftMonitor.runGlobalMonitoring).mock.calls.length;
-      const initialReminderCalls = vi.mocked(storage.getPendingReminders).mock.calls.length;
+      const initialReminderCalls = vi.mocked(repositories.reminder.findPending).mock.calls.length;
 
       scheduler.stopAll();
 
@@ -312,7 +314,7 @@ describe('Scheduler', () => {
       await vi.runOnlyPendingTimersAsync();
 
       expect(shiftMonitor.runGlobalMonitoring).toHaveBeenCalledTimes(initialMonitoringCalls);
-      expect(storage.getPendingReminders).toHaveBeenCalledTimes(initialReminderCalls);
+      expect(repositories.reminder.findPending).toHaveBeenCalledTimes(initialReminderCalls);
     });
 
     it('should handle stop when nothing is running', () => {
@@ -327,7 +329,7 @@ describe('Scheduler', () => {
         totalViolations: 0,
         totalExceptions: 0,
       });
-      vi.mocked(storage.getPendingReminders).mockResolvedValue([]);
+      vi.mocked(repositories.reminder.findPending).mockResolvedValue([] as any);
 
       scheduler.startShiftMonitoring(5); // 5 minutes
       scheduler.startRemindersSending(1); // 1 minute
@@ -335,24 +337,25 @@ describe('Scheduler', () => {
       // Both should run immediately
       await vi.runOnlyPendingTimersAsync();
       expect(shiftMonitor.runGlobalMonitoring).toHaveBeenCalledTimes(1);
-      expect(storage.getPendingReminders).toHaveBeenCalledTimes(1);
+      expect(repositories.reminder.findPending).toHaveBeenCalledTimes(1);
 
       // After 1 minute: only reminders should run
       vi.advanceTimersByTime(1 * 60 * 1000);
       await vi.runOnlyPendingTimersAsync();
       expect(shiftMonitor.runGlobalMonitoring).toHaveBeenCalledTimes(1); // Still 1
-      expect(storage.getPendingReminders).toHaveBeenCalledTimes(2); // 2 now
+      expect(repositories.reminder.findPending).toHaveBeenCalledTimes(2); // 2 now
 
       // After 4 more minutes (total 5): both should run
       vi.advanceTimersByTime(4 * 60 * 1000);
       await vi.runOnlyPendingTimersAsync();
       expect(shiftMonitor.runGlobalMonitoring).toHaveBeenCalledTimes(2); // 2 now
-      expect(storage.getPendingReminders).toHaveBeenCalledTimes(6); // 1+1+4 = 6
+      expect(repositories.reminder.findPending).toHaveBeenCalledTimes(6); // 1+1+4 = 6
 
       scheduler.stopAll();
     });
   });
 });
+
 
 
 

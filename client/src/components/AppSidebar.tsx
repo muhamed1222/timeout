@@ -74,20 +74,24 @@ export function AppSidebar() {
           <SidebarGroupLabel>Управление</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={location === item.url || (item.url === '/settings' && (location === '/company' || location === '/schedules'))}
-                    data-testid={`nav-${item.title.toLowerCase()}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {menuItems.map((item) => {
+                const isActive = location === item.url || (item.url === '/settings' && (location === '/company' || location === '/schedules'));
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={isActive}
+                      data-testid={`nav-${item.title.toLowerCase()}`}
+                      aria-current={isActive ? 'page' : undefined}
+                    >
+                      <Link href={item.url} aria-label={`Перейти к ${item.title}`}>
+                        <item.icon className="w-4 h-4" aria-hidden="true" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

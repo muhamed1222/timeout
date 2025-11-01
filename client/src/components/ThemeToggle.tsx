@@ -28,13 +28,15 @@ export default function ThemeToggle() {
       size="icon"
       onClick={toggleTheme}
       data-testid="button-theme-toggle"
-      aria-label={`Switch to ${isDark ? 'light' : 'dark'} theme`}
+      aria-label={isDark ? "Переключить на светлую тему" : "Переключить на тёмную тему"}
+      aria-pressed={isDark}
     >
       {isDark ? (
-        <Sun className="h-4 w-4" />
+        <Sun className="h-4 w-4" aria-hidden="true" />
       ) : (
-        <Moon className="h-4 w-4" />
+        <Moon className="h-4 w-4" aria-hidden="true" />
       )}
+      <span className="sr-only">{isDark ? "Светлая тема" : "Тёмная тема"}</span>
     </Button>
   );
 }

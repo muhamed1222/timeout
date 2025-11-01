@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
-import { storage } from "../storage.js";
-import { cache } from "../lib/cache.js";
+import { repositories } from "../repositories/index.js";
 import { insertCompanyViolationRulesSchema, insertViolationsSchema } from "../../shared/schema.js";
 import { logger } from "../lib/logger.js";
+import { invalidateCompanyStats, getCurrentMonthPeriod } from "../lib/utils/index.js";
 
 const router = Router();
 
@@ -44,11 +44,11 @@ router.get("/periods", async (_req, res) => {
 router.get("/companies/:companyId/rules", async (req, res) => {
   try {
     const { companyId } = req.params;
-    const company = await storage.getCompany(companyId);
+    const company = await repositories.company.findById(companyId);
     if (!company) {
       return res.status(404).json({ error: "Company not found" });
     }
-    const rules = await storage.getViolationRulesByCompany(companyId);
+    const rules = await repositories.violation.findByCompanyId(companyId);
     res.json(rules);
   } catch (error) {
     logger.error("Error fetching violation rules", error);
@@ -66,16 +66,16 @@ const requestCreateViolationRuleSchema = insertCompanyViolationRulesSchema.exten
 router.post("/rules", async (req, res) => {
   try {
     const validatedData = requestCreateViolationRuleSchema.parse(req.body) as any;
-    const company = await storage.getCompany(validatedData.company_id);
+    const company = await repositories.company.findById(validatedData.company_id);
     if (!company) {
       return res.status(404).json({ error: "Company not found" });
     }
-    const existing = await storage.getViolationRulesByCompany(validatedData.company_id);
+    const existing = await repositories.violation.findByCompanyId(validatedData.company_id);
     const duplicate = existing.find(r => r.code.trim().toLowerCase() === validatedData.code.trim().toLowerCase());
     if (duplicate) {
       return res.status(409).json({ error: "Rule code must be unique within the company" });
     }
-    const rule = await storage.createViolationRule(validatedData as any);
+    const rule = await repositories.violation.create(validatedData as any);
     res.json(rule);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -98,21 +98,21 @@ router.put("/rules/:id", async (req, res) => {
     const { id } = req.params;
     const validatedData = requestUpdateViolationRuleSchema.parse(req.body) as any;
     if (validatedData.code || validatedData.company_id) {
-      const current = await storage.getViolationRule(id);
+      const current = await repositories.violation.findById(id);
       if (!current) return res.status(404).json({ error: "Violation rule not found" });
       const companyId = validatedData.company_id || current.company_id;
-      const company = await storage.getCompany(companyId);
+      const company = await repositories.company.findById(companyId);
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
       const codeToCheck = (validatedData.code || current.code).trim().toLowerCase();
-      const existing = await storage.getViolationRulesByCompany(companyId);
+      const existing = await repositories.violation.findByCompanyId(companyId);
       const duplicate = existing.find(r => r.id !== id && r.code.trim().toLowerCase() === codeToCheck);
       if (duplicate) {
         return res.status(409).json({ error: "Rule code must be unique within the company" });
       }
     }
-    const rule = await storage.updateViolationRule(id, validatedData as any);
+    const rule = await repositories.violation.update(id, validatedData as any);
     if (!rule) {
       return res.status(404).json({ error: "Violation rule not found" });
     }
@@ -130,11 +130,11 @@ router.put("/rules/:id", async (req, res) => {
 router.delete("/rules/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const current = await storage.getViolationRule(id);
+    const current = await repositories.violation.findById(id);
     if (!current) {
       return res.status(404).json({ error: "Violation rule not found" });
     }
-    await storage.deleteViolationRule(id);
+    await repositories.violation.delete(id);
     res.json({ message: "Violation rule deleted successfully" });
   } catch (error) {
     logger.error("Error deleting violation rule", error);
@@ -155,17 +155,17 @@ router.post("/violations", async (req, res) => {
     });
     const validatedData = createViolationRequest.parse(req.body);
     
-    const employee = await storage.getEmployee(validatedData.employee_id);
+    const employee = await repositories.employee.findById(validatedData.employee_id);
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
-    const rule = await storage.getViolationRule(validatedData.rule_id);
+    const rule = await repositories.violation.findById(validatedData.rule_id);
     if (!rule) return res.status(404).json({ error: 'Violation rule not found' });
     if (employee.company_id !== validatedData.company_id || rule.company_id !== validatedData.company_id) {
       return res.status(403).json({ error: 'Company scope mismatch' });
     }
-    const company = await storage.getCompany(validatedData.company_id);
+    const company = await repositories.company.findById(validatedData.company_id);
     if (!company) return res.status(404).json({ error: 'Company not found' });
     
-    const violation = await storage.createViolation({
+    const violation = await repositories.violation.createViolation({
       employee_id: validatedData.employee_id,
       company_id: validatedData.company_id,
       rule_id: validatedData.rule_id,
@@ -175,22 +175,20 @@ router.post("/violations", async (req, res) => {
       penalty: rule.penalty_percent,
     } as any);
     
-    // Adjust rating decrementally by penalty for the current period
-    const employeeAfter = await storage.getEmployee(violation.employee_id);
-    if (employeeAfter) {
-      const now = new Date();
-      const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      // Adjust rating decrementally by penalty for the current period
+      const employeeAfter = await repositories.employee.findById(violation.employee_id);
+      if (employeeAfter) {
+        const { start: periodStart, end: periodEnd } = getCurrentMonthPeriod();
 
-      const existing = await storage.getEmployeeRating(violation.employee_id, periodStart, periodEnd);
+      const existing = await repositories.rating.findByEmployeeAndPeriod(violation.employee_id, periodStart, periodEnd);
       const currentValue = existing ? Number(existing.rating) : 100;
       const penalty = Number(violation.penalty || 0);
       const newValue = Math.max(0, currentValue - penalty);
 
       if (existing) {
-        await storage.updateEmployeeRating(existing.id, { rating: String(newValue) } as any);
+        await repositories.rating.update(existing.id, { rating: String(newValue) } as any);
       } else {
-        await storage.createEmployeeRating({
+        await repositories.rating.create({
           employee_id: violation.employee_id,
           company_id: employeeAfter.company_id,
           period_start: periodStart.toISOString().split('T')[0],
@@ -201,7 +199,7 @@ router.post("/violations", async (req, res) => {
       }
 
       // Invalidate company stats cache so "Нарушения" обновились
-      cache.delete(`company:${employeeAfter.company_id}:stats`);
+      await invalidateCompanyStats(employeeAfter.company_id);
     }
     
     res.json(violation);
@@ -228,7 +226,7 @@ router.get("/employees/:employeeId/violations", async (req, res) => {
       endDate = new Date(periodEnd as string);
     }
     
-    const violations = await storage.getViolationsByEmployee(employeeId, startDate, endDate);
+    const violations = await repositories.violation.findViolationsByEmployee(employeeId, startDate, endDate);
     res.json(violations);
   } catch (error) {
     logger.error("Error fetching violations", error);
@@ -250,7 +248,7 @@ router.get("/companies/:companyId/ratings", async (req, res) => {
       endDate = new Date(periodEnd as string);
     }
     
-    const ratings = await storage.getEmployeeRatingsByCompany(companyId, startDate, endDate);
+    const ratings = await repositories.rating.findByCompanyId(companyId, startDate, endDate);
     res.json(ratings);
   } catch (error) {
     logger.error("Error fetching ratings", error);
@@ -262,14 +260,14 @@ router.get("/companies/:companyId/ratings", async (req, res) => {
 router.post("/companies/:companyId/recalculate", async (req, res) => {
   try {
     const { companyId } = req.params;
-    const employees = await storage.getEmployeesByCompany(companyId);
+    const employees = await repositories.employee.findByCompanyId(companyId);
     const now = new Date();
     const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
     const results = [] as any[];
     for (const emp of employees) {
-      const rating = await storage.updateEmployeeRatingFromViolations(emp.id, periodStart, periodEnd);
+      const rating = await repositories.rating.updateFromViolations(emp.id, periodStart, periodEnd, repositories.violation, repositories.employee);
       results.push({ employee_id: emp.id, rating });
     }
 
@@ -288,14 +286,28 @@ router.post("/recalculate", async (req, res) => {
     const start = periodStart ? new Date(periodStart) : new Date(now.getFullYear(), now.getMonth(), 1);
     const end = periodEnd ? new Date(periodEnd) : new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-    const companies = await storage.getAllCompanies();
+    // Optimize: Load all employees at once to avoid N+1 queries
+    const companies = await repositories.company.findAll();
+    const companyIds = companies.map(c => c.id);
+    
+    // Load all employees for all companies in parallel
+    const employeesPromises = companyIds.map(companyId => 
+      repositories.employee.findByCompanyId(companyId)
+    );
+    const employeesArrays = await Promise.all(employeesPromises);
+    const allEmployees = employeesArrays.flat();
+    
+    // Process all employees in parallel batches
+    const batchSize = 50;
     let processed = 0;
-    for (const company of companies) {
-      const employees = await storage.getEmployeesByCompany(company.id);
-      for (const emp of employees) {
-        await storage.updateEmployeeRatingFromViolations(emp.id, start, end);
-        processed += 1;
-      }
+    for (let i = 0; i < allEmployees.length; i += batchSize) {
+      const batch = allEmployees.slice(i, i + batchSize);
+      await Promise.all(
+        batch.map(emp => 
+          repositories.rating.updateFromViolations(emp.id, start, end, repositories.violation, repositories.employee)
+        )
+      );
+      processed += batch.length;
     }
 
     res.json({ message: 'Глобальный пересчет завершен', processed, periodStart: start.toISOString().split('T')[0], periodEnd: end.toISOString().split('T')[0] });
@@ -318,7 +330,7 @@ router.get("/employees/:employeeId", async (req, res) => {
     const startDate = new Date(periodStart as string);
     const endDate = new Date(periodEnd as string);
     
-    const rating = await storage.getEmployeeRating(employeeId, startDate, endDate);
+    const rating = await repositories.rating.findByEmployeeAndPeriod(employeeId, startDate, endDate);
     if (!rating) {
       return res.status(404).json({ error: "Rating not found" });
     }
@@ -343,7 +355,7 @@ router.post("/employees/:employeeId/recalculate", async (req, res) => {
     const startDate = new Date(periodStart);
     const endDate = new Date(periodEnd);
     
-    const rating = await storage.updateEmployeeRatingFromViolations(employeeId, startDate, endDate);
+    const rating = await repositories.rating.updateFromViolations(employeeId, startDate, endDate, repositories.violation, repositories.employee);
     res.json(rating);
   } catch (error) {
     logger.error("Error recalculating rating", error);
@@ -364,19 +376,19 @@ router.post("/employees/:employeeId/adjust", async (req, res) => {
 
     const startDate = new Date(periodStart);
     const endDate = new Date(periodEnd);
-    const employee = await storage.getEmployee(employeeId);
+    const employee = await repositories.employee.findById(employeeId);
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
 
     // Get or create rating for the period
-    const existing = await storage.getEmployeeRating(employeeId, startDate, endDate);
+    const existing = await repositories.rating.findByEmployeeAndPeriod(employeeId, startDate, endDate);
     const current = existing ? Number(existing.rating) : 100;
     const updatedValue = Math.max(0, Math.min(100, current + delta));
 
     if (existing) {
-      const updated = await storage.updateEmployeeRating(existing.id, { rating: String(updatedValue) } as any);
+      const updated = await repositories.rating.update(existing.id, { rating: String(updatedValue) } as any);
       return res.json(updated);
     } else {
-      const created = await storage.createEmployeeRating({
+      const created = await repositories.rating.create({
         employee_id: employeeId,
         company_id: employee.company_id,
         period_start: periodStart,

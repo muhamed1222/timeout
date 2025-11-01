@@ -1,8 +1,11 @@
 import { Context } from 'telegraf';
+import type { InlineKeyboardButton } from 'telegraf/types';
 import { SessionData } from '../types.js';
-import { storage } from '../../storage.js';
-import { cache } from '../../lib/cache.js';
+import { repositories } from '../../repositories/index.js';
+import { invalidateCompanyStatsByShift } from '../../lib/utils/cache.js';
 import { logger } from '../../lib/logger.js';
+
+type InlineKeyboard = InlineKeyboardButton[][];
 
 export async function handleShiftActions(ctx: Context & { session: SessionData }) {
   const action = (ctx as any)?.callbackQuery?.data as string | undefined;
@@ -16,7 +19,7 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
     // Получаем текущую смену
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const shifts = await storage.getShiftsByEmployee(employeeId);
+    const shifts = await repositories.shift.findByEmployeeId(employeeId);
     const todayShift = shifts.find(s => {
       const shiftDate = new Date(s.planned_start_at);
       shiftDate.setHours(0, 0, 0, 0);
@@ -33,21 +36,21 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
     switch (action) {
       case 'start_shift':
         if (todayShift.status === 'planned') {
-          await storage.updateShift(todayShift.id, {
+          await repositories.shift.update(todayShift.id, {
             status: 'active',
             actual_start_at: new Date()
           });
 
-          await storage.createWorkInterval({
+          await repositories.shift.createWorkInterval({
             shift_id: todayShift.id,
             start_at: new Date(),
             source: 'bot'
           });
 
           // Invalidate company stats cache
-          const employee = await storage.getEmployee(employeeId);
+          const employee = await repositories.employee.findById(employeeId);
           if (employee) {
-            cache.delete(`company:${employee.company_id}:stats`);
+            await invalidateCompanyStatsByShift({ employee_id: employee.id });
           }
 
           message = '✅ Смена начата! Удачной работы!';
@@ -60,17 +63,17 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
       case 'start_break':
         if (todayShift.status === 'active') {
           // Завершаем текущий рабочий интервал
-          const workIntervals = await storage.getWorkIntervalsByShift(todayShift.id);
+          const workIntervals = await repositories.shift.findWorkIntervalsByShiftId(todayShift.id);
           const activeWork = workIntervals.find(wi => !wi.end_at);
           
           if (activeWork) {
-            await storage.updateWorkInterval(activeWork.id, {
+            await repositories.shift.updateWorkInterval(activeWork.id, {
               end_at: new Date()
             });
           }
 
           // Создаем интервал перерыва
-          await storage.createBreakInterval({
+          await repositories.shift.createBreakInterval({
             shift_id: todayShift.id,
             start_at: new Date(),
             type: 'lunch',
@@ -86,16 +89,16 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
 
       case 'end_break':
         // Завершаем перерыв
-        const breakIntervals = await storage.getBreakIntervalsByShift(todayShift.id);
+        const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(todayShift.id);
         const activeBreak = breakIntervals.find(bi => !bi.end_at);
         
         if (activeBreak) {
-          await storage.updateBreakInterval(activeBreak.id, {
+          await repositories.shift.updateBreakInterval(activeBreak.id, {
             end_at: new Date()
           });
 
           // Начинаем новый рабочий интервал
-          await storage.createWorkInterval({
+          await repositories.shift.createWorkInterval({
             shift_id: todayShift.id,
             start_at: new Date(),
             source: 'bot'
@@ -111,25 +114,24 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
       case 'end_shift':
         if (todayShift.status === 'active') {
           // Завершаем текущий рабочий интервал
-          const workIntervals = await storage.getWorkIntervalsByShift(todayShift.id);
+          const workIntervals = await repositories.shift.findWorkIntervalsByShiftId(todayShift.id);
           const activeWork = workIntervals.find(wi => !wi.end_at);
           
           if (activeWork) {
-            await storage.updateWorkInterval(activeWork.id, {
+            await repositories.shift.updateWorkInterval(activeWork.id, {
               end_at: new Date()
             });
           }
 
           // Завершаем смену
-          await storage.updateShift(todayShift.id, {
+          await repositories.shift.update(todayShift.id, {
             status: 'completed',
             actual_end_at: new Date()
           });
 
           // Invalidate company stats cache
-          const employeeEndShift = await storage.getEmployee(employeeId);
-          if (employeeEndShift) {
-            cache.delete(`company:${employeeEndShift.company_id}:stats`);
+          if (employeeId) {
+            await invalidateCompanyStatsByShift({ employee_id: employeeId });
           }
 
           message = '🕔 Смена завершена! Спасибо за работу!';
@@ -176,11 +178,11 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
 
 async function showUpdatedMenu(ctx: Context & { session: SessionData }, shiftId: string) {
   try {
-    const shift = await storage.getShift(shiftId);
+    const shift = await repositories.shift.findById(shiftId);
     if (!shift) return;
 
-    const workIntervals = await storage.getWorkIntervalsByShift(shiftId);
-    const breakIntervals = await storage.getBreakIntervalsByShift(shiftId);
+    const workIntervals = await repositories.shift.findWorkIntervalsByShiftId(shiftId);
+    const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(shiftId);
     
     const activeWork = workIntervals.find(wi => !wi.end_at);
     const activeBreak = breakIntervals.find(bi => !bi.end_at);
@@ -192,7 +194,7 @@ async function showUpdatedMenu(ctx: Context & { session: SessionData }, shiftId:
       status = '✅ Завершена';
     }
 
-    let keyboard: any[] = [];
+    let keyboard: InlineKeyboard = [];
 
     if (shift.status === 'planned') {
       keyboard = [

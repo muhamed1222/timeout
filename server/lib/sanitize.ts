@@ -93,7 +93,7 @@ export function sanitizeFilename(filename: string): string {
 /**
  * Sanitize object recursively
  */
-export function sanitizeObject<T extends Record<string, any>>(obj: T): T {
+export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
   const sanitized = {} as T;
   
   for (const key in obj) {
@@ -105,8 +105,9 @@ export function sanitizeObject<T extends Record<string, any>>(obj: T): T {
       sanitized[key] = value.map((item: unknown) =>
         typeof item === 'string' ? sanitizeUserInput(item) : item
       ) as T[typeof key];
-    } else if (value && typeof value === 'object') {
-      sanitized[key] = sanitizeObject(value);
+    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sanitized[key] = sanitizeObject(value as Record<string, unknown>) as any;
     } else {
       sanitized[key] = value;
     }
@@ -128,8 +129,143 @@ export function containsXss(input: string): boolean {
     /<iframe/i,
     /<object/i,
     /<embed/i,
+    /<link/i,
+    /<style/i,
+    /expression\s*\(/i,
+    /vbscript:/i,
   ];
   
   return xssPatterns.some(pattern => pattern.test(input));
+}
+
+/**
+ * Check if string contains SQL injection patterns
+ * Note: This is a basic check. Always use parameterized queries!
+ */
+export function containsSqlInjection(input: string): boolean {
+  if (typeof input !== 'string') return false;
+  
+  const sqlPatterns = [
+    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|SCRIPT)\b)/i,
+    /('|(\\')|(;)|(\\;)|(--)|(\\\/\\\*)|(\\\*\\\/)|(\+)|(\%27))/i,
+    /(\bOR\b\s*\d+\s*=\s*\d+)/i,
+    /(\bAND\b\s*\d+\s*=\s*\d+)/i,
+    /(\bUNION\b.*\bSELECT\b)/i,
+  ];
+  
+  return sqlPatterns.some(pattern => pattern.test(input));
+}
+
+/**
+ * Sanitize string for use in SQL LIKE queries
+ * Escapes special LIKE characters and removes dangerous patterns
+ */
+export function sanitizeForLike(query: string): string {
+  if (typeof query !== 'string') return '';
+  
+  // Remove SQL injection patterns
+  if (containsSqlInjection(query)) {
+    throw new Error('Potentially dangerous SQL pattern detected');
+  }
+  
+  // Escape LIKE special characters
+  return query
+    .replace(/\\/g, '\\\\')
+    .replace(/%/g, '\\%')
+    .replace(/_/g, '\\_')
+    .trim();
+}
+
+/**
+ * Sanitize email address
+ */
+export function sanitizeEmail(email: string): string {
+  if (typeof email !== 'string') return '';
+  
+  // Basic email validation and sanitization
+  const trimmed = email.trim().toLowerCase();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  
+  if (!emailRegex.test(trimmed)) {
+    return '';
+  }
+  
+  return trimmed;
+}
+
+/**
+ * Sanitize phone number (removes non-numeric characters except +)
+ */
+export function sanitizePhone(phone: string): string {
+  if (typeof phone !== 'string') return '';
+  
+  // Keep only digits, +, spaces, and hyphens
+  return phone.replace(/[^\d+\-\s]/g, '').trim();
+}
+
+/**
+ * Sanitize UUID (ensures valid UUID format)
+ */
+export function sanitizeUuid(uuid: string): string {
+  if (typeof uuid !== 'string') return '';
+  
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const trimmed = uuid.trim();
+  
+  if (!uuidRegex.test(trimmed)) {
+    return '';
+  }
+  
+  return trimmed.toLowerCase();
+}
+
+/**
+ * Deep sanitize object - recursively sanitizes all string values
+ * Handles nested objects and arrays
+ */
+export function deepSanitize<T>(input: T, options?: {
+  sanitizeNumbers?: boolean;
+  sanitizeDates?: boolean;
+  maxDepth?: number;
+}): T {
+  const maxDepth = options?.maxDepth ?? 10;
+  
+  function sanitizeRecursive(value: unknown, depth: number): unknown {
+    if (depth > maxDepth) {
+      return value; // Prevent stack overflow
+    }
+    
+    if (typeof value === 'string') {
+      // Check for dangerous patterns
+      if (containsSqlInjection(value)) {
+        throw new Error('Potentially dangerous SQL pattern detected in input');
+      }
+      if (containsXss(value)) {
+        // Sanitize but don't throw - XSS might be intentional in some contexts
+        return sanitizeUserInput(value);
+      }
+      return sanitizeUserInput(value);
+    }
+    
+    if (Array.isArray(value)) {
+      return value.map(item => sanitizeRecursive(item, depth + 1));
+    }
+    
+    if (value && typeof value === 'object') {
+      const sanitized: Record<string, unknown> = {};
+      for (const key in value) {
+        if (Object.prototype.hasOwnProperty.call(value, key)) {
+          // Sanitize object keys too
+          const sanitizedKey = sanitizeUserInput(key);
+          sanitized[sanitizedKey] = sanitizeRecursive((value as Record<string, unknown>)[key], depth + 1);
+        }
+      }
+      return sanitized;
+    }
+    
+    return value;
+  }
+  
+  return sanitizeRecursive(input, 0) as T;
 }
 

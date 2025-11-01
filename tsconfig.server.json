@@ -17,7 +17,15 @@
     "resolveJsonModule": true,
     "noEmit": false,
     "lib": ["ES2022"],
-    "types": ["node"]
+    "types": ["node"],
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true
   },
   "include": [
     "server/**/*",
@@ -30,7 +38,8 @@
     "api",
     "**/*.test.ts",
     "**/*.disabled/**",
-    "server/repositories.disabled/**"
+    "server/repositories.disabled/**",
+    "shared/domain/**"
   ]
 }
 

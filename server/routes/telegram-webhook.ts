@@ -1,35 +1,9 @@
 import { Router } from 'express';
-import { Telegraf } from 'telegraf';
+import { bot } from '../telegram/bot.js';
 import { logger } from '../lib/logger.js';
 import { captureException } from '../lib/sentry.js';
 
 const router = Router();
-
-// Initialize bot instance (shared)
-let bot: Telegraf | null = null;
-
-/**
- * Get or create Telegram bot instance
- */
-function getBot(): Telegraf {
-  if (!bot) {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    
-    if (!botToken) {
-      throw new Error('TELEGRAM_BOT_TOKEN is not set');
-    }
-    
-    bot = new Telegraf(botToken);
-    
-    // Import and register handlers
-    // This would import your bot handlers from telegramBot.ts
-    // registerBotHandlers(bot);
-    
-    logger.info('Telegram bot instance created');
-  }
-  
-  return bot;
-}
 
 /**
  * Webhook endpoint for Telegram updates
@@ -46,7 +20,6 @@ router.post('/telegram/webhook', async (req, res) => {
     });
     
     // Process update with Telegraf
-    const bot = getBot();
     await bot.handleUpdate(update);
     
     // Telegram expects 200 OK quickly
@@ -71,7 +44,6 @@ router.post('/telegram/webhook', async (req, res) => {
  */
 router.post('/telegram/setup-webhook', async (req, res) => {
   try {
-    const bot = getBot();
     const appUrl = process.env.APP_URL || process.env.VERCEL_URL;
     
     if (!appUrl) {
@@ -133,7 +105,6 @@ router.post('/telegram/setup-webhook', async (req, res) => {
  */
 router.get('/telegram/webhook-info', async (req, res) => {
   try {
-    const bot = getBot();
     const info = await bot.telegram.getWebhookInfo();
     
     res.json({
@@ -162,7 +133,6 @@ router.get('/telegram/webhook-info', async (req, res) => {
  */
 router.post('/telegram/delete-webhook', async (req, res) => {
   try {
-    const bot = getBot();
     const dropPendingUpdates = req.body.drop_pending_updates ?? false;
     
     await bot.telegram.deleteWebhook({ drop_pending_updates: dropPendingUpdates });
@@ -196,7 +166,6 @@ router.post('/telegram/test-webhook', async (req, res) => {
       });
     }
     
-    const bot = getBot();
     await bot.telegram.sendMessage(
       chat_id,
       '✅ Webhook is working! This is a test message.'
@@ -221,7 +190,6 @@ router.post('/telegram/test-webhook', async (req, res) => {
  */
 router.get('/telegram/webhook-health', async (req, res) => {
   try {
-    const bot = getBot();
     const info = await bot.telegram.getWebhookInfo();
     
     // Check if webhook is properly configured
@@ -247,6 +215,7 @@ router.get('/telegram/webhook-health', async (req, res) => {
 });
 
 export default router;
+
 
 
 

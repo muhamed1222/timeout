@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { supabaseAdmin } from "../lib/supabase.js";
-import { storage } from "../storage.js";
+import { repositories } from "../repositories/index.js";
 import { logger } from "../lib/logger.js";
+import { getSecret } from "../lib/secrets.js";
+import type { Employee } from "../../shared/schema.js";
 
-// Extend Express Request to include authenticated user
+// Extend Express Request to include authenticated user and employee
 declare global {
   namespace Express {
     interface Request {
@@ -13,6 +15,7 @@ declare global {
         companyId: string;
         role: string;
       };
+      employee?: Employee;
     }
   }
 }
@@ -109,14 +112,14 @@ export async function requireTelegramEmployee(req: Request, res: Response, next:
       return res.status(400).json({ error: "Telegram ID not provided" });
     }
 
-    const employee = await storage.getEmployeeByTelegramId(telegramId);
+    const employee = await repositories.employee.findByTelegramId(telegramId);
 
     if (!employee) {
       return res.status(404).json({ error: "Employee not found" });
     }
 
     // Attach employee to request
-    (req as any).employee = employee;
+    req.employee = employee;
 
     next();
   } catch (error) {
@@ -130,13 +133,16 @@ export async function requireTelegramEmployee(req: Request, res: Response, next:
  */
 export function requireBotAuth(req: Request, res: Response, next: NextFunction) {
   // In development mode without bot secret, allow all requests
-  if (!process.env.BOT_API_SECRET && process.env.NODE_ENV === 'development') {
+  const botApiSecret = getSecret('BOT_API_SECRET');
+  const isDev = getSecret('NODE_ENV') === 'development';
+  
+  if (!botApiSecret && isDev) {
     logger.warn('BOT_API_SECRET not set - skipping bot auth validation (development mode)');
     return next();
   }
 
   const botSecret = req.headers['x-bot-secret'];
-  const expectedSecret = process.env.BOT_API_SECRET;
+  const expectedSecret = botApiSecret;
 
   if (!expectedSecret) {
     logger.error('BOT_API_SECRET not configured');

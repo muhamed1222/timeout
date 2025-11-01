@@ -23,11 +23,38 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
+    
+    // Send to error tracking service (e.g., Sentry)
+    if (typeof window !== 'undefined' && (window as any).Sentry) {
+      (window as any).Sentry.captureException(error, {
+        contexts: {
+          react: {
+            componentStack: errorInfo.componentStack,
+          },
+        },
+      });
+    }
   }
 
   private handleReset = () => {
     this.setState({ hasError: false, error: null });
     window.location.href = '/';
+  };
+
+  private handleReload = () => {
+    window.location.reload();
+  };
+
+  private handleClearCache = () => {
+    // Clear localStorage and sessionStorage
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to clear cache:', error);
+      window.location.reload();
+    }
   };
 
   public render() {
@@ -57,13 +84,25 @@ export class ErrorBoundary extends Component<Props, State> {
                 </pre>
               </details>
             )}
-            <div className="flex gap-2 justify-center">
-              <Button variant="outline" onClick={() => window.location.reload()}>
-                Обновить страницу
-              </Button>
-              <Button onClick={this.handleReset}>
-                Вернуться на главную
-              </Button>
+            <div className="space-y-3">
+              <div className="flex gap-2 justify-center">
+                <Button variant="outline" onClick={this.handleReload}>
+                  Обновить страницу
+                </Button>
+                <Button onClick={this.handleReset}>
+                  Вернуться на главную
+                </Button>
+              </div>
+              <div className="text-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={this.handleClearCache}
+                  className="text-muted-foreground"
+                >
+                  Очистить кэш и обновить
+                </Button>
+              </div>
             </div>
           </div>
         </div>
