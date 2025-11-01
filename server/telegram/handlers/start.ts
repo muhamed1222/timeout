@@ -19,7 +19,21 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
   // Если нет параметра start, но сотрудник уже авторизован - показываем главное меню
   if (!startParam && ctx.session?.employeeId) {
     logger.info('Employee already authorized, showing main menu');
-    await showMainMenu(ctx);
+    try {
+      await showMainMenu(ctx);
+    } catch (error: any) {
+      logger.error('Error showing main menu in start handler', {
+        error: error.message || String(error),
+        code: error.code,
+        stack: error.stack
+      });
+      // Попробуем отправить простое сообщение
+      try {
+        await ctx.reply('❌ Ошибка загрузки меню. Попробуйте команду /status');
+      } catch (replyError) {
+        logger.error('Failed to send error message', { error: replyError });
+      }
+    }
     return;
   }
   
@@ -249,18 +263,36 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
         ]
       ];
       
-      void ctx.reply(`
+      try {
+        await ctx.reply(`
 📊 *Управление сменой*
 
 📅 На сегодня смена не запланирована. Вы можете начать смену вручную.
 
 Выберите действие:
-      `, {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: keyboard
+        `, {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: keyboard
+          }
+        });
+        logger.info('Main menu message sent (no shift)');
+      } catch (error: any) {
+        logger.error('Error sending main menu message (no shift)', {
+          error: error.message || String(error),
+          code: error.code
+        });
+        // Попробуем отправить простое сообщение без форматирования
+        try {
+          await ctx.reply('📊 Управление сменой\n\n📅 На сегодня смена не запланирована. Нажмите кнопку ниже, чтобы начать смену.', {
+            reply_markup: {
+              inline_keyboard: keyboard
+            }
+          });
+        } catch (retryError) {
+          logger.error('Failed to send fallback message', { error: retryError });
         }
-      });
+      }
       return;
     }
 
@@ -291,22 +323,62 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
     }
 
     if (keyboard.length > 0) {
-      await ctx.reply(`
+      try {
+        await ctx.reply(`
 📊 *Управление сменой*
 
 ⏰ *Планируемое время:* ${new Date(todayShift.planned_start_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} - ${new Date(todayShift.planned_end_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
 
 Выберите действие:
-      `, {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: keyboard
+        `, {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: keyboard
+          }
+        });
+        logger.info('Main menu message sent', { shiftStatus: todayShift.status });
+      } catch (error: any) {
+        logger.error('Error sending main menu message', {
+          error: error.message || String(error),
+          code: error.code,
+          shiftStatus: todayShift.status
+        });
+        // Попробуем отправить без Markdown форматирования
+        try {
+          await ctx.reply(
+            `📊 Управление сменой\n\n⏰ Планируемое время: ${new Date(todayShift.planned_start_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} - ${new Date(todayShift.planned_end_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}\n\nВыберите действие:`,
+            {
+              reply_markup: {
+                inline_keyboard: keyboard
+              }
+            }
+          );
+        } catch (retryError) {
+          logger.error('Failed to send fallback message', { error: retryError });
         }
-      });
+      }
     }
 
   } catch (error) {
-    logger.error('Error showing main menu', error);
-    void ctx.reply('❌ Ошибка загрузки меню. Попробуйте позже.');
+    const err = error as any;
+    logger.error('Error showing main menu', {
+      error: err.message || String(error),
+      code: err.code,
+      stack: err.stack
+    });
+    
+    // Не пытаемся отвечать при сетевых ошибках
+    if (err.code === 'ERR_SSL_DECRYPTION_FAILED_OR_BAD_RECORD_MAC' ||
+        err.code === 'ECONNRESET' ||
+        err.code === 'ETIMEDOUT') {
+      logger.warn('Network error in showMainMenu', { code: err.code });
+      return;
+    }
+    
+    try {
+      await ctx.reply('❌ Ошибка загрузки меню. Попробуйте позже или используйте /status');
+    } catch (replyError) {
+      logger.error('Failed to send error message', { error: replyError });
+    }
   }
 }
