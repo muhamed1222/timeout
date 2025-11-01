@@ -455,43 +455,66 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
       }
     }
 
-    if (keyboard.length > 0) {
-      try {
-        const message = await ctx.reply(`
+    // Всегда отправляем сообщение, даже если клавиатура пустая (для завершенных смен)
+    const statusText = todayShift.status === 'completed' 
+      ? '✅ *Смена завершена*' 
+      : todayShift.status === 'active' 
+        ? '💼 *Смена активна*' 
+        : '📅 *Смена запланирована*';
+    
+    try {
+      logger.info('Attempting to send main menu message', {
+        shiftStatus: todayShift.status,
+        keyboardLength: keyboard.length,
+        chatId: ctx.chat?.id
+      });
+      
+      const messageText = `
 📊 *Управление сменой*
+
+${statusText}
 
 ⏰ *Планируемое время:* ${new Date(todayShift.planned_start_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} - ${new Date(todayShift.planned_end_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
 
-Выберите действие:
-        `, {
-          parse_mode: 'Markdown',
-          reply_markup: {
+${keyboard.length > 0 ? 'Выберите действие:' : todayShift.status === 'completed' ? 'Смена уже завершена.' : ''}
+      `;
+      
+      const messageOptions: any = {
+        parse_mode: 'Markdown'
+      };
+      
+      if (keyboard.length > 0) {
+        messageOptions.reply_markup = {
+          inline_keyboard: keyboard
+        };
+      }
+      
+      const message = await ctx.reply(messageText, messageOptions);
+      
+      logger.info('Main menu message sent successfully', { 
+        shiftStatus: todayShift.status,
+        messageId: (message as any)?.message_id,
+        hasKeyboard: keyboard.length > 0
+      });
+    } catch (error: any) {
+      logger.error('Error sending main menu message', {
+        error: error.message || String(error),
+        code: error.code,
+        shiftStatus: todayShift.status
+      });
+      // Попробуем отправить без Markdown форматирования
+      try {
+        const fallbackText = `📊 Управление сменой\n\n${todayShift.status === 'completed' ? '✅ Смена завершена' : todayShift.status === 'active' ? '💼 Смена активна' : '📅 Смена запланирована'}\n\n⏰ Планируемое время: ${new Date(todayShift.planned_start_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} - ${new Date(todayShift.planned_end_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+        const fallbackOptions: any = {};
+        if (keyboard.length > 0) {
+          fallbackOptions.reply_markup = {
             inline_keyboard: keyboard
-          }
-        });
-        logger.info('Main menu message sent successfully', { 
-          shiftStatus: todayShift.status,
-          messageId: (message as any)?.message_id 
-        });
-      } catch (error: any) {
-        logger.error('Error sending main menu message', {
-          error: error.message || String(error),
-          code: error.code,
-          shiftStatus: todayShift.status
-        });
-        // Попробуем отправить без Markdown форматирования
-        try {
-          await ctx.reply(
-            `📊 Управление сменой\n\n⏰ Планируемое время: ${new Date(todayShift.planned_start_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} - ${new Date(todayShift.planned_end_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}\n\nВыберите действие:`,
-            {
-              reply_markup: {
-                inline_keyboard: keyboard
-              }
-            }
-          );
-        } catch (retryError) {
-          logger.error('Failed to send fallback message', { error: retryError });
+          };
         }
+        await ctx.reply(fallbackText, fallbackOptions);
+        logger.info('Fallback message sent successfully');
+      } catch (retryError) {
+        logger.error('Failed to send fallback message', { error: retryError });
       }
     }
 
