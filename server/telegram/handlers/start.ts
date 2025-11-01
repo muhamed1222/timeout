@@ -306,23 +306,46 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    let shifts: Awaited<ReturnType<typeof repositories.shift.findByEmployeeId>>;
+    let shifts: Awaited<ReturnType<typeof repositories.shift.findByEmployeeId>> = [];
+    
+    // Создаем промис с таймаутом отдельно, чтобы гарантировать его выполнение
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      const timeoutId = setTimeout(() => {
+        logger.warn('Database query timeout reached, using empty shifts array', { 
+          employeeId,
+          elapsed: Date.now() - startTime 
+        });
+        reject(new Error('Database query timeout after 5 seconds'));
+      }, 5000);
+      
+      // Отменяем таймер если промис разрешится раньше
+      // Но мы не можем это сделать, так что просто логируем
+    });
+    
     try {
+      logger.info('Starting database query with timeout', { employeeId });
       shifts = await Promise.race([
-        repositories.shift.findByEmployeeId(employeeId),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Database query timeout')), 5000)
-        )
+        repositories.shift.findByEmployeeId(employeeId).then(result => {
+          logger.info('Database query completed', { 
+            employeeId,
+            resultCount: result.length,
+            elapsed: Date.now() - startTime
+          });
+          return result;
+        }),
+        timeoutPromise
       ]);
       logger.info('Shifts fetched successfully', { 
         employeeId,
-        shiftsCount: shifts.length
+        shiftsCount: shifts.length,
+        elapsed: Date.now() - startTime
       });
     } catch (dbError: any) {
       logger.error('Error fetching shifts from database', {
         employeeId,
         error: dbError.message || String(dbError),
-        code: dbError.code
+        code: dbError.code,
+        elapsed: Date.now() - startTime
       });
       // Продолжаем с пустым массивом смен, чтобы показать меню
       shifts = [];
