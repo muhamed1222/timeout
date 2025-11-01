@@ -10,6 +10,7 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.NODE_ENV !== 'production') {
   });
   
   // Launch bot with error handling
+  logger.info('About to call bot.launch()');
   bot.launch({
     allowedUpdates: ['message', 'callback_query'],
   })
@@ -20,11 +21,17 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.NODE_ENV !== 'production') {
       logger.error('Failed to launch Telegram bot', {
         error: error instanceof Error ? error.message : String(error),
         code: (error as any)?.code,
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : typeof error
       });
       // Don't crash the server if bot fails to launch
       // It will retry on next restart or can be restarted manually
     });
+  
+  // Add timeout to check if launch succeeded
+  setTimeout(() => {
+    logger.info('Checking bot launch status after 2 seconds');
+  }, 2000);
   
   // Also check bot info after a delay to verify it's working
   setTimeout(async () => {
