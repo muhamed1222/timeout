@@ -183,26 +183,52 @@ bot.on('text', async (ctx) => {
       await handleReport(ctx, session.waitingForReport);
       session.waitingForReport = undefined;
     } else {
-      await ctx.reply('Используйте кнопки для управления сменой или команду /help для справки.');
+      void ctx.reply('Используйте кнопки для управления сменой или команду /help для справки.');
     }
   } catch (error) {
+    const err = error as any;
+    // Логируем, но не пытаемся отвечать при сетевых ошибках
+    if (err.code === 'ERR_SSL_DECRYPTION_FAILED_OR_BAD_RECORD_MAC' ||
+        err.code === 'ECONNRESET' ||
+        err.code === 'ETIMEDOUT' ||
+        err.type === 'system') {
+      logger.warn("Network error handling text message", { code: err.code });
+      return;
+    }
     logger.error("Error handling text message", { error });
-    // Не пытаемся отвечать при ошибке
   }
 });
 
 // Обработка ошибок
 bot.catch((err: unknown, ctx) => {
-  logger.error("Bot error", { error: err });
+  const error = err as any;
+  
+  // Логируем ошибку с деталями
+  logger.error("Bot error", { 
+    error: error.message || String(error),
+    code: error.code,
+    type: error.type,
+    errno: error.errno
+  });
   
   // Не пытаемся отвечать, если чат не найден
-  if ((err as any).description && (err as any).description.includes('chat not found')) {
+  if (error.description && error.description.includes('chat not found')) {
     logger.info("Chat not found, skipping reply");
     return;
   }
   
+  // Не пытаемся отвечать при SSL/network ошибках - это временные проблемы
+  if (error.code === 'ERR_SSL_DECRYPTION_FAILED_OR_BAD_RECORD_MAC' ||
+      error.code === 'ECONNRESET' ||
+      error.code === 'ETIMEDOUT' ||
+      error.code === 'ENOTFOUND' ||
+      error.type === 'system') {
+    logger.warn("Network/SSL error, skipping reply", { code: error.code });
+    return;
+  }
+  
   try {
-    ctx.reply('❌ Произошла ошибка. Попробуйте позже или обратитесь к администратору.');
+    void ctx.reply('❌ Произошла ошибка. Попробуйте позже или обратитесь к администратору.');
   } catch (replyError) {
     logger.error("Error sending error message", { error: replyError });
   }
