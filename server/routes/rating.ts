@@ -251,7 +251,15 @@ router.get("/companies/:companyId/ratings", async (req, res) => {
     }
     
     const ratings = await repositories.rating.findByCompanyId(companyId, startDate, endDate);
-    res.json(ratings);
+    
+    // Transform to format expected by frontend: { employee_id, rating }
+    // rating is numeric (string) from PostgreSQL, convert to number
+    const transformedRatings = ratings.map((r: any) => ({
+      employee_id: r.employee_id,
+      rating: Number(r.rating || 100) // Convert numeric string to number, default to 100
+    }));
+    
+    res.json(transformedRatings);
   } catch (error) {
     logger.error("Error fetching ratings", error);
     res.status(500).json({ error: "Internal server error" });
