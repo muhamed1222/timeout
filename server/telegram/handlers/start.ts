@@ -366,6 +366,10 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
     });
 
     let keyboard: InlineKeyboard = [];
+    logger.info('Keyboard initialized, checking shift status', {
+      shiftStatus: todayShift?.status,
+      hasTodayShift: !!todayShift
+    });
 
     // Если смены нет, показываем кнопку для начала новой смены
     if (!todayShift) {
