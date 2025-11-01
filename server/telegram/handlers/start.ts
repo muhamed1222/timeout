@@ -419,23 +419,39 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
     }
 
     // Определяем доступные действия в зависимости от статуса смены
+    // Для завершенных смен не нужно получать break intervals
     let breakIntervals: Awaited<ReturnType<typeof repositories.shift.findBreakIntervalsByShiftId>> = [];
     let activeBreak: Awaited<ReturnType<typeof repositories.shift.findBreakIntervalsByShiftId>>[0] | undefined;
     
-    try {
-      breakIntervals = await Promise.race([
-        repositories.shift.findBreakIntervalsByShiftId(todayShift.id),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Break intervals query timeout')), 3000)
-        )
-      ]);
-      activeBreak = breakIntervals.find(bi => !bi.end_at);
-    } catch (breakError: any) {
-      logger.error('Error fetching break intervals', {
+    if (todayShift.status !== 'completed') {
+      logger.info('Fetching break intervals for active/planned shift', {
         shiftId: todayShift.id,
-        error: breakError.message || String(breakError)
+        shiftStatus: todayShift.status
       });
-      // Продолжаем без информации о перерывах
+      try {
+        breakIntervals = await Promise.race([
+          repositories.shift.findBreakIntervalsByShiftId(todayShift.id),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Break intervals query timeout')), 3000)
+          )
+        ]);
+        activeBreak = breakIntervals.find(bi => !bi.end_at);
+        logger.info('Break intervals fetched', {
+          shiftId: todayShift.id,
+          intervalsCount: breakIntervals.length,
+          hasActiveBreak: !!activeBreak
+        });
+      } catch (breakError: any) {
+        logger.error('Error fetching break intervals', {
+          shiftId: todayShift.id,
+          error: breakError.message || String(breakError)
+        });
+        // Продолжаем без информации о перерывах
+      }
+    } else {
+      logger.info('Skipping break intervals fetch for completed shift', {
+        shiftId: todayShift.id
+      });
     }
 
     if (todayShift.status === 'planned') {
