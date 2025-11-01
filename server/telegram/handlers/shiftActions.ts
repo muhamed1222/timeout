@@ -1,3 +1,4 @@
+/* eslint-env node */
 import { Context } from 'telegraf';
 import type { InlineKeyboardButton } from 'telegraf/types';
 import { SessionData } from '../types.js';
@@ -26,16 +27,44 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
       return shiftDate.getTime() === today.getTime();
     });
 
-    if (!todayShift) {
-      return ctx.answerCbQuery('❌ Смена на сегодня не найдена');
-    }
-
     let message = '';
     let success = false;
+    let shiftIdForMenu = todayShift?.id;
 
     switch (action) {
       case 'start_shift':
-        if (todayShift.status === 'planned') {
+        // Если смены нет, создаём новую
+        if (!todayShift) {
+          const employee = await repositories.employee.findById(employeeId);
+          if (!employee) {
+            return ctx.answerCbQuery('❌ Сотрудник не найден');
+          }
+
+          const now = new Date();
+          const endOfDay = new Date(now);
+          endOfDay.setHours(23, 59, 59, 999);
+
+          const newShift = await repositories.shift.create({
+            employee_id: employeeId,
+            planned_start_at: now,
+            planned_end_at: endOfDay,
+            status: 'active',
+            actual_start_at: now
+          });
+
+          await repositories.shift.createWorkInterval({
+            shift_id: newShift.id,
+            start_at: now,
+            source: 'bot'
+          });
+
+          // Invalidate company stats cache
+          await invalidateCompanyStatsByShift({ employee_id: employeeId });
+
+          message = '✅ Смена начата! Удачной работы!';
+          success = true;
+          shiftIdForMenu = newShift.id;
+        } else if (todayShift.status === 'planned') {
           await repositories.shift.update(todayShift.id, {
             status: 'active',
             actual_start_at: new Date()
@@ -61,7 +90,9 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
         break;
 
       case 'start_break':
-        if (todayShift.status === 'active') {
+        if (!todayShift) {
+          message = '❌ Смена не найдена';
+        } else if (todayShift.status === 'active') {
           // Завершаем текущий рабочий интервал
           const workIntervals = await repositories.shift.findWorkIntervalsByShiftId(todayShift.id);
           const activeWork = workIntervals.find(wi => !wi.end_at);
@@ -88,8 +119,11 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
         break;
 
       case 'end_break':
-        // Завершаем перерыв
-        const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(todayShift.id);
+        if (!todayShift) {
+          message = '❌ Смена не найдена';
+        } else {
+          // Завершаем перерыв
+          const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(todayShift.id);
         const activeBreak = breakIntervals.find(bi => !bi.end_at);
         
         if (activeBreak) {
@@ -109,10 +143,13 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
         } else {
           message = '❌ Активный перерыв не найден';
         }
+        }
         break;
 
       case 'end_shift':
-        if (todayShift.status === 'active') {
+        if (!todayShift) {
+          message = '❌ Смена не найдена';
+        } else if (todayShift.status === 'active') {
           // Завершаем текущий рабочий интервал
           const workIntervals = await repositories.shift.findWorkIntervalsByShiftId(todayShift.id);
           const activeWork = workIntervals.find(wi => !wi.end_at);
@@ -139,8 +176,8 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
 
           // Запрашиваем отчёт
           ctx.session.waitingForReport = todayShift.id;
-          setTimeout(() => {
-            ctx.reply(`
+          void setTimeout(() => {
+            void ctx.reply(`
 📝 *Отчёт о смене*
 
 Пожалуйста, расскажите, что вы сделали сегодня:
@@ -163,10 +200,10 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
 
     await ctx.answerCbQuery(message);
     
-    if (success) {
+    if (success && shiftIdForMenu) {
       // Обновляем меню
-      setTimeout(() => {
-        showUpdatedMenu(ctx, todayShift.id);
+      void setTimeout(() => {
+        void showUpdatedMenu(ctx, shiftIdForMenu);
       }, 1000);
     }
 
@@ -179,7 +216,26 @@ export async function handleShiftActions(ctx: Context & { session: SessionData }
 async function showUpdatedMenu(ctx: Context & { session: SessionData }, shiftId: string) {
   try {
     const shift = await repositories.shift.findById(shiftId);
-    if (!shift) return;
+    if (!shift) {
+      // Если смена была удалена, показываем кнопку для начала новой
+      const keyboard: InlineKeyboard = [
+        [
+          { text: '▶️ Начать смену', callback_data: 'start_shift' }
+        ]
+      ];
+      return ctx.reply(`
+📊 *Управление сменой*
+
+📅 Смена не найдена. Вы можете начать новую смену.
+
+Выберите действие:
+      `, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: keyboard
+        }
+      });
+    }
 
     const workIntervals = await repositories.shift.findWorkIntervalsByShiftId(shiftId);
     const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(shiftId);
@@ -199,8 +255,7 @@ async function showUpdatedMenu(ctx: Context & { session: SessionData }, shiftId:
     if (shift.status === 'planned') {
       keyboard = [
         [
-          { text: '▶️ Начать смену', callback_data: 'start_shift' },
-          { text: '❌ Не смогу прийти', callback_data: 'absence_planned' }
+          { text: '▶️ Начать смену', callback_data: 'start_shift' }
         ]
       ];
     } else if (shift.status === 'active') {
@@ -228,14 +283,14 @@ ${activeBreak ? `🍽 *Перерыв с:* ${new Date(activeBreak.start_at).toLo
     `;
 
     if (keyboard.length > 0) {
-      await ctx.reply(message, {
+      void ctx.reply(message, {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: keyboard
         }
       });
     } else {
-      await ctx.reply(message, { parse_mode: 'Markdown' });
+      void ctx.reply(message, { parse_mode: 'Markdown' });
     }
 
   } catch (error) {

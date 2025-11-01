@@ -2,9 +2,7 @@ import { Telegraf, Context, session } from 'telegraf';
 import { SessionData } from './types.js';
 import { handleStart } from './handlers/start.js';
 import { handleShiftActions } from './handlers/shiftActions.js';
-import { handleAbsence } from './handlers/absence.js';
 import { handleReport } from './handlers/report.js';
-import { sendShiftReminder } from './handlers/reminders.js';
 import { repositories } from '../repositories/index.js';
 import { logger } from '../lib/logger.js';
 import { getSecret } from '../lib/secrets.js';
@@ -70,7 +68,6 @@ bot.command('help', (ctx) => {
 🍽 Начать перерыв  
 ☑️ Вернулся с перерыва
 🕔 Завершить смену
-❌ Не смогу прийти
 
 *Примечание:* Бот работает только по приглашению от вашей компании.
   `, { parse_mode: 'Markdown' });
@@ -97,7 +94,20 @@ bot.command('status', async (ctx) => {
     });
 
     if (!todayShift) {
-      return ctx.reply('📅 На сегодня смена не запланирована.');
+      return ctx.reply(`
+📅 *На сегодня смена не запланирована*
+
+Вы можете начать смену вручную.
+
+Выберите действие:
+      `, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '▶️ Начать смену', callback_data: 'start_shift' }
+          ]]
+        }
+      });
     }
 
     // Получаем интервалы работы и перерывов
@@ -114,6 +124,24 @@ bot.command('status', async (ctx) => {
       status = '✅ Завершена';
     }
 
+    let keyboard: any[] = [];
+    if (todayShift.status === 'planned') {
+      keyboard = [[
+        { text: '▶️ Начать смену', callback_data: 'start_shift' }
+      ]];
+    } else if (todayShift.status === 'active') {
+      if (activeBreak) {
+        keyboard = [[
+          { text: '☑️ Вернулся', callback_data: 'end_break' }
+        ]];
+      } else {
+        keyboard = [[
+          { text: '🍽 Начать перерыв', callback_data: 'start_break' },
+          { text: '🕔 Завершить смену', callback_data: 'end_shift' }
+        ]];
+      }
+    }
+
     const message = `
 📊 *Статус смены*
 
@@ -126,16 +154,24 @@ ${activeWork ? `⏱ Начал работу: ${new Date(activeWork.start_at).toL
 ${activeBreak ? `🍽 Перерыв с: ${new Date(activeBreak.start_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : ''}
     `;
 
-    ctx.reply(message, { parse_mode: 'Markdown' });
+    if (keyboard.length > 0) {
+      void ctx.reply(message, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: keyboard
+        }
+      });
+    } else {
+      void ctx.reply(message, { parse_mode: 'Markdown' });
+    }
   } catch (error) {
     logger.error("Error getting status", { error });
-    ctx.reply('❌ Ошибка получения статуса. Попробуйте позже.');
+    void ctx.reply('❌ Ошибка получения статуса. Попробуйте позже.');
   }
 });
 
 // Обработчики callback-кнопок
 bot.action(/^(start_shift|start_break|end_break|end_shift|report_shift)$/, (ctx) => handleShiftActions(ctx));
-bot.action(/^absence_(.+)$/, (ctx) => handleAbsence(ctx));
 bot.action(/^report_(.+)$/, (ctx) => handleReport(ctx));
 
 // Обработчик текстовых сообщений (для отчётов)

@@ -1,7 +1,10 @@
 import { Context } from 'telegraf';
+import type { InlineKeyboardButton } from 'telegraf/types';
 import { SessionData } from '../types.js';
 import { repositories } from '../../repositories/index.js';
 import { logger } from '../../lib/logger.js';
+
+type InlineKeyboard = InlineKeyboardButton[][];
 
 export async function handleStart(ctx: Context & { session: SessionData }) {
   logger.info('Start command received', {
@@ -236,28 +239,40 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
       return shiftDate.getTime() === today.getTime();
     });
 
-    if (!todayShift) {
-      return ctx.reply(`
-📅 *На сегодня смена не запланирована*
+    let keyboard: InlineKeyboard = [];
 
-Обратитесь к администратору для планирования смены.
-      `, { parse_mode: 'Markdown' });
+    // Если смены нет, показываем кнопку для начала новой смены
+    if (!todayShift) {
+      keyboard = [
+        [
+          { text: '▶️ Начать смену', callback_data: 'start_shift' }
+        ]
+      ];
+      
+      void ctx.reply(`
+📊 *Управление сменой*
+
+📅 На сегодня смена не запланирована. Вы можете начать смену вручную.
+
+Выберите действие:
+      `, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: keyboard
+        }
+      });
+      return;
     }
 
     // Определяем доступные действия в зависимости от статуса смены
-    const workIntervals = await repositories.shift.findWorkIntervalsByShiftId(todayShift.id);
     const breakIntervals = await repositories.shift.findBreakIntervalsByShiftId(todayShift.id);
     
-    const activeWork = workIntervals.find(wi => !wi.end_at);
     const activeBreak = breakIntervals.find(bi => !bi.end_at);
-
-    let keyboard: InlineKeyboard = [];
 
     if (todayShift.status === 'planned') {
       keyboard = [
         [
-          { text: '▶️ Начать смену', callback_data: 'start_shift' },
-          { text: '❌ Не смогу прийти', callback_data: 'absence_planned' }
+          { text: '▶️ Начать смену', callback_data: 'start_shift' }
         ]
       ];
     } else if (todayShift.status === 'active') {
@@ -292,6 +307,6 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
 
   } catch (error) {
     logger.error('Error showing main menu', error);
-    ctx.reply('❌ Ошибка загрузки меню. Попробуйте позже.');
+    void ctx.reply('❌ Ошибка загрузки меню. Попробуйте позже.');
   }
 }
