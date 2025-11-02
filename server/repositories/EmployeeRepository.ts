@@ -29,12 +29,56 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
    * Find all employees by company ID
    */
   async findByCompanyId(companyId: string): Promise<Employee[]> {
-    const results = await this.db
-      .select()
-      .from(this.table)
-      .where(eq(schema.employee.company_id, companyId));
+    try {
+      const results = await this.db
+        .select()
+        .from(this.table)
+        .where(eq(schema.employee.company_id, companyId));
 
-    return results as Employee[];
+      // Ensure avatar_id and photo_url are present (for backward compatibility)
+      return results.map(emp => ({
+        ...emp,
+        avatar_id: (emp as any).avatar_id ?? null,
+        photo_url: (emp as any).photo_url ?? null,
+      })) as Employee[];
+    } catch (error) {
+      // If error is due to missing columns (avatar_id or photo_url), try selecting without avatar fields
+      const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+      const isColumnError = errorMessage.includes('column') && (
+        errorMessage.includes('does not exist') ||
+        errorMessage.includes('не существует') ||
+        errorMessage.includes('avatar_id') ||
+        errorMessage.includes('photo_url')
+      );
+      
+      if (isColumnError) {
+        try {
+          const results = await this.db
+            .select({
+              id: schema.employee.id,
+              company_id: schema.employee.company_id,
+              full_name: schema.employee.full_name,
+              position: schema.employee.position,
+              telegram_user_id: schema.employee.telegram_user_id,
+              status: schema.employee.status,
+              tz: schema.employee.tz,
+              created_at: schema.employee.created_at,
+            })
+            .from(this.table)
+            .where(eq(schema.employee.company_id, companyId));
+
+          // Add null avatar fields for backward compatibility
+          return results.map(emp => ({
+            ...emp,
+            avatar_id: null,
+            photo_url: null,
+          })) as Employee[];
+        } catch (fallbackError) {
+          throw error; // Throw original error if fallback also fails
+        }
+      }
+      throw error;
+    }
   }
 
   /**

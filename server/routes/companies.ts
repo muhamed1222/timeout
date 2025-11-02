@@ -446,9 +446,19 @@ router.get("/:companyId/employees", async (req, res) => {
   try {
     const { companyId } = req.params;
     const employees = await repositories.employee.findByCompanyId(companyId);
-    res.json(employees);
+    // Ensure avatar_id and photo_url are present (for backward compatibility with DBs that don't have these fields yet)
+    const employeesWithDefaults = employees.map(emp => ({
+      ...emp,
+      avatar_id: emp.avatar_id ?? null,
+      photo_url: emp.photo_url ?? null,
+    }));
+    res.json(employeesWithDefaults);
   } catch (error) {
-    logger.error("Error fetching employees", error);
+    logger.error("Error fetching employees", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      companyId: req.params.companyId,
+    });
     res.status(500).json({ error: "Internal server error" });
   }
 });
