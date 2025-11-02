@@ -64,9 +64,31 @@ router.get("/yandex", oauthLimiter, (req: Request, res: Response) => {
     // В development используем localhost:3001 напрямую, в production - из конфига
     const isDev = process.env.NODE_ENV !== "production";
     const serverPort = process.env.PORT || "3001";
-    const callbackUrl = isDev 
-      ? `http://localhost:${serverPort}/api/auth/yandex/callback`
-      : `${req.protocol}://${req.get("host")}/api/auth/yandex/callback`;
+    const configuredFrontendUrl = (!isDev
+      ? (getSecret("FRONTEND_URL") ?? process.env.VITE_FRONTEND_URL ?? process.env.APP_URL ?? "")
+      : "").trim();
+    const normalizedConfiguredUrl = configuredFrontendUrl
+      ? configuredFrontendUrl.replace(/\/$/, "")
+      : "";
+    const fallbackProtoHost = (() => {
+      const forwardedProto = req.headers["x-forwarded-proto"];
+      const proto = typeof forwardedProto === "string"
+        ? forwardedProto.split(",")[0]?.trim()
+        : Array.isArray(forwardedProto) && forwardedProto.length > 0
+          ? forwardedProto[0]?.trim()
+          : req.protocol;
+      const forwardedHost = req.headers["x-forwarded-host"];
+      const host = (typeof forwardedHost === "string"
+        ? forwardedHost.split(",")[0]?.trim()
+        : Array.isArray(forwardedHost) && forwardedHost.length > 0
+          ? forwardedHost[0]?.trim()
+          : (req.get("host") || req.hostname));
+      return `${proto}://${host}`;
+    })();
+    const baseUrl = isDev
+      ? `http://localhost:${serverPort}`
+      : (normalizedConfiguredUrl || fallbackProtoHost.replace(/\/$/, ""));
+    const callbackUrl = `${baseUrl}/api/auth/yandex/callback`;
     
     logger.info("Yandex OAuth callback URL:", { callbackUrl });
     
@@ -138,9 +160,31 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
     const yandexClientId = getSecret("YANDEX_CLIENT_ID");
     const yandexClientSecret = getSecret("YANDEX_CLIENT_SECRET");
     // В callback используем тот же URL, что был в инициации
-    const callbackUrl = process.env.NODE_ENV === "development"
-      ? "http://localhost:3001/api/auth/yandex/callback"
-      : `${req.protocol}://${req.get("host")}/api/auth/yandex/callback`;
+    const configuredFrontendUrl = (process.env.NODE_ENV !== "development"
+      ? (getSecret("FRONTEND_URL") ?? process.env.VITE_FRONTEND_URL ?? process.env.APP_URL ?? "")
+      : "").trim();
+    const normalizedConfiguredUrl = configuredFrontendUrl
+      ? configuredFrontendUrl.replace(/\/$/, "")
+      : "";
+    const fallbackProtoHost = (() => {
+      const forwardedProto = req.headers["x-forwarded-proto"];
+      const proto = typeof forwardedProto === "string"
+        ? forwardedProto.split(",")[0]?.trim()
+        : Array.isArray(forwardedProto) && forwardedProto.length > 0
+          ? forwardedProto[0]?.trim()
+          : req.protocol;
+      const forwardedHost = req.headers["x-forwarded-host"];
+      const host = (typeof forwardedHost === "string"
+        ? forwardedHost.split(",")[0]?.trim()
+        : Array.isArray(forwardedHost) && forwardedHost.length > 0
+          ? forwardedHost[0]?.trim()
+          : (req.get("host") || req.hostname));
+      return `${proto}://${host}`;
+    })();
+    const baseUrl = process.env.NODE_ENV === "development"
+      ? "http://localhost:3001"
+      : (normalizedConfiguredUrl || fallbackProtoHost.replace(/\/$/, ""));
+    const callbackUrl = `${baseUrl}/api/auth/yandex/callback`;
 
     if (!yandexClientId || !yandexClientSecret) {
       logger.error("Yandex OAuth credentials not configured");
