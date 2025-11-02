@@ -34,24 +34,26 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.NODE_ENV !== 'production') {
   }, 2000);
   
   // Also check bot info after a delay to verify it's working
-  setTimeout(async () => {
-    try {
-      const botInfo = await bot.telegram.getMe();
-      logger.info('Telegram bot verified', { 
-        username: botInfo.username,
-        id: botInfo.id,
-        isBot: botInfo.is_bot 
-      });
-    } catch (error) {
-      logger.error('Failed to verify Telegram bot', {
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
+  setTimeout(() => {
+    void (async () => {
+      try {
+        const botInfo = await bot.telegram.getMe();
+        logger.info('Telegram bot verified', { 
+          username: botInfo.username,
+          id: botInfo.id,
+          isBot: botInfo.is_bot 
+        });
+      } catch (error) {
+        logger.error('Failed to verify Telegram bot', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    })();
   }, 3000);
 
   // Handle uncaught errors in bot
-  process.on('unhandledRejection', (reason, promise) => {
-    const error = reason as any;
+  process.on('unhandledRejection', (reason) => {
+    const error = reason as { code?: string; message?: string };
     // Check if it's a Telegram bot related error
     if (error?.code === 'ERR_SSL_DECRYPTION_FAILED_OR_BAD_RECORD_MAC' ||
         error?.message?.includes('telegram') ||
@@ -71,14 +73,18 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.NODE_ENV !== 'production') {
 // Enable graceful stop
 process.once('SIGINT', () => {
   logger.info('Stopping Telegram bot (SIGINT)');
-  bot.stop('SIGINT').catch((err) => {
-    logger.error('Error stopping bot', err);
-  });
+  try {
+    bot.stop('SIGINT');
+  } catch (err) {
+    logger.error('Error stopping bot', err as Error);
+  }
 });
 
 process.once('SIGTERM', () => {
   logger.info('Stopping Telegram bot (SIGTERM)');
-  bot.stop('SIGTERM').catch((err) => {
-    logger.error('Error stopping bot', err);
-  });
+  try {
+    bot.stop('SIGTERM');
+  } catch (err) {
+    logger.error('Error stopping bot', err as Error);
+  }
 });

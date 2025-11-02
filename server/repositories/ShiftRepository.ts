@@ -12,7 +12,7 @@ import type {
   InsertDailyReport,
   Employee
 } from '../../shared/schema.js';
-import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
+import { eq, and, gte, lte, sql } from 'drizzle-orm';
 
 /**
  * Repository for Shifts, Work Intervals, Break Intervals, and Daily Reports
@@ -133,9 +133,12 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
       .from(this.table)
       .where(
         and(
-          eq(this.table.employee_id, employeeId),
-          sql`${this.table.planned_start_at} >= ${today.toISOString()}`,
-          sql`${this.table.planned_start_at} <= ${tomorrow.toISOString()}`
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          eq((this.table as any).employee_id, employeeId),
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          sql`${(this.table as any).planned_start_at} >= ${today.toISOString()}`,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          sql`${(this.table as any).planned_start_at} <= ${tomorrow.toISOString()}`
         )
       )
       .limit(1);
@@ -152,8 +155,10 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
       .from(this.table)
       .where(
         and(
-          eq(this.table.employee_id, employeeId),
-          eq(this.table.status, status)
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          eq((this.table as any).employee_id, employeeId),
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          eq((this.table as any).status, status)
         )
       )
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any

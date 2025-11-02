@@ -42,7 +42,6 @@ const oauthLimiter = rateLimit({
 router.get("/yandex", oauthLimiter, (req: Request, res: Response) => {
   try {
     const yandexClientId = getSecret("YANDEX_CLIENT_ID");
-    const frontendUrl = getSecret("FRONTEND_URL") || process.env.VITE_FRONTEND_URL || "http://localhost:5173";
     
     if (!yandexClientId) {
       logger.error("YANDEX_CLIENT_ID is not configured");
@@ -102,7 +101,7 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
     const repos = await getRepositories();
     
     const { code, state, error, error_description } = req.query;
-    const frontendUrl = getSecret("FRONTEND_URL") || process.env.VITE_FRONTEND_URL || "http://localhost:5173";
+    const frontendUrl = getSecret("FRONTEND_URL") ?? process.env.VITE_FRONTEND_URL ?? "http://localhost:5173";
 
     // Проверяем ошибки от Yandex
     if (error) {
@@ -111,8 +110,8 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
         error_description,
         query: req.query 
       });
-      const errorMsg = error_description || error || "unknown_error";
-      return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(errorMsg as string)}`);
+      const errorMsg = (error_description ?? error ?? "unknown_error") as string;
+      return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(errorMsg)}`);
     }
 
     // Проверяем state для защиты от CSRF
@@ -134,7 +133,7 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
       return res.redirect(`${frontendUrl}/login?error=missing_code`);
     }
     
-    logger.info("Processing Yandex OAuth code exchange", { code: code.substring(0, 10) + "..." });
+    logger.info("Processing Yandex OAuth code exchange", { code: typeof code === 'string' ? code.substring(0, 10) + "..." : code });
 
     const yandexClientId = getSecret("YANDEX_CLIENT_ID");
     const yandexClientSecret = getSecret("YANDEX_CLIENT_SECRET");
@@ -187,7 +186,7 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
     
     logger.info("Token exchange successful");
 
-    const tokenData = await tokenResponse.json();
+    const tokenData = await tokenResponse.json() as { access_token?: string; [key: string]: unknown };
     const accessToken = tokenData.access_token;
     
     if (!accessToken) {
@@ -215,7 +214,15 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
       return res.redirect(`${frontendUrl}/login?error=user_info_failed`);
     }
 
-    const yandexUser = await userInfoResponse.json();
+    const yandexUser = await userInfoResponse.json() as { 
+      default_email?: string; 
+      emails?: string[]; 
+      first_name?: string; 
+      last_name?: string; 
+      real_name?: string;
+      id?: string;
+      [key: string]: unknown;
+    };
     
     // Извлекаем email и имя
     const email = yandexUser.default_email || yandexUser.emails?.[0];
@@ -243,7 +250,7 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
     }
 
     const existingUser = listUsersData?.users?.find(
-      (user) => user.email?.toLowerCase() === email.toLowerCase()
+      (user: { email?: string }) => user.email?.toLowerCase() === email.toLowerCase()
     );
 
     let userId: string;

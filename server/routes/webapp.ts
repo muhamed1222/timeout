@@ -7,6 +7,13 @@ import type { Shift, WorkInterval, BreakInterval } from "../../shared/schema.js"
 
 const router = Router();
 
+// Extend Request type to include telegramUser
+declare module 'express-serve-static-core' {
+  interface Request {
+    telegramUser?: any;
+  }
+}
+
 // Middleware для аутентификации Telegram WebApp
 
 function authenticateTelegramWebApp(req: Request, res: Response, next: NextFunction) {
@@ -33,7 +40,10 @@ function authenticateTelegramWebApp(req: Request, res: Response, next: NextFunct
     return res.status(500).json({ error: 'Bot token not configured' });
   }
   
-  const user = validateTelegramWebAppData(initData, botToken);
+  // Convert initData to string if it's an array
+  const initDataString = Array.isArray(initData) ? initData[0] : initData;
+  
+  const user = validateTelegramWebAppData(initDataString, botToken);
   if (!user) {
     return res.status(401).json({ error: 'Invalid Telegram signature' });
   }

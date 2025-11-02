@@ -366,8 +366,8 @@ router.get("/:companyId/exceptions", async (req, res) => {
 
     // Combine exceptions and violations, sort by date
     const allItems = [...exceptions, ...violationsAsExceptions].sort((a, b) => {
-      const dateA = new Date(a.detected_at || a.created_at || 0).getTime();
-      const dateB = new Date(b.detected_at || b.created_at || 0).getTime();
+      const dateA = new Date((a as any).detected_at || (a as any).created_at || 0).getTime();
+      const dateB = new Date((b as any).detected_at || (b as any).created_at || 0).getTime();
       return dateB - dateA; // newest first
     });
 

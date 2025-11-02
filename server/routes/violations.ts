@@ -50,7 +50,7 @@ router.post('/', validateBody(createViolationSchema), asyncHandler(async (req, r
     if (rule.penalty_percent === null || rule.penalty_percent === undefined) {
       penaltyValue = '0';
     } else if (typeof rule.penalty_percent === 'number') {
-      penaltyValue = rule.penalty_percent.toString();
+      penaltyValue = String(rule.penalty_percent);
     } else {
       penaltyValue = String(rule.penalty_percent);
     }

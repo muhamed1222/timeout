@@ -19,7 +19,8 @@ export class InviteRepository extends BaseRepository<EmployeeInvite, InsertEmplo
     const results = await this.db
       .select()
       .from(this.table)
-      .where(eq(this.table.code, code))
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      .where(eq((this.table as any).code, code))
       .limit(1);
 
     return results[0] as EmployeeInvite | undefined;
@@ -32,8 +33,10 @@ export class InviteRepository extends BaseRepository<EmployeeInvite, InsertEmplo
     const results = await this.db
       .select()
       .from(this.table)
-      .where(eq(this.table.company_id, companyId))
-      .orderBy(desc(this.table.created_at));
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      .where(eq((this.table as any).company_id, companyId))
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      .orderBy(desc((this.table as any).created_at));
 
     return results as EmployeeInvite[];
   }
@@ -47,11 +50,14 @@ export class InviteRepository extends BaseRepository<EmployeeInvite, InsertEmplo
       .from(this.table)
       .where(
         and(
-          eq(this.table.company_id, companyId),
-          sql`${this.table.used_by_employee} IS NULL`
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          eq((this.table as any).company_id, companyId),
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          sql`${(this.table as any).used_by_employee} IS NULL`
         )
       )
-      .orderBy(desc(this.table.created_at));
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      .orderBy(desc((this.table as any).created_at));
 
     return results as EmployeeInvite[];
   }
@@ -68,8 +74,10 @@ export class InviteRepository extends BaseRepository<EmployeeInvite, InsertEmplo
       } as any)
       .where(
         and(
-          eq(this.table.code, code),
-          sql`${this.table.used_by_employee} IS NULL`
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          eq((this.table as any).code, code),
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          sql`${(this.table as any).used_by_employee} IS NULL`
         )
       )
       .returning();
@@ -84,7 +92,8 @@ export class InviteRepository extends BaseRepository<EmployeeInvite, InsertEmplo
     const results = await this.db
       .update(this.table)
       .set(updates as any)
-      .where(eq(this.table.code, code))
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      .where(eq((this.table as any).code, code))
       .returning();
 
     return results[0] as EmployeeInvite | undefined;
@@ -99,12 +108,14 @@ export class InviteRepository extends BaseRepository<EmployeeInvite, InsertEmplo
       .delete(this.table)
       .where(
         and(
-          sql`${this.table.created_at} < ${twoMinutesAgo.toISOString()}`,
-          sql`${this.table.used_by_employee} IS NULL`
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          sql`${(this.table as any).created_at} < ${twoMinutesAgo.toISOString()}`,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          sql`${(this.table as any).used_by_employee} IS NULL`
         )
       );
 
-    return (result as any).rowCount || 0;
+    return (result as { rowCount?: number }).rowCount ?? 0;
   }
 }
 
