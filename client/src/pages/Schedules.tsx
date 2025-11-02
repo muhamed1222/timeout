@@ -166,6 +166,57 @@ export default function Schedules() {
     }
   });
 
+  const [isGenerateOpen, setIsGenerateOpen] = useState(false);
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [startDate, setStartDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 1);
+    return date.toISOString().split('T')[0];
+  });
+
+  const generateShiftsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/companies/${companyId}/generate-shifts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          startDate,
+          endDate,
+          ...(selectedEmployees.length > 0 && { employeeIds: selectedEmployees })
+        })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Не удалось сгенерировать смены');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setIsGenerateOpen(false);
+      setSelectedEmployees([]);
+      toast({
+        title: "Смены сгенерированы",
+        description: data.message || `Создано ${data.shifts?.length || 0} смен`
+      });
+      // Инвалидируем кэш смен
+      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'shifts'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Ошибка",
+        description: error.message || "Не удалось сгенерировать смены",
+        variant: "destructive"
+      });
+    }
+  });
+
   const templateForm = useForm<TemplateFormValues>({
     resolver: zodResolver(templateFormSchema),
     defaultValues: {
@@ -228,6 +279,98 @@ export default function Schedules() {
           <p className="text-muted-foreground">Управление расписанием сотрудников</p>
         </div>
         <div className="flex gap-2">
+          <Dialog open={isGenerateOpen} onOpenChange={setIsGenerateOpen}>
+            <DialogTrigger asChild>
+              <Button variant="default" data-testid="button-generate-shifts">
+                <Calendar className="w-4 h-4 mr-2" />
+                Сгенерировать смены
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Сгенерировать смены из графика</DialogTitle>
+                <DialogDescription>
+                  Создайте конкретные смены на основе графиков работы для выбранного периода. После генерации бот сможет видеть запланированные смены.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Период генерации</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Дата начала</label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md"
+                        data-testid="input-start-date"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Дата окончания</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md"
+                        data-testid="input-end-date"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Сотрудники (опционально)</label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Если не выбраны, смены будут созданы для всех сотрудников с назначенными графиками
+                  </p>
+                  <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                    {employeesLoading ? (
+                      <div className="flex items-center justify-center p-4">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      </div>
+                    ) : employees.length === 0 ? (
+                      <p className="text-xs text-muted-foreground p-2">Нет сотрудников</p>
+                    ) : (
+                      employees.map(emp => (
+                        <label key={emp.id} className="flex items-center space-x-2 cursor-pointer hover:bg-muted p-1 rounded">
+                          <input
+                            type="checkbox"
+                            checked={selectedEmployees.includes(emp.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedEmployees([...selectedEmployees, emp.id]);
+                              } else {
+                                setSelectedEmployees(selectedEmployees.filter(id => id !== emp.id));
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <span className="text-sm">{emp.full_name}</span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsGenerateOpen(false)}
+                  >
+                    Отмена
+                  </Button>
+                  <Button
+                    onClick={() => generateShiftsMutation.mutate()}
+                    disabled={generateShiftsMutation.isPending || !startDate || !endDate || templates.length === 0}
+                    data-testid="button-confirm-generate"
+                  >
+                    {generateShiftsMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Сгенерировать
+                  </Button>
+                </DialogFooter>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" data-testid="button-assign-schedule">
