@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Edit, Calendar, TrendingUp, Clock, AlertCircle, CheckCircle, XCircle } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { EditEmployeeModal } from "./EditEmployeeModal";
 import { Skeleton } from "@/components/ui/skeleton";
