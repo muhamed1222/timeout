@@ -81,10 +81,10 @@ app.use((req, res, next) => {
     setupSwagger(app);
   }
 
-  // Sentry error handler (must be before other error handlers)
-  // @ts-ignore - Sentry types issue
+// Sentry error handler (must be before other error handlers)
+// @ts-ignore - Sentry types issue
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/prefer-nullish-coalescing
-  app.use(Sentry.Handlers?.errorHandler?.() || ((_req: any, _res: any, next: any) => next()));
+app.use(Sentry.Handlers?.errorHandler?.() || ((_req: any, _res: any, next: any) => next()));
 
   // Standardized error handling (must be after all routes)
   app.use(notFoundHandler);

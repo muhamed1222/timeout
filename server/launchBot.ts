@@ -36,18 +36,18 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.NODE_ENV !== 'production') {
   // Also check bot info after a delay to verify it's working
   setTimeout(() => {
     void (async () => {
-      try {
-        const botInfo = await bot.telegram.getMe();
-        logger.info('Telegram bot verified', { 
-          username: botInfo.username,
-          id: botInfo.id,
-          isBot: botInfo.is_bot 
-        });
-      } catch (error) {
-        logger.error('Failed to verify Telegram bot', {
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
+    try {
+      const botInfo = await bot.telegram.getMe();
+      logger.info('Telegram bot verified', { 
+        username: botInfo.username,
+        id: botInfo.id,
+        isBot: botInfo.is_bot 
+      });
+    } catch (error) {
+      logger.error('Failed to verify Telegram bot', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
     })();
   }, 3000);
 
