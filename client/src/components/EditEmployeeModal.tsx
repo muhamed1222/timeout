@@ -21,16 +21,17 @@ interface EditEmployeeModalProps {
   onSuccess?: () => void;
 }
 
-// Template avatars with different colors and icons
+// Template avatars - images should be placed in /public/avatars/ folder
+// Expected files: avatar-1.png, avatar-2.png, ..., avatar-8.png
 const TEMPLATE_AVATARS = [
-  { id: 1, bg: "#ff3b30", icon: "👤" },
-  { id: 2, bg: "#34c759", icon: "👨" },
-  { id: 3, bg: "#007aff", icon: "👩" },
-  { id: 4, bg: "#ffcc00", icon: "🧑" },
-  { id: 5, bg: "#af52de", icon: "👨‍💼" },
-  { id: 6, bg: "#ff9500", icon: "👩‍💼" },
-  { id: 7, bg: "#5ac8fa", icon: "🧑‍💻" },
-  { id: 8, bg: "#ff2d55", icon: "👤" },
+  { id: 1, image: "/avatars/avatar-1.png" },
+  { id: 2, image: "/avatars/avatar-2.png" },
+  { id: 3, image: "/avatars/avatar-3.png" },
+  { id: 4, image: "/avatars/avatar-4.png" },
+  { id: 5, image: "/avatars/avatar-5.png" },
+  { id: 6, image: "/avatars/avatar-6.png" },
+  { id: 7, image: "/avatars/avatar-7.png" },
+  { id: 8, image: "/avatars/avatar-8.png" },
 ];
 
 export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: EditEmployeeModalProps) {
@@ -238,11 +239,27 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
                 if (currentAvatar.type === 'template') {
                   return (
                     <div className="relative">
+                      <img
+                        src={currentAvatar.avatar?.image}
+                        alt={`Аватарка ${currentAvatar.avatar?.id}`}
+                        className="size-[80px] rounded-full object-cover"
+                        onError={(e) => {
+                          // Fallback to initials if image fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const fallback = target.parentElement?.querySelector('.avatar-fallback') as HTMLElement;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
+                      />
                       <div
-                        className="size-[80px] rounded-full flex items-center justify-center text-3xl"
-                        style={{ backgroundColor: currentAvatar.avatar?.bg }}
+                        className="avatar-fallback size-[80px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-2xl hidden"
                       >
-                        {currentAvatar.avatar?.icon}
+                        {employee && employee.full_name
+                          .split(' ')
+                          .map(n => n[0])
+                          .slice(0, 2)
+                          .join('')
+                          .toUpperCase()}
                       </div>
                       <button
                         type="button"
@@ -302,14 +319,27 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
                       key={avatar.id}
                       type="button"
                       onClick={() => handleSelectAvatar(avatar.id)}
-                      className={`size-14 rounded-full flex items-center justify-center text-2xl transition-all relative ${
+                      className={`size-14 rounded-full overflow-hidden transition-all relative ${
                         selectedAvatarId === avatar.id
                           ? 'ring-2 ring-[#e16546] ring-offset-2 ring-offset-white scale-105'
                           : 'hover:scale-105 hover:ring-2 hover:ring-[#eeeeee]'
                       }`}
-                      style={{ backgroundColor: avatar.bg }}
                     >
-                      {avatar.icon}
+                      <img
+                        src={avatar.image}
+                        alt={`Аватарка ${avatar.id}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Show placeholder if image fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            parent.classList.add('bg-[#f8f8f8]');
+                            parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-xs text-[#959595]">?</div>';
+                          }
+                        }}
+                      />
                     </button>
                   ))}
                 </div>
