@@ -17,6 +17,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient, queryConfig } from "@/lib/queryClient";
 import { AddEmployeeModal } from "@/components/AddEmployeeModal";
+import { EditEmployeeModal } from "@/components/EditEmployeeModal";
 import { ErrorState } from "@/components/ErrorBoundary";
 import { EmployeeListSkeleton } from "@/components/LoadingSkeletons";
 import { useRetry } from "@/hooks/useRetry";
@@ -64,6 +65,8 @@ export default function Employees() {
   const [selectedInvite, setSelectedInvite] = useState<InviteLink | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [showEditEmployeeModal, setShowEditEmployeeModal] = useState(false);
+  const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { toast } = useToast();
@@ -297,8 +300,8 @@ export default function Employees() {
                 <div className="flex flex-col gap-1.5">
                   <button
                     onClick={() => {
-                      // TODO: Открыть модальное окно редактирования
-                      console.log('Edit employee', employee.id);
+                      setEmployeeToEdit(employee);
+                      setShowEditEmployeeModal(true);
                     }}
                     className="bg-[#e16546] rounded-[20px] size-8 flex items-center justify-center hover:bg-[#d15536] transition-colors"
                     aria-label="Редактировать сотрудника"
@@ -483,6 +486,16 @@ export default function Employees() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Edit Employee Modal */}
+      <EditEmployeeModal
+        open={showEditEmployeeModal}
+        onOpenChange={setShowEditEmployeeModal}
+        employee={employeeToEdit}
+        onSuccess={() => {
+          setEmployeeToEdit(null);
+        }}
+      />
 
       {/* Delete Employee Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
