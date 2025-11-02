@@ -78,16 +78,17 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
     mutationFn: async (data: { full_name: string; position: string; photo?: File; avatarId?: number | null }) => {
       if (!employee) return;
       
-      // TODO: Implement photo upload and avatar selection endpoint
-      // For now, only send JSON data (photo upload and avatar selection will be implemented separately)
-      const body: { full_name: string; position: string; avatar_id?: number } = {
+      // TODO: Implement photo upload endpoint
+      // For now, only send JSON data (photo upload will be implemented separately)
+      const body: { full_name: string; position: string; avatar_id?: number | null } = {
         full_name: data.full_name,
         position: data.position,
       };
       
-      if (data.avatarId) {
-        body.avatar_id = data.avatarId;
-      }
+      // Always include avatar_id - null if not selected, number if selected
+      body.avatar_id = data.avatarId ?? null;
+      
+      console.log('Sending update request:', body);
       
       const response = await fetch(`/api/employees/${employee.id}`, {
         method: "PUT",
@@ -97,10 +98,13 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Update failed:', errorData);
         throw new Error(errorData.error || "Ошибка обновления сотрудника");
       }
 
-      return response.json();
+      const result = await response.json();
+      console.log('Update response:', result);
+      return result;
     },
     onSuccess: (data) => {
       // Invalidate queries to refresh data

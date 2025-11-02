@@ -26,10 +26,25 @@ router.get("/:id", validateParams(employeeIdParamSchema), asyncHandler(async (re
 
 // Update employee
 router.put("/:id", validateParams(employeeIdParamSchema), validateBody(updateEmployeeSchema), asyncHandler(async (req, res) => {
+  logger.info('Updating employee', { 
+    id: req.params.id, 
+    body: req.body,
+    avatar_id: req.body.avatar_id,
+    full_name: req.body.full_name 
+  });
+  
   const employee = await repositories.employee.update(req.params.id, req.body as any);
   if (!employee) {
     throw new NotFoundError("Employee");
   }
+  
+  logger.info('Employee updated', { 
+    id: employee.id,
+    full_name: employee.full_name,
+    avatar_id: (employee as any).avatar_id,
+    photo_url: (employee as any).photo_url
+  });
+  
   res.json(employee);
 }));
 
