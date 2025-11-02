@@ -16,6 +16,20 @@ type EmployeeWithAvatar = {
   full_name: string;
 };
 
+export function normalizeAvatarId(value: unknown): number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 /**
  * Get avatar image URL for an employee
  * Priority: photo_url > template avatar (avatar_id) > null (use initials)
@@ -27,8 +41,9 @@ export function getEmployeeAvatarUrl(employee: EmployeeWithAvatar): string | nul
   }
   
   // Second priority: template avatar
-  if (employee.avatar_id) {
-    const avatar = TEMPLATE_AVATARS.find(a => a.id === employee.avatar_id);
+  const avatarId = normalizeAvatarId(employee.avatar_id);
+  if (avatarId) {
+    const avatar = TEMPLATE_AVATARS.find(a => a.id === avatarId);
     if (avatar) {
       return avatar.image;
     }
@@ -49,4 +64,3 @@ export function getEmployeeInitials(fullName: string): string {
     .join('')
     .toUpperCase();
 }
-

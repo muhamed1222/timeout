@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { EditEmployeeModal } from "./EditEmployeeModal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { normalizeAvatarId } from "@/lib/employeeAvatar";
 
 // Template avatars - same as in EditEmployeeModal
 const TEMPLATE_AVATARS = [
@@ -147,8 +148,9 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
                       );
                     }
                     // Show template avatar if selected
-                    if (displayEmployee.avatar_id) {
-                      const avatar = TEMPLATE_AVATARS.find(a => a.id === displayEmployee.avatar_id);
+                    const normalizedAvatarId = normalizeAvatarId(displayEmployee.avatar_id);
+                    if (normalizedAvatarId) {
+                      const avatar = TEMPLATE_AVATARS.find(a => a.id === normalizedAvatarId);
                       if (avatar) {
                         return (
                           <div className="relative">
@@ -460,4 +462,3 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
     </>
   );
 }
-

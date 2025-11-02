@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Upload, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { normalizeAvatarId } from "@/lib/employeeAvatar";
 
 type Employee = {
   id: string;
@@ -64,7 +65,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
         setPhotoFile(null);
         setSelectedAvatarId(null);
       } else if (employee.avatar_id) {
-        setSelectedAvatarId(employee.avatar_id);
+        setSelectedAvatarId(normalizeAvatarId(employee.avatar_id));
         setPhoto(null);
         setPhotoFile(null);
       } else {
@@ -91,14 +92,8 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
       // Always include avatar_id - null if not selected, number if selected
       body.avatar_id = data.avatarId ?? null;
 
-      // If avatar_id is null (no avatar selected), explicitly clear photo_url
-      // This ensures that when user removes avatar, both fields are cleared
-      if (data.avatarId === null || data.avatarId === undefined) {
-        body.photo_url = null;
-      }
-      
-      // If explicitly clearing photo (user removed uploaded photo), clear photo_url
-      if (data.clearPhoto) {
+      // Explicitly clear photo URL when requested (e.g., removing uploaded photo or switching to template avatar)
+      if (data.clearPhoto || data.avatarId === null) {
         body.photo_url = null;
       }
       
@@ -126,7 +121,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
       // Ensure data has correct avatar fields
       const updatedData = {
         ...data,
-        avatar_id: data.avatar_id ?? null,
+        avatar_id: normalizeAvatarId(data.avatar_id),
         photo_url: data.photo_url ?? null,
       };
       
@@ -260,7 +255,11 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
 
     // Determine if we're clearing photo (user removed photo or selected avatar)
-    const isClearingPhoto = (!!initialPhotoUrl && !photo && !photoFile && !selectedAvatarId);
+    const hasTemplateAvatar = selectedAvatarId !== null && selectedAvatarId !== undefined;
+    const isClearingPhoto =
+      !!initialPhotoUrl &&
+      !photoFile &&
+      (!photo || hasTemplateAvatar);
 
     updateEmployeeMutation.mutate({
       full_name: fullName,
