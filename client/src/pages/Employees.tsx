@@ -17,7 +17,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient, queryConfig } from "@/lib/queryClient";
 import { AddEmployeeModal } from "@/components/AddEmployeeModal";
-import { EditEmployeeModal } from "@/components/EditEmployeeModal";
+import { EmployeeProfileModal } from "@/components/EmployeeProfileModal";
 import { ErrorState } from "@/components/ErrorBoundary";
 import { EmployeeListSkeleton } from "@/components/LoadingSkeletons";
 import { useRetry } from "@/hooks/useRetry";
@@ -65,8 +65,8 @@ export default function Employees() {
   const [selectedInvite, setSelectedInvite] = useState<InviteLink | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
-  const [showEditEmployeeModal, setShowEditEmployeeModal] = useState(false);
-  const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { toast } = useToast();
@@ -300,11 +300,11 @@ export default function Employees() {
                 <div className="flex flex-col gap-1.5">
                   <button
                     onClick={() => {
-                      setEmployeeToEdit(employee);
-                      setShowEditEmployeeModal(true);
+                      setSelectedEmployee(employee);
+                      setShowProfileModal(true);
                     }}
                     className="bg-[#e16546] rounded-[20px] size-8 flex items-center justify-center hover:bg-[#d15536] transition-colors"
-                    aria-label="Редактировать сотрудника"
+                    aria-label="Открыть профиль сотрудника"
                   >
                     <Edit className="w-3.5 h-3.5 text-white" />
                   </button>
@@ -487,14 +487,11 @@ export default function Employees() {
         </Dialog>
       )}
 
-      {/* Edit Employee Modal */}
-      <EditEmployeeModal
-        open={showEditEmployeeModal}
-        onOpenChange={setShowEditEmployeeModal}
-        employee={employeeToEdit}
-        onSuccess={() => {
-          setEmployeeToEdit(null);
-        }}
+      {/* Employee Profile Modal */}
+      <EmployeeProfileModal
+        open={showProfileModal}
+        onOpenChange={setShowProfileModal}
+        employee={selectedEmployee}
       />
 
       {/* Delete Employee Confirmation Dialog */}
