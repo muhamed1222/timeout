@@ -21,12 +21,25 @@ interface EditEmployeeModalProps {
   onSuccess?: () => void;
 }
 
+// Template avatars with different colors and icons
+const TEMPLATE_AVATARS = [
+  { id: 1, bg: "#ff3b30", icon: "👤" },
+  { id: 2, bg: "#34c759", icon: "👨" },
+  { id: 3, bg: "#007aff", icon: "👩" },
+  { id: 4, bg: "#ffcc00", icon: "🧑" },
+  { id: 5, bg: "#af52de", icon: "👨‍💼" },
+  { id: 6, bg: "#ff9500", icon: "👩‍💼" },
+  { id: 7, bg: "#5ac8fa", icon: "🧑‍💻" },
+  { id: 8, bg: "#ff2d55", icon: "👤" },
+];
+
 export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: EditEmployeeModalProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [position, setPosition] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [selectedAvatarId, setSelectedAvatarId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { toast } = useToast();
@@ -42,22 +55,29 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
       setPosition(employee.position);
       setPhoto(null);
       setPhotoFile(null);
+      setSelectedAvatarId(null);
     }
   }, [employee]);
 
   const updateEmployeeMutation = useMutation({
-    mutationFn: async (data: { full_name: string; position: string; photo?: File }) => {
+    mutationFn: async (data: { full_name: string; position: string; photo?: File; avatarId?: number | null }) => {
       if (!employee) return;
       
-      // TODO: Implement photo upload endpoint
-      // For now, only send JSON data (photo upload will be implemented separately)
+      // TODO: Implement photo upload and avatar selection endpoint
+      // For now, only send JSON data (photo upload and avatar selection will be implemented separately)
+      const body: { full_name: string; position: string; avatar_id?: number } = {
+        full_name: data.full_name,
+        position: data.position,
+      };
+      
+      if (data.avatarId) {
+        body.avatar_id = data.avatarId;
+      }
+      
       const response = await fetch(`/api/employees/${employee.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          full_name: data.full_name,
-          position: data.position,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -121,9 +141,30 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
   const handleRemovePhoto = () => {
     setPhoto(null);
     setPhotoFile(null);
+    setSelectedAvatarId(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleSelectAvatar = (avatarId: number) => {
+    setSelectedAvatarId(avatarId);
+    setPhoto(null);
+    setPhotoFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const getCurrentAvatar = () => {
+    if (photo) {
+      return { type: 'photo' as const, src: photo };
+    }
+    if (selectedAvatarId) {
+      const avatar = TEMPLATE_AVATARS.find(a => a.id === selectedAvatarId);
+      return { type: 'template' as const, avatar };
+    }
+    return { type: 'initials' as const };
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -153,6 +194,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
       full_name: fullName,
       position: position.trim(),
       photo: photoFile || undefined,
+      avatarId: selectedAvatarId,
     });
   };
 
@@ -171,56 +213,108 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
 
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
           {/* Photo */}
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex flex-col items-center gap-4">
             <div className="relative">
-              {photo ? (
-                <div className="relative">
-                  <img
-                    src={photo}
-                    alt="Фото сотрудника"
-                    className="size-[80px] rounded-full object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleRemovePhoto}
-                    className="absolute -top-1 -right-1 size-6 rounded-full bg-[#ff0006] flex items-center justify-center text-white hover:bg-[#e00000] transition-colors"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ) : (
-                <div className="size-[80px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-2xl relative group">
-                  {employee && (
-                    <>
-                      {employee.full_name
-                        .split(' ')
-                        .map(n => n[0])
-                        .slice(0, 2)
-                        .join('')
-                        .toUpperCase()}
-                      <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Upload className="w-6 h-6 text-white" />
+              {(() => {
+                const currentAvatar = getCurrentAvatar();
+                if (currentAvatar.type === 'photo') {
+                  return (
+                    <div className="relative">
+                      <img
+                        src={currentAvatar.src}
+                        alt="Фото сотрудника"
+                        className="size-[80px] rounded-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="absolute -top-1 -right-1 size-6 rounded-full bg-[#ff0006] flex items-center justify-center text-white hover:bg-[#e00000] transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                }
+                if (currentAvatar.type === 'template') {
+                  return (
+                    <div className="relative">
+                      <div
+                        className="size-[80px] rounded-full flex items-center justify-center text-3xl"
+                        style={{ backgroundColor: currentAvatar.avatar?.bg }}
+                      >
+                        {currentAvatar.avatar?.icon}
                       </div>
-                    </>
-                  )}
-                </div>
-              )}
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="absolute -top-1 -right-1 size-6 rounded-full bg-[#ff0006] flex items-center justify-center text-white hover:bg-[#e00000] transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="size-[80px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-2xl relative group">
+                    {employee && (
+                      <>
+                        {employee.full_name
+                          .split(' ')
+                          .map(n => n[0])
+                          .slice(0, 2)
+                          .join('')
+                          .toUpperCase()}
+                        <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Upload className="w-6 h-6 text-white" />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handlePhotoChange}
-              className="hidden"
-              id="photo-upload"
-            />
-            <label
-              htmlFor="photo-upload"
-              className="px-4 py-2 rounded-[20px] bg-[#f8f8f8] text-sm font-medium text-[#1a1a1a] hover:bg-[#eeeeee] transition-colors cursor-pointer inline-flex items-center gap-2"
-            >
-              <Upload className="w-4 h-4" />
-              {photo ? "Изменить фото" : "Загрузить фото"}
-            </label>
+            
+            <div className="flex flex-col items-center gap-3 w-full">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                className="hidden"
+                id="photo-upload"
+              />
+              <label
+                htmlFor="photo-upload"
+                className="px-4 py-2 rounded-[20px] bg-[#f8f8f8] text-sm font-medium text-[#1a1a1a] hover:bg-[#eeeeee] transition-colors cursor-pointer inline-flex items-center gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                {photo ? "Изменить фото" : "Загрузить фото"}
+              </label>
+
+              {/* Template Avatars */}
+              <div className="w-full">
+                <p className="text-xs text-[#959595] text-center mb-3 leading-[1.2]">
+                  Или выберите шаблонную аватарку
+                </p>
+                <div className="grid grid-cols-4 gap-3">
+                  {TEMPLATE_AVATARS.map((avatar) => (
+                    <button
+                      key={avatar.id}
+                      type="button"
+                      onClick={() => handleSelectAvatar(avatar.id)}
+                      className={`size-14 rounded-full flex items-center justify-center text-2xl transition-all relative ${
+                        selectedAvatarId === avatar.id
+                          ? 'ring-2 ring-[#e16546] ring-offset-2 ring-offset-white scale-105'
+                          : 'hover:scale-105 hover:ring-2 hover:ring-[#eeeeee]'
+                      }`}
+                      style={{ backgroundColor: avatar.bg }}
+                    >
+                      {avatar.icon}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* First Name */}
