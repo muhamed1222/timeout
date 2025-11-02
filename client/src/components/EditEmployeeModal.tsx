@@ -43,6 +43,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [selectedAvatarId, setSelectedAvatarId] = useState<number | null>(null);
+  const [initialPhotoUrl, setInitialPhotoUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { toast } = useToast();
@@ -71,22 +72,28 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
         setPhotoFile(null);
         setSelectedAvatarId(null);
       }
+
+      setInitialPhotoUrl(employee.photo_url ?? null);
     }
   }, [employee]);
 
   const updateEmployeeMutation = useMutation({
-    mutationFn: async (data: { full_name: string; position: string; photo?: File; avatarId?: number | null }) => {
+    mutationFn: async (data: { full_name: string; position: string; photo?: File; avatarId?: number | null; clearPhoto?: boolean }) => {
       if (!employee) return;
       
       // TODO: Implement photo upload endpoint
       // For now, only send JSON data (photo upload will be implemented separately)
-      const body: { full_name: string; position: string; avatar_id?: number | null } = {
+      const body: { full_name: string; position: string; avatar_id?: number | null; photo_url?: string | null } = {
         full_name: data.full_name,
         position: data.position,
       };
       
       // Always include avatar_id - null if not selected, number if selected
       body.avatar_id = data.avatarId ?? null;
+
+      if (data.clearPhoto) {
+        body.photo_url = null;
+      }
       
       console.log('Sending update request:', body);
       
@@ -240,6 +247,9 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
       position: position.trim(),
       photo: photoFile || undefined,
       avatarId: selectedAvatarId,
+      clearPhoto:
+        (!!initialPhotoUrl && !photo && !photoFile) ||
+        (selectedAvatarId !== null && selectedAvatarId !== undefined),
     });
   };
 
@@ -467,4 +477,3 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
     </Dialog>
   );
 }
-
