@@ -22,16 +22,16 @@ interface EditEmployeeModalProps {
 }
 
 // Template avatars - images should be placed in /public/avatars/ folder
-// Expected files: avatar-1.png, avatar-2.png, ..., avatar-8.png
+// Expected files: 1.png, 2.png, ..., 8.png
 const TEMPLATE_AVATARS = [
-  { id: 1, image: "/avatars/avatar-1.png" },
-  { id: 2, image: "/avatars/avatar-2.png" },
-  { id: 3, image: "/avatars/avatar-3.png" },
-  { id: 4, image: "/avatars/avatar-4.png" },
-  { id: 5, image: "/avatars/avatar-5.png" },
-  { id: 6, image: "/avatars/avatar-6.png" },
-  { id: 7, image: "/avatars/avatar-7.png" },
-  { id: 8, image: "/avatars/avatar-8.png" },
+  { id: 1, image: "/avatars/1.png" },
+  { id: 2, image: "/avatars/2.png" },
+  { id: 3, image: "/avatars/3.png" },
+  { id: 4, image: "/avatars/4.png" },
+  { id: 5, image: "/avatars/5.png" },
+  { id: 6, image: "/avatars/6.png" },
+  { id: 7, image: "/avatars/7.png" },
+  { id: 8, image: "/avatars/8.png" },
 ];
 
 export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: EditEmployeeModalProps) {
