@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Edit, Calendar as CalendarIcon, TrendingUp, Clock, AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { Calendar as CalendarIcon, TrendingUp, Clock, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { EditEmployeeModal } from "./EditEmployeeModal";
@@ -75,36 +75,6 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
     return { icon: "🔴", text: "Низкий уровень", color: "text-red-600" };
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "active":
-        return (
-          <div className="bg-[rgba(52,199,89,0.08)] text-[#34c759] rounded-full px-[10px] py-1 inline-flex items-center text-xs font-medium leading-[1.2]">
-            Активен
-          </div>
-        );
-      case "inactive":
-      case "terminated":
-        return (
-          <div className="bg-[rgba(255,0,0,0.08)] text-[#ff0006] rounded-full px-[10px] py-1 inline-flex items-center text-xs font-medium leading-[1.2]">
-            {status === "terminated" ? "Уволен" : "Неактивен"}
-          </div>
-        );
-      case "on_leave":
-        return (
-          <div className="bg-[rgba(255,204,0,0.08)] text-[#ffcc00] rounded-full px-[10px] py-1 inline-flex items-center text-xs font-medium leading-[1.2]">
-            В отпуске
-          </div>
-        );
-      default:
-        return (
-          <div className="bg-white rounded-full px-[10px] py-1 inline-flex items-center text-xs font-medium text-[#565656] leading-[1.2] border border-[#eeeeee]">
-            {status}
-          </div>
-        );
-    }
-  };
-
   const efficiencyIndex = stats?.efficiency_index ?? 0;
   const efficiencyStatus = getEfficiencyStatus(efficiencyIndex);
 
@@ -121,53 +91,23 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
           <div className="space-y-4">
             {/* 1. Основная информация */}
             <div className="bg-[#f8f8f8] rounded-[20px] p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-base">
-                    {employee.full_name
-                      .split(' ')
-                      .map(n => n[0])
-                      .slice(0, 2)
-                      .join('')
-                      .toUpperCase()}
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
-                      {employee.full_name}
-                    </h3>
-                    <p className="text-sm text-[#e16546] leading-[1.2] mt-1">
-                      {employee.position}
-                    </p>
-                    <div className="mt-2">
-                      {getStatusBadge(employee.status)}
-                    </div>
-                  </div>
+              <div className="flex items-center gap-4">
+                <div className="size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-base">
+                  {employee.full_name
+                    .split(' ')
+                    .map(n => n[0])
+                    .slice(0, 2)
+                    .join('')
+                    .toUpperCase()}
                 </div>
-                <button
-                  onClick={() => setShowEditModal(true)}
-                  className="bg-[#e16546] px-[17px] py-3 rounded-[40px] flex items-center gap-2 text-sm font-medium text-white hover:bg-[#d15536] transition-colors"
-                >
-                  <Edit className="w-4 h-4" />
-                  Редактировать профиль
-                </button>
-              </div>
-
-              {/* Additional Info */}
-              <div className="mt-6 grid grid-cols-2 gap-4 pt-4 border-t border-[#eeeeee]">
                 <div>
-                  <p className="text-xs text-[#959595] mb-1 leading-[1.2]">Часовой пояс</p>
-                  <p className="text-sm font-medium text-[#1a1a1a] leading-[1.2]">
-                    {employee.tz || "Europe/Moscow"}
+                  <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
+                    {employee.full_name}
+                  </h3>
+                  <p className="text-sm text-[#e16546] leading-[1.2] mt-1">
+                    {employee.position}
                   </p>
                 </div>
-                {employee.telegram_user_id && (
-                  <div>
-                    <p className="text-xs text-[#959595] mb-1 leading-[1.2]">Telegram ID</p>
-                    <p className="text-sm font-mono text-[#1a1a1a] leading-[1.2]">
-                      {employee.telegram_user_id}
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
 
