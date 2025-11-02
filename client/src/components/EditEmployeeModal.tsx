@@ -347,35 +347,38 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
             </div>
           </div>
 
-          {/* First Name */}
-          <div className="space-y-2">
-            <label htmlFor="edit-firstName" className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block">
-              Имя *
-            </label>
-            <input
-              id="edit-firstName"
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="Иван"
-              required
-              className="w-full px-4 py-3 rounded-[12px] border border-[#eeeeee] bg-white text-[#1a1a1a] text-sm leading-[1.2] focus:outline-none focus:border-[#e16546] transition-colors"
-            />
-          </div>
+          {/* Name Fields - Side by Side */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* First Name */}
+            <div className="space-y-2">
+              <label htmlFor="edit-firstName" className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block">
+                Имя *
+              </label>
+              <input
+                id="edit-firstName"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Иван"
+                required
+                className="w-full px-4 py-3 rounded-[12px] border border-[#eeeeee] bg-white text-[#1a1a1a] text-sm leading-[1.2] focus:outline-none focus:border-[#e16546] transition-colors"
+              />
+            </div>
 
-          {/* Last Name */}
-          <div className="space-y-2">
-            <label htmlFor="edit-lastName" className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block">
-              Фамилия
-            </label>
-            <input
-              id="edit-lastName"
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Иванов"
-              className="w-full px-4 py-3 rounded-[12px] border border-[#eeeeee] bg-white text-[#1a1a1a] text-sm leading-[1.2] focus:outline-none focus:border-[#e16546] transition-colors"
-            />
+            {/* Last Name */}
+            <div className="space-y-2">
+              <label htmlFor="edit-lastName" className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block">
+                Фамилия
+              </label>
+              <input
+                id="edit-lastName"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Иванов"
+                className="w-full px-4 py-3 rounded-[12px] border border-[#eeeeee] bg-white text-[#1a1a1a] text-sm leading-[1.2] focus:outline-none focus:border-[#e16546] transition-colors"
+              />
+            </div>
           </div>
 
           {/* Position */}
