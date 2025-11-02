@@ -310,20 +310,54 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
         <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
-              <Calendar className="w-5 h-5" />
+              <Calendar className="w-5 h-5 text-[#1a1a1a]" />
               История работы - {employee.full_name}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-[#959595] leading-[1.2]">
-              Календарь с детальной историей работы будет реализован в следующей версии
-            </p>
-            <div className="flex items-center gap-2 p-4 bg-[#f8f8f8] rounded-[12px]">
-              <AlertCircle className="w-5 h-5 text-[#e16546]" />
-              <p className="text-sm text-[#1a1a1a] leading-[1.2]">
-                Здесь будет отображаться календарь по месяцам с отмеченными рабочими днями,
-                пропусками, опозданиями и выходными
-              </p>
+          
+          <div className="space-y-4 mt-4">
+            {/* Info Card */}
+            <div className="bg-[#f8f8f8] rounded-[20px] p-4">
+              <div className="flex items-start gap-3">
+                <div className="bg-white rounded-full size-10 flex items-center justify-center flex-shrink-0">
+                  <AlertCircle className="w-5 h-5 text-[#e16546]" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-[#1a1a1a] mb-1 leading-[1.2]">
+                    Функция в разработке
+                  </h4>
+                  <p className="text-sm text-[#959595] leading-[1.2]">
+                    Календарь с детальной историей работы будет реализован в следующей версии.
+                    Здесь будет отображаться календарь по месяцам с отмеченными рабочими днями,
+                    пропусками, опозданиями и выходными.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Legend Preview */}
+            <div className="bg-[#f8f8f8] rounded-[20px] p-4">
+              <h4 className="text-sm font-semibold text-[#1a1a1a] mb-3 leading-[1.2]">
+                Легенда календаря
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="size-6 rounded-full bg-[rgba(52,199,89,0.08)] border-2 border-[#34c759]"></div>
+                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">Рабочий день</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="size-6 rounded-full bg-[rgba(255,204,0,0.08)] border-2 border-[#ffcc00]"></div>
+                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">Опоздание</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="size-6 rounded-full bg-[rgba(255,0,0,0.08)] border-2 border-[#ff0006]"></div>
+                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">Пропуск</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="size-6 rounded-full bg-white border-2 border-[#eeeeee]"></div>
+                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">Выходной</span>
+                </div>
+              </div>
             </div>
           </div>
         </DialogContent>
