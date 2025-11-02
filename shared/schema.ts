@@ -42,6 +42,8 @@ export const employee = pgTable("employee", {
   telegram_user_id: text("telegram_user_id").unique(),
   status: text("status").notNull().default("active"),
   tz: text("tz"),
+  avatar_id: integer("avatar_id"),
+  photo_url: text("photo_url"),
   created_at: timestamp("created_at").defaultNow(),
 });
 

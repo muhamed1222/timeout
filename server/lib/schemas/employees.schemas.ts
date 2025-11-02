@@ -17,6 +17,8 @@ export const createEmployeeSchema = z.object({
   telegram_user_id: z.string().optional(),
   status: z.enum(['active', 'inactive', 'on_leave']).default('active').optional(),
   tz: z.string().optional(),
+  avatar_id: z.number().int().min(1).max(8).optional(),
+  photo_url: z.string().url().optional().or(z.literal('')),
 });
 
 /**
