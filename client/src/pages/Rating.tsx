@@ -4,21 +4,18 @@ import { ErrorState } from '@/components/ErrorBoundary';
 import { RatingListSkeleton } from '@/components/LoadingSkeletons';
 import { useRetry } from '@/hooks/useRetry';
 import { getContextErrorMessage } from '@/lib/errorMessages';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Search, Trophy, Medal, Award, Star, AlertTriangle, ArrowUp } from 'lucide-react';
 import { apiRequest, queryClient, queryConfig } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { Award, ChevronDown, AlertTriangle, X } from 'lucide-react';
+import EmployeeAvatar from '@/components/EmployeeAvatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface EmployeeRating {
   id: string;
   full_name: string;
   position?: string;
-  rating: number; // Основной рейтинг от 0 до 100
+  rating: number;
 }
 
 interface RatingPeriod {
@@ -50,14 +47,28 @@ interface RatingData {
   rating: number;
 }
 
+const getRatingColor = (rating: number): string => {
+  if (rating >= 100) return '#34c75e'; // зеленый
+  if (rating >= 80) return '#f2e94a'; // желтый
+  if (rating >= 60) return '#fbc02d'; // оранжевый
+  if (rating >= 40) return '#f57c00'; // оранжево-красный
+  return '#e53935'; // красный
+};
+
+const getRatingPercentage = (rating: number, maxWidth: number = 601): number => {
+  return (rating / 100) * maxWidth;
+};
+
 export default function Rating() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState('current');
-  const [sortBy, setSortBy] = useState('rating');
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRating | null>(null);
   const [isViolationModalOpen, setIsViolationModalOpen] = useState(false);
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
   const [violationComment, setViolationComment] = useState<string>('');
+  const [isRatingBoostModalOpen, setIsRatingBoostModalOpen] = useState(false);
+  const [ratingBoostPercent, setRatingBoostPercent] = useState<string>('5');
+  const [ratingBoostComment, setRatingBoostComment] = useState<string>('');
   const { companyId, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -78,7 +89,6 @@ export default function Rating() {
     },
   });
 
-  // Вычисляем период на основе выбранного
   const getPeriodDates = () => {
     if (selectedPeriod === 'current') {
       const now = new Date();
@@ -108,7 +118,6 @@ export default function Rating() {
         periodEnd: new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0]
       };
     } else {
-      // Если выбран конкретный period ID
       const period = periods.find(p => p.id === selectedPeriod);
       if (period) {
         return {
@@ -116,7 +125,6 @@ export default function Rating() {
           periodEnd: period.end_date
         };
       }
-      // По умолчанию текущий месяц
       const now = new Date();
       return {
         periodStart: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0],
@@ -146,19 +154,11 @@ export default function Rating() {
     enabled: !!companyId,
   });
 
-  const getRatingIcon = (position: number) => {
-    if (position === 1) return <Trophy className="w-5 h-5 text-yellow-500" />;
-    if (position === 2) return <Medal className="w-5 h-5 text-gray-400" />;
-    if (position === 3) return <Award className="w-5 h-5 text-amber-600" />;
-    return <Star className="w-4 h-4 text-muted-foreground" />;
-  };
-
   const handleAddViolation = (employee: EmployeeRating) => {
     setSelectedEmployee(employee);
     setIsViolationModalOpen(true);
     setSelectedRuleId(null);
     setViolationComment('');
-    // Если нет активных правил — предупредим
     const hasActiveRules = (violationRules || []).some((r: ViolationRule) => r.is_active);
     if (!hasActiveRules) {
       toast({
@@ -192,7 +192,6 @@ export default function Rating() {
       setSelectedEmployee(null);
       setSelectedRuleId(null);
       setViolationComment('');
-      // Force refresh ratings data
       queryClient.invalidateQueries({
         predicate: (q) => Array.isArray(q.queryKey)
           && q.queryKey[0] === '/api/companies'
@@ -209,42 +208,20 @@ export default function Rating() {
   });
 
   const adjustRatingMutation = useMutation({
-    mutationFn: async (employee: EmployeeRating) => {
-      const body = { delta: 5, periodStart, periodEnd };
+    mutationFn: async ({ employee, delta }: { employee: EmployeeRating; delta: number }) => {
+      const body = { delta, periodStart, periodEnd };
       const res = await apiRequest('POST', `/api/rating/employees/${employee.id}/adjust`, body);
       const payload = await res.json();
       if (!res.ok) throw new Error(payload?.error || 'Не удалось повысить рейтинг');
       return payload;
     },
-    // Оптимистичное обновление шкалы рейтинга
-    onMutate: async (employee: EmployeeRating) => {
-      await queryClient.cancelQueries({
-        predicate: (q) => Array.isArray(q.queryKey)
-          && q.queryKey[0] === '/api/companies'
-          && q.queryKey[1] === companyId
-          && q.queryKey[2] === 'ratings'
-      });
-      const key = ['/api/companies', companyId, 'ratings', periodStart, periodEnd];
-      const previous = queryClient.getQueryData<RatingData[]>(key);
-      const next = (() => {
-        const map = new Map<string, number>((previous || []).map(r => [r.employee_id, Number(r.rating)]));
-        const current = map.get(employee.id) ?? 100;
-        const updated = Math.max(0, Math.min(100, current + 5));
-        map.set(employee.id, updated);
-        return Array.from(map.entries()).map(([employee_id, rating]) => ({ employee_id, rating }));
-      })();
-      queryClient.setQueryData(key, next);
-      return { previous, key };
-    },
-    onError: (err: unknown, _vars, ctx) => {
-      if (ctx?.key) {
-        queryClient.setQueryData(ctx.key as any, ctx.previous);
-      }
-      const m = err instanceof Error ? err.message : 'Не удалось повысить рейтинг';
-      toast({ title: 'Ошибка', description: m, variant: 'destructive' });
-    },
     onSuccess: () => {
-      toast({ title: 'Рейтинг повышен', description: '+5% к рейтингу' });
+      const percent = ratingBoostPercent;
+      toast({ title: 'Рейтинг повышен', description: `+${percent}% к рейтингу` });
+      setIsRatingBoostModalOpen(false);
+      setSelectedEmployee(null);
+      setRatingBoostPercent('5');
+      setRatingBoostComment('');
       queryClient.invalidateQueries({
         predicate: (q) => Array.isArray(q.queryKey)
           && q.queryKey[0] === '/api/companies'
@@ -252,10 +229,13 @@ export default function Rating() {
           && q.queryKey[2] === 'ratings'
       });
       queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'employees'] });
+    },
+    onError: (err: unknown) => {
+      const m = err instanceof Error ? err.message : 'Не удалось повысить рейтинг';
+      toast({ title: 'Ошибка', description: m, variant: 'destructive' });
     }
   });
 
-  // Сливаем сотрудников с реальными рейтингами; по умолчанию 100%
   const ratingsMap = new Map<string, number>((ratingData || []).map((r: RatingData) => [r.employee_id, Number(r.rating)]));
   const employeesWithRating: EmployeeRating[] = (employees || []).map((emp: Employee) => ({
     id: emp.id,
@@ -269,27 +249,15 @@ export default function Rating() {
     emp.position?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const sortedEmployees = [...filteredEmployees].sort((a, b) => {
-    switch (sortBy) {
-      case 'rating':
-        return b.rating - a.rating;
-      case 'name':
-        return a.full_name.localeCompare(b.full_name);
-      default:
-        return b.rating - a.rating;
-    }
-  });
+  const sortedEmployees = [...filteredEmployees].sort((a, b) => b.rating - a.rating);
 
-  // Retry hooks
   const employeesRetry = useRetry(['/api/companies', companyId, 'employees']);
   const ratingsRetry = useRetry(['/api/companies', companyId, 'ratings', periodStart, periodEnd]);
 
-  // Loading state
   if (authLoading || employeesLoading || ratingLoading) {
     return <RatingListSkeleton />;
   }
 
-  // Error states
   if (employeesError) {
     return (
       <ErrorState
@@ -309,117 +277,100 @@ export default function Rating() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Рейтинг сотрудников</h1>
-          <p className="text-muted-foreground">
-            Анализ производительности и эффективности команды
-          </p>
+    <div className="flex flex-col gap-4">
+      {sortedEmployees.map((employee: EmployeeRating) => {
+        const ratingColor = getRatingColor(employee.rating);
+        const ratingWidth = getRatingPercentage(employee.rating);
+        const showDecrease = employee.rating < 100; // Показываем стрелку вниз если рейтинг меньше 100%
+
+        return (
+          <div
+            key={employee.id}
+            className="bg-[#f8f8f8] rounded-[20px] p-4 flex flex-col gap-[30px]"
+          >
+            <div className="flex gap-[25px] items-center">
+              {/* Avatar and Name */}
+              <div className="flex gap-2 items-center">
+                <div className="size-[50px] rounded-full overflow-hidden bg-[#ff3b30] flex items-center justify-center text-white font-medium">
+                  {employee.full_name
+                    .split(' ')
+                    .map(n => n[0])
+                    .slice(0, 2)
+                    .join('')
+                    .toUpperCase()}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <div className="text-base font-semibold text-black leading-[1.2]">
+                    {employee.full_name}
         </div>
+                  <div className="text-sm text-[#e16546] leading-[1.2]">
+                    {employee.position || 'Сотрудник'}
       </div>
-
-      {/* Rating Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {sortedEmployees.map((employee: EmployeeRating, index: number) => (
-          <Card key={employee.id} className="hover-elevate" data-testid={`rating-card-${employee.id}`}>
-            <CardHeader className="pb-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  {getRatingIcon(index + 1)}
-                  <CardTitle className="text-base truncate">{employee.full_name}</CardTitle>
                 </div>
-                <p className="text-sm text-muted-foreground truncate">{employee.position}</p>
               </div>
-            </CardHeader>
-            <CardContent>
-              {/* Простая визуализация рейтинга */}
-              <div className="space-y-4">
-                {/* Прогресс-бар рейтинга */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Рейтинг</span>
-                    <span className="text-lg font-bold">{employee.rating}%</span>
+
+              {/* Vertical Divider */}
+              <div className="w-[36px] h-[3px] rotate-90 bg-[rgba(96,96,96,0.2)] rounded-[7px]" />
+
+              {/* Rating Progress Bar */}
+              <div className="bg-[#c1c1c1] h-[50px] rounded-[10px] relative overflow-hidden flex-1 min-w-0">
+                <div
+                  className="absolute left-0 top-0 h-[50px] rounded-[10px] flex items-center justify-between px-[10px] py-1"
+                  style={{ 
+                    backgroundColor: ratingColor, 
+                    width: `${Math.min(100, employee.rating)}%`,
+                    minWidth: ratingWidth > 0 ? `${ratingWidth}px` : '0px'
+                  }}
+                >
+                  <div className="text-[10px] font-medium text-white leading-[1.2]">
+                    Рейтинг
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                  <div className="bg-white rounded-[10px] px-[10px] py-[10px] flex gap-1.5 items-center">
                     <div 
-                      className={`h-3 rounded-full transition-all duration-300 ${
-                        employee.rating >= 80 ? 'bg-green-500' :
-                        employee.rating >= 60 ? 'bg-yellow-500' :
-                        employee.rating >= 40 ? 'bg-orange-500' :
-                        'bg-red-500'
-                      }`}
-                      style={{ width: `${employee.rating}%` }}
-                    ></div>
+                      className="text-[10px] font-medium leading-[1.2]"
+                      style={{ color: ratingColor }}
+                    >
+                      {employee.rating}%
                   </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>0%</span>
-                    <span>50%</span>
-                    <span>100%</span>
+                    {showDecrease && (
+                      <ChevronDown className="w-[10px] h-[7px] rotate-180" style={{ color: ratingColor }} />
+                    )}
+                    <Award className="w-4 h-4" style={{ color: ratingColor }} />
                   </div>
-                </div>
-
-                {/* Статус рейтинга */}
-                <div className="text-center">
-                  {employee.rating >= 80 ? (
-                    <span className="text-green-600 dark:text-green-400 text-sm font-medium">
-                      ✅ Отличный рейтинг
-                    </span>
-                  ) : employee.rating >= 60 ? (
-                    <span className="text-yellow-600 dark:text-yellow-400 text-sm font-medium">
-                      ⚠️ Хороший рейтинг
-                    </span>
-                  ) : employee.rating >= 40 ? (
-                    <span className="text-orange-600 dark:text-orange-400 text-sm font-medium">
-                      ⚠️ Низкий рейтинг
-                    </span>
-                  ) : (
-                    employee.rating <= 0 ? (
-                      <span className="text-red-600 dark:text-red-400 text-sm font-medium">
-                        🚫 Увольнение: рейтинг достиг 0%
-                      </span>
-                    ) : (
-                      <span className="text-red-600 dark:text-red-400 text-sm font-medium">
-                        🚨 Критический рейтинг
-                      </span>
-                    )
-                  )}
                 </div>
               </div>
 
-              {/* Кнопка добавления нарушения */}
-              <div className="mt-4 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
+              {/* Vertical Divider */}
+              <div className="w-[36px] h-[3px] rotate-90 bg-[rgba(96,96,96,0.2)] rounded-[7px]" />
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-1.5 h-[50px] justify-center">
+                <button
                   onClick={() => handleAddViolation(employee)}
-                  data-testid={`button-add-violation-${employee.id}`}
+                  className="bg-[rgba(255,59,48,0.1)] px-6 py-1 rounded-[20px] text-[10px] font-medium text-[#ff3b30] leading-normal hover:bg-[rgba(255,59,48,0.2)] transition-colors"
                 >
-                  <AlertTriangle className="w-4 h-4 mr-2" />
                   Добавить нарушение
-                </Button>
-                <div className="mt-2" />
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => adjustRatingMutation.mutate(employee)}
-                  disabled={adjustRatingMutation.isPending}
-                  data-testid={`button-boost-rating-${employee.id}`}
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedEmployee(employee);
+                    setIsRatingBoostModalOpen(true);
+                    setRatingBoostPercent('5');
+                    setRatingBoostComment('');
+                  }}
+                  className="bg-[rgba(52,199,89,0.08)] px-6 py-1 rounded-[9999px] text-[10px] font-medium text-[#34c759] leading-normal hover:bg-[rgba(52,199,89,0.15)] transition-colors"
                 >
-                  <ArrowUp className="w-4 h-4 mr-2" />
-                  Повысить рейтинг (+5%)
-                </Button>
+                  Повысить рейтинг
+                </button>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+            </div>
       </div>
+        );
+      })}
 
       {sortedEmployees.length === 0 && (
         <div className="text-center py-12">
-          <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <Award className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold mb-2">Нет данных для отображения</h3>
           <p className="text-muted-foreground">
             Выберите другой период или проверьте настройки рейтинга
@@ -427,57 +378,198 @@ export default function Rating() {
         </div>
       )}
 
-      {/* Модальное окно добавления нарушения */}
+      {/* Modal для добавления нарушения */}
       {isViolationModalOpen && selectedEmployee && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-4">
-              Добавить нарушение для {selectedEmployee.full_name}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => {
+          setIsViolationModalOpen(false);
+          setSelectedEmployee(null);
+          setSelectedRuleId(null);
+          setViolationComment('');
+        }}>
+          <div 
+            className="bg-white rounded-[20px] p-5 w-full max-w-md mx-4 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col gap-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
+                  Добавить нарушение сотруднику
             </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Тип нарушения</label>
-                <Select value={selectedRuleId ?? undefined} onValueChange={setSelectedRuleId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={rulesLoading ? 'Загрузка...' : 'Выберите тип нарушения'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {violationRules
-                      .filter((r: ViolationRule) => r.is_active)
-                      .map((rule: ViolationRule) => (
-                        <SelectItem key={rule.id} value={rule.id}>
-                          {rule.name} ({rule.penalty_percent}%)
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Комментарий</label>
-                <Input
-                  placeholder="Описание нарушения (необязательно)"
-                  value={violationComment}
-                  onChange={(e) => setViolationComment(e.target.value)}
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button
-                  variant="outline"
+                <button
                   onClick={() => {
                     setIsViolationModalOpen(false);
                     setSelectedEmployee(null);
                     setSelectedRuleId(null);
                     setViolationComment('');
                   }}
+                  className="p-1 hover:bg-neutral-100 rounded transition-colors"
+                  aria-label="Закрыть"
                 >
-                  Отмена
-                </Button>
-                <Button
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-black leading-[1.2]">
+                      Тип нарушения
+                    </label>
+                    <Select
+                      value={selectedRuleId ?? undefined}
+                      onValueChange={setSelectedRuleId}
+                    >
+                      <SelectTrigger className="w-full bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm border-0 h-auto focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0 data-[placeholder]:text-[#959595]">
+                        <SelectValue placeholder="Выберите тип нарушения">
+                          {selectedRuleId 
+                            ? violationRules.find((r: ViolationRule) => r.id === selectedRuleId)?.name + 
+                              ` (${violationRules.find((r: ViolationRule) => r.id === selectedRuleId)?.penalty_percent}%)`
+                            : null
+                          }
+                        </SelectValue>
+                  </SelectTrigger>
+                      <SelectContent className="bg-white rounded-[12px] border border-[#f8f8f8] shadow-lg z-[60]">
+                    {violationRules
+                      .filter((r: ViolationRule) => r.is_active)
+                      .map((rule: ViolationRule) => (
+                            <SelectItem key={rule.id} value={rule.id} className="text-sm">
+                          {rule.name} ({rule.penalty_percent}%)
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-black leading-[1.2]">
+                      Комментарий
+                    </label>
+                    <input
+                      type="text"
+                  placeholder="Описание нарушения (необязательно)"
+                  value={violationComment}
+                  onChange={(e) => setViolationComment(e.target.value)}
+                      className="w-full bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-[#959595] placeholder:text-[#959595] focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
+                />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setIsViolationModalOpen(false);
+                    setSelectedEmployee(null);
+                    setSelectedRuleId(null);
+                    setViolationComment('');
+                  }}
+                  className="bg-[#f8f8f8] px-[17px] py-3 rounded-[40px] text-sm text-black leading-[1.2] hover:bg-[#eeeeee] transition-colors"
+                >
+                  Отменить
+                </button>
+                <button
                   disabled={!selectedRuleId || createViolationMutation.isPending || !(violationRules || []).some((r: ViolationRule) => r.is_active)}
                   onClick={() => createViolationMutation.mutate()}
+                  className="bg-[#e16546] px-[17px] py-3 rounded-[40px] text-sm font-medium text-white leading-[1.2] hover:bg-[#d15536] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {createViolationMutation.isPending ? 'Сохранение...' : 'Добавить нарушение'}
-                </Button>
+                  {createViolationMutation.isPending ? 'Сохранение...' : 'Сохранить'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal для повышения рейтинга */}
+      {isRatingBoostModalOpen && selectedEmployee && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => {
+          setIsRatingBoostModalOpen(false);
+          setSelectedEmployee(null);
+          setRatingBoostPercent('5');
+          setRatingBoostComment('');
+        }}>
+          <div 
+            className="bg-white rounded-[20px] p-5 w-full max-w-md mx-4 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col gap-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
+                  Повысить рейтинг сотруднику
+                </h3>
+                <button
+                  onClick={() => {
+                    setIsRatingBoostModalOpen(false);
+                    setSelectedEmployee(null);
+                    setRatingBoostPercent('5');
+                    setRatingBoostComment('');
+                  }}
+                  className="p-1 hover:bg-neutral-100 rounded transition-colors"
+                  aria-label="Закрыть"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-black leading-[1.2]">
+                      Укажите %
+                    </label>
+                    <input
+                      type="number"
+                      value={ratingBoostPercent}
+                      onChange={(e) => setRatingBoostPercent(e.target.value)}
+                      min="1"
+                      max="100"
+                      className="w-[63px] bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#34c759] focus:ring-offset-0"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-black leading-[1.2]">
+                      Комментарий
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Описание нарушения (необязательно)"
+                      value={ratingBoostComment}
+                      onChange={(e) => setRatingBoostComment(e.target.value)}
+                      className="w-full bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-[#959595] placeholder:text-[#959595] focus:outline-none focus:ring-2 focus:ring-[#34c759] focus:ring-offset-0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setIsRatingBoostModalOpen(false);
+                    setSelectedEmployee(null);
+                    setRatingBoostPercent('5');
+                    setRatingBoostComment('');
+                  }}
+                  className="bg-[#f8f8f8] px-[17px] py-3 rounded-[40px] text-sm text-black leading-[1.2] hover:bg-[#eeeeee] transition-colors"
+                >
+                  Отменить
+                </button>
+                <button
+                  disabled={!ratingBoostPercent || adjustRatingMutation.isPending || Number(ratingBoostPercent) <= 0}
+                  onClick={() => {
+                    const delta = Number(ratingBoostPercent);
+                    if (delta > 0 && selectedEmployee) {
+                      adjustRatingMutation.mutate({ employee: selectedEmployee, delta });
+                    }
+                  }}
+                  className="bg-[#34c759] px-[17px] py-3 rounded-[40px] text-sm font-medium text-white leading-[1.2] hover:bg-[#2db548] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {adjustRatingMutation.isPending ? 'Сохранение...' : 'Сохранить'}
+                </button>
               </div>
             </div>
           </div>

@@ -54,6 +54,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register modular routers
   app.use("/api/auth", authRouter);
+  
+  // Dynamically import Yandex OAuth router
+  let authYandexRouter;
+  try {
+    const yandexModule = await import("./routes/auth-yandex.js");
+    authYandexRouter = yandexModule.default;
+    logger.info("✅ Yandex OAuth router module imported successfully");
+    app.use("/api/auth", authYandexRouter);
+    logger.info("✅ Yandex OAuth router registered at /api/auth/yandex");
+  } catch (error) {
+    logger.error("❌ Failed to import Yandex OAuth router:", error);
+    // Create a dummy router to prevent crashes
+    const { Router } = await import("express");
+    authYandexRouter = Router();
+    authYandexRouter.get("/yandex", (req, res) => {
+      logger.error("Yandex OAuth endpoint called but router not loaded");
+      res.status(500).json({ error: "Yandex OAuth router failed to load. Please check server logs and restart." });
+    });
+    authYandexRouter.get("/yandex/callback", (req, res) => {
+      logger.error("Yandex OAuth callback called but router not loaded");
+      res.status(500).json({ error: "Yandex OAuth router failed to load. Please check server logs and restart." });
+    });
+    app.use("/api/auth", authYandexRouter);
+  }
+  
   app.use("/api/companies", companiesRouter);
   app.use("/api/companies", companiesExtendedRouter);
   app.use("/api/employees", employeesRouter);

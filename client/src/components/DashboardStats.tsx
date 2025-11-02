@@ -1,26 +1,38 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, UserX, AlertTriangle } from "lucide-react";
+import { Users, Clock, Flag, AlertTriangle, ArrowUpRight } from "lucide-react";
+import { Link } from "wouter";
 
 interface StatCardProps {
   title: string;
   value: string | number;
-  change?: string;
   icon: React.ComponentType<any>;
-  color?: string;
+  hasSecondaryIcon?: boolean;
 }
 
-function StatCard({ title, value, change, icon: Icon, color = "text-primary" }: StatCardProps) {
+function StatCard({ title, value, icon: Icon, hasSecondaryIcon }: StatCardProps) {
   return (
-    <Card data-testid={`stat-card-${title.toLowerCase().replace(' ', '-')}`}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <Icon className={`h-4 w-4 ${color}`} />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {change && <p className="text-xs text-muted-foreground">{change}</p>}
-      </CardContent>
-    </Card>
+    <div 
+      className="bg-[#f8f8f8] rounded-[20px] p-4 h-[180px] flex flex-col justify-between flex-1"
+      data-testid={`stat-card-${title.toLowerCase().replace(' ', '-')}`}
+    >
+      <div className="flex items-start justify-between">
+        <div className="bg-white rounded-[40px] size-[50px] flex items-center justify-center">
+          <Icon className="w-6 h-6 text-[#E16546]" />
+        </div>
+        {hasSecondaryIcon && (
+          <Link href="/exceptions" aria-label="Перейти к Нарушения">
+            <div className="bg-[rgba(255,255,255,0.5)] rounded-[40px] size-[50px] flex items-center justify-center cursor-pointer hover:bg-[rgba(255,255,255,0.7)] transition-colors">
+              <ArrowUpRight className="w-6 h-6 text-[#989898]" />
+            </div>
+          </Link>
+        )}
+      </div>
+      <div className="flex flex-col gap-[6px]">
+        <div className="font-semibold text-base text-black">{title}</div>
+        <div className="bg-white rounded-[20px] px-[10px] py-1 inline-flex items-center justify-center w-fit">
+          <div className="text-[#565656] text-sm">{value}</div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -45,33 +57,29 @@ export default function DashboardStats({
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="flex gap-4">
       <StatCard
         title="Всего сотрудников"
         value={totalEmployees}
-        change={totalEmployees > 0 ? undefined : undefined}
         icon={Users}
+        hasSecondaryIcon
       />
       <StatCard
         title="Активные смены"
         value={activeShifts}
-        icon={UserCheck}
-        color="text-shift-active"
+        icon={Clock}
       />
       <StatCard
         title="Завершено сегодня" 
         value={completedShifts}
-        icon={UserX}
-        color="text-shift-done"
+        icon={Flag}
       />
-      <div>
         <StatCard
           title="Нарушения"
           value={exceptions}
           icon={AlertTriangle}
-          color={exceptions > 0 ? "text-shift-missed" : "text-shift-active"}
+        hasSecondaryIcon
         />
-      </div>
       {/* Live region for screen reader announcements */}
       <div 
         role="status" 

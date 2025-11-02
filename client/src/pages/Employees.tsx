@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus, Loader2, QrCode, Copy, Check, Trash2 } from "lucide-react";
+import { Search, Plus, Loader2, QrCode, Copy, Check, Trash2, Phone, Mail, Edit, Trash } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -257,66 +257,93 @@ export default function Employees() {
   }
 
   return (
-    <div className="space-y-6" data-testid="page-employees">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Сотрудники</h1>
-          <p className="text-muted-foreground">Управление командой</p>
+    <div className="flex flex-col gap-5" data-testid="page-employees">
+      <button
+        onClick={handleAddEmployee}
+        className="bg-[#e16546] px-[17px] py-3 rounded-[40px] flex items-center gap-2 text-sm font-medium text-white hover:bg-[#d15536] transition-colors w-fit"
+        data-testid="button-add-employee"
+      >
+        <Plus className="w-3 h-3" />
+        Добавить сотрудника
+      </button>
+
+      <div className="flex flex-wrap gap-4">
+        {filteredEmployees.map((employee) => {
+          const getInitials = (name: string) => {
+            return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+          };
+
+          return (
+            <div
+              key={employee.id}
+              className="bg-[#f8f8f8] rounded-[20px] p-4 h-[230px] w-[267px] flex flex-col justify-between"
+              data-testid={`employee-card-${employee.id}`}
+            >
+              {/* Top section: Avatar, Name, Position, Buttons */}
+              <div className="flex items-start justify-between">
+                <div className="flex flex-col gap-2">
+                  <div className="size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium">
+                    {getInitials(employee.full_name)}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <div className="text-base font-semibold text-black leading-[1.2]">
+                      {employee.full_name}
+                    </div>
+                    <div className="text-sm text-[#e16546] leading-[1.2]">
+                      {employee.position || 'Сотрудник'}
         </div>
-        <Button onClick={handleAddEmployee} data-testid="button-add-employee">
-          <Plus className="w-4 h-4 mr-2" />
-          Добавить сотрудника
-        </Button>
       </div>
-
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-        <Input
-          ref={searchInputRef}
-          placeholder="Поиск сотрудников... (нажмите / для фокуса)"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-          data-testid="input-search-employees"
-        />
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filteredEmployees.map((employee) => (
-          <Card key={employee.id} className="hover-elevate" data-testid={`employee-card-${employee.id}`}>
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <CardTitle className="text-base truncate">{employee.full_name}</CardTitle>
-                  <p className="text-sm text-muted-foreground truncate">{employee.position}</p>
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    onClick={() => {
+                      // TODO: Открыть модальное окно редактирования
+                      console.log('Edit employee', employee.id);
+                    }}
+                    className="bg-[#e16546] rounded-[20px] size-8 flex items-center justify-center hover:bg-[#d15536] transition-colors"
+                    aria-label="Редактировать сотрудника"
+                  >
+                    <Edit className="w-3.5 h-3.5 text-white" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteEmployee(employee)}
+                    className="bg-white rounded-[20px] size-8 flex items-center justify-center hover:bg-neutral-100 transition-colors"
+                    aria-label="Удалить сотрудника"
+                  >
+                    <Trash className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
-                  {employee.status === 'active' ? 'Активен' : 'Неактивен'}
-                </Badge>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {employee.telegram_user_id && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Telegram ID:</span>
-                    <span className="font-mono text-xs">{employee.telegram_user_id}</span>
+
+              {/* Bottom section: Phone, Email, ID */}
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  {employee.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-3.5 h-3.5 text-[#959595]" />
+                      <span className="text-sm text-[#959595] leading-[1.2]">
+                        {employee.phone}
+                      </span>
+                    </div>
+                  )}
+                  {employee.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-3.5 h-3.5 text-[#959595]" />
+                      <span className="text-sm text-[#959595] leading-[1.2]">
+                        {employee.email}
+                      </span>
                   </div>
                 )}
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => handleDeleteEmployee(employee)}
-                  data-testid={`button-delete-employee-${employee.id}`}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Удалить сотрудника
-                </Button>
+                </div>
+                <div className="bg-white rounded-[20px] px-[10px] py-1 inline-flex items-center justify-center w-fit">
+                  <span className="text-sm text-[#565656] leading-[1.2]">
+                    ID: {employee.id.slice(0, 8)}
+                  </span>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
       {activeInvites.length > 0 && (

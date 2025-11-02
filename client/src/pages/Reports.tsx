@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Download, Loader2, Calendar } from "lucide-react";
+import { Download, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DayPicker, DateRange } from "react-day-picker";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -11,7 +13,7 @@ import { useRetry } from "@/hooks/useRetry";
 import { ErrorState } from "@/components/ErrorBoundary";
 import { ReportsSkeleton } from "@/components/LoadingSkeletons";
 import { getContextErrorMessage } from "@/lib/errorMessages";
-import { format } from "date-fns";
+import { format, isToday, isYesterday, startOfDay, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 
 type DailyReport = {
@@ -47,8 +49,8 @@ type DailyReport = {
 };
 
 export default function Reports() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(undefined);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const { toast } = useToast();
   const { companyId, loading: authLoading } = useAuth();
 
@@ -96,15 +98,64 @@ export default function Reports() {
   };
 
   const filteredReports = reports.filter(report => {
-    const matchesSearch = 
-      report.employee.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (report.done_items && report.done_items.some(item => item.toLowerCase().includes(searchQuery.toLowerCase()))) ||
-      (report.blockers && report.blockers.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    const matchesDate = !selectedDate || format(new Date(report.shift.planned_start_at), 'yyyy-MM-dd') === selectedDate;
-    
-    return matchesSearch && matchesDate;
+    if (!selectedDateRange || (!selectedDateRange.from && !selectedDateRange.to)) {
+      return true;
+    }
+    const reportDate = new Date(report.shift.planned_start_at);
+    if (selectedDateRange.from && selectedDateRange.to) {
+      return reportDate >= selectedDateRange.from && reportDate <= selectedDateRange.to;
+    }
+    if (selectedDateRange.from) {
+      return reportDate >= selectedDateRange.from;
+    }
+    if (selectedDateRange.to) {
+      return reportDate <= selectedDateRange.to;
+    }
+    return true;
   });
+
+  const formatDateRange = (range: DateRange | undefined): string => {
+    if (!range || (!range.from && !range.to)) return "Выбрать дату";
+    if (range.from && range.to) {
+      return `${format(range.from, 'dd.MM.yyyy', { locale: ru })}-${format(range.to, 'dd.MM.yyyy', { locale: ru })}`;
+    }
+    if (range.from) {
+      return `${format(range.from, 'dd.MM.yyyy', { locale: ru })}-...`;
+    }
+    if (range.to) {
+      return `...-${format(range.to, 'dd.MM.yyyy', { locale: ru })}`;
+    }
+    return "Выбрать дату";
+  };
+
+  // Группируем отчеты по датам
+  const groupedReports = filteredReports.reduce((acc, report) => {
+    const reportDate = startOfDay(new Date(report.shift.planned_start_at));
+    const dateKey = format(reportDate, 'yyyy-MM-dd');
+    
+    if (!acc[dateKey]) {
+      acc[dateKey] = [];
+    }
+    acc[dateKey].push(report);
+    return acc;
+  }, {} as Record<string, DailyReport[]>);
+
+  const getDateLabel = (dateStr: string): string => {
+    const date = parseISO(dateStr);
+    if (isToday(date)) return 'Сегодня';
+    if (isYesterday(date)) return 'Вчера';
+    return format(date, 'dd MMMM yyyy', { locale: ru });
+  };
+
+  const formatReportDate = (dateStr: string): string => {
+    const date = parseISO(dateStr);
+    const dayName = format(date, 'EEEE', { locale: ru });
+    return `Отчет за ${format(date, 'dd.MM.yy')}. ${dayName.charAt(0).toUpperCase() + dayName.slice(1)}`;
+  };
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+  };
 
   // Loading state
   if (authLoading || isLoading) {
@@ -130,84 +181,125 @@ export default function Reports() {
   }
 
   return (
-    <div className="space-y-6" data-testid="page-reports">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Отчеты</h1>
-          <p className="text-muted-foreground">Ежедневные отчеты сотрудников</p>
-        </div>
-        <Button variant="outline" onClick={handleExport} data-testid="button-export-reports">
-          <Download className="w-4 h-4 mr-2" />
+    <div className="flex flex-col gap-5" data-testid="page-reports">
+      {/* Кнопки действий */}
+      <div className="flex gap-2">
+        <button
+          onClick={handleExport}
+          className="bg-[rgba(225,101,70,0.1)] px-[17px] py-3 rounded-[40px] flex items-center gap-1.5 text-sm font-medium text-[#e16546] hover:bg-[rgba(225,101,70,0.15)] transition-colors"
+          data-testid="button-export-reports"
+        >
+          <Download className="w-4 h-4" />
           Экспорт
-        </Button>
+        </button>
+        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+          <PopoverTrigger asChild>
+            <button
+              className="bg-[#e16546] px-[17px] py-3 rounded-[40px] flex items-center gap-1.5 text-sm font-medium text-white hover:bg-[#d15536] transition-colors"
+            >
+              <Calendar className="w-4 h-4" />
+              {formatDateRange(selectedDateRange)}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-5 bg-white rounded-[20px] shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0" align="start">
+            <DayPicker
+              mode="range"
+              selected={selectedDateRange}
+              onSelect={(range) => {
+                setSelectedDateRange(range);
+                if (range?.from && range?.to) {
+                  setIsCalendarOpen(false);
+                }
+              }}
+              locale={ru}
+              className="rounded-md"
+              classNames={{
+                months: "flex flex-col space-y-4",
+                month: "space-y-4",
+                caption: "flex justify-center pt-1 relative items-center mb-4",
+                caption_label: "text-sm font-medium text-black",
+                nav: "space-x-1 flex items-center",
+                nav_button: "h-[30px] w-[30px] bg-transparent p-0 opacity-70 hover:opacity-100",
+                nav_button_previous: "absolute left-1",
+                nav_button_next: "absolute right-1",
+                table: "w-full border-collapse space-y-1",
+                head_row: "flex",
+                head_cell: "text-black rounded-lg h-[28px] w-[50px] font-normal text-sm bg-[#f8f8f8] flex items-center justify-center",
+                row: "flex w-full mt-1",
+                cell: "h-[35px] w-[50px] text-center text-sm p-0 relative",
+                day: "h-[35px] w-[50px] p-0 font-normal rounded-lg hover:bg-[rgba(225,101,70,0.12)] aria-selected:opacity-100",
+                day_range_start: "bg-[#e16546] text-white hover:bg-[#e16546] hover:text-white",
+                day_range_end: "bg-[#e16546] text-white hover:bg-[#e16546] hover:text-white",
+                day_selected: "bg-[#e16546] text-white hover:bg-[#e16546] hover:text-white",
+                day_range_middle: "bg-[rgba(225,101,70,0.12)] text-black hover:bg-[rgba(225,101,70,0.2)]",
+                day_outside: "text-[#bbbbbb] aria-selected:text-white",
+                day_disabled: "text-[#bbbbbb] opacity-50",
+                day_hidden: "invisible",
+              }}
+              components={{
+                IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4 rotate-180" {...props} />,
+                IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" {...props} />,
+              }}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Поиск по сотруднику или тексту отчета..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-            data-testid="input-search-reports"
-          />
+      {/* Группированные отчеты */}
+      <div className="flex flex-col gap-[30px]">
+        {Object.entries(groupedReports)
+          .sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime())
+          .map(([dateKey, dateReports]) => (
+            <div key={dateKey} className="flex flex-col gap-3">
+              <h2 className="text-lg font-semibold text-black leading-[1.2]">
+                {getDateLabel(dateKey)}
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                {dateReports.map((report) => (
+                  <div
+                    key={report.id}
+                    className="bg-[#f8f8f8] rounded-[20px] p-4 flex flex-col gap-5"
+                    data-testid={`report-card-${report.id}`}
+                  >
+                    {/* Информация о сотруднике */}
+                    <div className="flex gap-2 items-center">
+                      <div className="size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium">
+                        {getInitials(report.employee.full_name)}
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <div className="text-base font-semibold text-black leading-[1.2]">
+                          {report.employee.full_name}
+                        </div>
+                        <div className="text-sm text-[#e16546] leading-[1.2]">
+                          {report.employee.position || 'Сотрудник'}
         </div>
-        <div className="relative sm:w-48">
-          <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="pl-10"
-            data-testid="input-date-filter"
-          />
         </div>
       </div>
 
-      {selectedDate && (
-        <div className="flex items-center gap-2">
-          <Badge variant="outline">
-            Дата: {format(new Date(selectedDate), 'dd MMMM yyyy', { locale: ru })}
-          </Badge>
-          <Button variant="ghost" size="sm" onClick={() => setSelectedDate('')} data-testid="button-clear-date">
-            Очистить
-          </Button>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-4">
-        {filteredReports.map((report) => (
-          <Card key={report.id} className="hover-elevate" data-testid={`report-card-${report.id}`}>
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <CardTitle className="text-base truncate">{report.employee.full_name}</CardTitle>
-                  <p className="text-sm text-muted-foreground truncate">{report.employee.position || '-'}</p>
-                </div>
-                <div className="text-right">
-                  <Badge variant="outline">
-                    {format(new Date(report.shift.planned_start_at), 'dd MMM', { locale: ru })}
-                  </Badge>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {format(new Date(report.submitted_at), 'HH:mm', { locale: ru })}
+                    {/* Текст отчета */}
+                    <div className="flex flex-col text-sm text-black leading-[1.2]">
+                      <p className="mb-[10px]">
+                        {formatReportDate(report.shift.planned_start_at)}
+                      </p>
+                      {report.done_items && report.done_items.length > 0 && (
+                        <>
+                          {report.done_items.map((item, index) => (
+                            <p key={index} className={index < report.done_items.length - 1 ? 'mb-[10px]' : ''}>
+                              {index + 1}. {item}
+                            </p>
+                          ))}
+                        </>
+                      )}
+                      {report.blockers && (
+                        <p className="mt-[10px]">
+                          {report.done_items && report.done_items.length > 0 ? report.done_items.length + 1 : 1}. {report.blockers}
                   </p>
+                      )}
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <p className="text-sm font-medium mb-1">Отчет:</p>
-                <p className="text-sm">{report.done_items ? report.done_items.join('; ') : '-'}</p>
+                ))}
               </div>
-              {report.blockers && (
-                <div>
-                  <p className="text-sm font-medium mb-1">Проблемы:</p>
-                  <p className="text-sm text-muted-foreground">{report.blockers}</p>
                 </div>
-              )}
-            </CardContent>
-          </Card>
         ))}
       </div>
 

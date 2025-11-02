@@ -3,6 +3,7 @@ import { initSentry, Sentry } from "./lib/sentry.js";
 initSentry();
 
 import express, { type Request, Response, NextFunction } from "express";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic, log } from "./vite.js";
 import { env } from "./lib/env.js";
@@ -23,6 +24,7 @@ app.use(configureCors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 // Input sanitization middleware - must be after body parsing but before routes
 app.use(sanitizeInput);

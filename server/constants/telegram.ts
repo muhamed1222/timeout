@@ -54,7 +54,7 @@ export const getWebAppKeyboard = () => ({
   inline_keyboard: [[
     {
       text: TELEGRAM_BUTTONS.OPEN_WEBAPP,
-      web_app: { url: `${getWebAppUrl()}/webapp` }
+      web_app: { url: `${getWebAppUrl()}/miniapp` }
     }
   ]]
 });

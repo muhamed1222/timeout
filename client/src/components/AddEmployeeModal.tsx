@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOptimisticCreateInvite } from "@/hooks/useOptimisticMutations";
-import { Loader2, QrCode, Copy, Check } from "lucide-react";
+import { Loader2, QrCode, Copy, Check, X, ChevronDown } from "lucide-react";
 
 interface AddEmployeeModalProps {
   open: boolean;
@@ -34,14 +34,39 @@ interface EmployeeInvite {
 
 export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeModalProps) {
   const [formData, setFormData] = useState({
-    full_name: "",
+    firstName: "",
+    lastName: "",
     position: "",
+    schedulePeriod: "two_weeks",
+    shiftStart: "10:00",
+    breakDuration: "",
+    shiftEnd: "",
+    workingDays: [1, 2, 3, 4, 5], // Пн-Пт по умолчанию
   });
   const [inviteData, setInviteData] = useState<EmployeeInvite | null>(null);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const { companyId } = useAuth();
   const queryClient = useQueryClient();
+
+  const weekDays = [
+    { value: 1, label: "Пн", full: "Понедельник" },
+    { value: 2, label: "Вт", full: "Вторник" },
+    { value: 3, label: "Ср", full: "Среда" },
+    { value: 4, label: "Чт", full: "Четверг" },
+    { value: 5, label: "Пт", full: "Пятница" },
+    { value: 6, label: "Сб", full: "Суббота" },
+    { value: 0, label: "Вс", full: "Воскресенье" },
+  ];
+
+  const toggleWorkingDay = (dayValue: number) => {
+    setFormData(prev => ({
+      ...prev,
+      workingDays: prev.workingDays.includes(dayValue)
+        ? prev.workingDays.filter(d => d !== dayValue)
+        : [...prev.workingDays, dayValue]
+    }));
+  };
 
   const createInviteMutation = useOptimisticCreateInvite();
   
@@ -85,7 +110,7 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
 
       toast({
         title: "Инвайт создан",
-        description: `Приглашение для ${formData.full_name} успешно создано`,
+        description: `Приглашение для ${formData.firstName} ${formData.lastName}`.trim() + " успешно создано",
       });
     },
     onError: (error) => {
@@ -99,7 +124,7 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.full_name.trim()) {
+    if (!formData.firstName.trim()) {
       toast({
         title: "Ошибка",
         description: "Имя сотрудника обязательно",
@@ -108,7 +133,11 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
       return;
     }
 
-    createEmployeeMutation.mutate(formData);
+    const full_name = `${formData.firstName} ${formData.lastName}`.trim();
+    createEmployeeMutation.mutate({
+      full_name,
+      position: formData.position,
+    });
   };
 
   const handleCopyLink = async () => {
@@ -132,7 +161,16 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
   };
 
   const handleClose = () => {
-    setFormData({ full_name: "", position: "" });
+    setFormData({
+      firstName: "",
+      lastName: "",
+      position: "",
+      schedulePeriod: "two_weeks",
+      shiftStart: "10:00",
+      breakDuration: "",
+      shiftEnd: "",
+      workingDays: [1, 2, 3, 4, 5],
+    });
     setInviteData(null);
     setCopied(false);
     onOpenChange(false);
@@ -140,56 +178,197 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Пригласить сотрудника</DialogTitle>
-          <DialogDescription>
-            Создайте инвайт-код для нового сотрудника
-          </DialogDescription>
-        </DialogHeader>
-
+      <DialogContent className={`bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0 [&>button]:hidden ${!inviteData ? 'sm:max-w-[620px]' : 'sm:max-w-[425px]'}`}>
         {!inviteData ? (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="full_name">Полное имя *</Label>
-              <Input
-                id="full_name"
-                value={formData.full_name}
-                onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                placeholder="Иван Петров"
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
+                Добавление сотрудника
+              </h3>
+              <button
+                onClick={handleClose}
+                className="p-1 hover:bg-neutral-100 rounded transition-colors"
+                aria-label="Закрыть"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-[30px]">
+              {/* Основные поля */}
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-[10px]">
+                  <div className="flex flex-col gap-1 flex-1">
+                    <label className="text-sm text-[#959595] leading-[1.2]">
+                      Имя
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.firstName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                      className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
+                      placeholder="Иван"
                 required
               />
+                  </div>
+                  <div className="flex flex-col gap-1 flex-1">
+                    <label className="text-sm text-[#959595] leading-[1.2]">
+                      Фамилия
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.lastName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                      className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
+                      placeholder="Петров"
+                    />
+                  </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="position">Должность</Label>
-              <Input
-                id="position"
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-[#959595] leading-[1.2]">
+                    Должность
+                  </label>
+                  <input
+                    type="text"
                 value={formData.position}
                 onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
-                placeholder="Менеджер"
+                    className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
+                    placeholder="Руководитель отдела разработки"
+                  />
+                </div>
+              </div>
+
+              {/* График сотрудника */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-base font-semibold text-[#1a1a1a] leading-[1.2]">
+                    График сотрудника
+                  </h4>
+                  <div className="relative">
+                    <select
+                      value={formData.schedulePeriod}
+                      onChange={(e) => setFormData(prev => ({ ...prev, schedulePeriod: e.target.value }))}
+                      className="bg-[rgba(225,101,70,0.1)] px-[10px] py-1 rounded-[20px] text-sm text-[#e16546] appearance-none pr-8 focus:outline-none"
+                      style={{
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg width='7' height='4' viewBox='0 0 7 4' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0L3.5 4L7 0H0Z' fill='%23e16546'/%3E%3C/svg%3E")`,
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'right 10px center',
+                      }}
+                    >
+                      <option value="two_weeks">На две недели</option>
+                      <option value="one_week">На неделю</option>
+                      <option value="month">На месяц</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-[10px]">
+                  <div className="flex flex-col gap-1 flex-1">
+                    <label className="text-sm text-[#959595] leading-[1.2]">
+                      Начало смены
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.shiftStart}
+                      onChange={(e) => setFormData(prev => ({ ...prev, shiftStart: e.target.value }))}
+                      className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1 flex-1">
+                    <label className="text-sm text-[#959595] leading-[1.2]">
+                      Перерыв
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.breakDuration}
+                      onChange={(e) => setFormData(prev => ({ ...prev, breakDuration: e.target.value }))}
+                      className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
+                      placeholder="30 мин"
               />
+                  </div>
+                  <div className="flex flex-col gap-1 flex-1">
+                    <label className="text-sm text-[#959595] leading-[1.2]">
+                      Конец смены
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.shiftEnd}
+                      onChange={(e) => setFormData(prev => ({ ...prev, shiftEnd: e.target.value }))}
+                      className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm text-[#959595] leading-[1.2]">
+                    Рабочие дни
+                  </label>
+                  <div className="flex gap-[14px] items-center">
+                    <div className="flex gap-1.5">
+                      {weekDays.map((day) => (
+                        <button
+                          key={day.value}
+                          type="button"
+                          onClick={() => toggleWorkingDay(day.value)}
+                          className={`px-[14px] py-[7px] rounded-lg text-sm leading-[1.2] transition-colors ${
+                            formData.workingDays.includes(day.value)
+                              ? 'bg-[#e16546] text-white'
+                              : 'bg-[#f8f8f8] text-black'
+                          }`}
+                          aria-label={day.full}
+                        >
+                          {day.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleClose}>
-                Отмена
-              </Button>
-              <Button 
+            <div className="flex gap-2">
+              <button
                 type="submit" 
-                disabled={createEmployeeMutation.isPending}
+                disabled={createEmployeeMutation.isPending || !formData.firstName.trim()}
+                className="bg-[#e16546] px-[17px] py-3 rounded-[40px] text-sm font-medium text-white leading-[1.2] hover:bg-[#d15536] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {createEmployeeMutation.isPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {createEmployeeMutation.isPending ? (
+                  <>
+                    <Loader2 className="inline mr-2 h-4 w-4 animate-spin" />
+                    Создание...
+                  </>
+                ) : (
+                  'Добавить'
                 )}
-                Создать инвайт
-              </Button>
-            </DialogFooter>
+              </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="bg-[#f8f8f8] px-[17px] py-3 rounded-[40px] text-sm text-black leading-[1.2] hover:bg-[#eeeeee] transition-colors"
+              >
+                Отмена
+              </button>
+            </div>
           </form>
         ) : (
-          <div className="space-y-6">
-            <div className="text-center space-y-4">
-              <div className="mx-auto w-48 h-48 border rounded-lg flex items-center justify-center bg-gray-50">
+          <div className="flex flex-col gap-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
+                Добавление сотрудника
+              </h3>
+              <button
+                onClick={handleClose}
+                className="p-1 hover:bg-neutral-100 rounded transition-colors"
+                aria-label="Закрыть"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-5 items-center">
+              {/* QR Code */}
+              <div className="size-[200px] flex items-center justify-center">
                 <img 
                   src={inviteData.qr_code_url} 
                   alt="QR код для подключения"
@@ -197,63 +376,58 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
                 />
               </div>
               
-              <div className="space-y-2">
-                <h3 className="font-semibold">Сотрудник: {inviteData.full_name}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Должность: {inviteData.position || "Не указана"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Код приглашения: {inviteData.code}
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Ссылка для подключения</Label>
-              <div className="flex gap-2">
-                <Input 
+              {/* Ссылка для подключения и Инструкция */}
+              <div className="flex flex-col gap-[10px] w-full">
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-[#959595] leading-[1.2]">
+                    Ссылка для подключения
+                  </label>
+                  <div className="flex gap-[10px]">
+                    <input
+                      type="text"
                   value={inviteData.deep_link} 
                   readOnly 
-                  className="font-mono text-xs"
+                      className="flex-1 bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black leading-[1.2] truncate"
                 />
-                <Button 
-                  size="sm" 
-                  variant="outline" 
+                    <button
                   onClick={handleCopyLink}
                   disabled={copied}
+                      className="bg-[#f8f8f8] rounded-[12px] size-[41px] flex items-center justify-center hover:bg-[#eeeeee] transition-colors disabled:opacity-50"
                   aria-label={copied ? "Ссылка скопирована" : "Копировать ссылку"}
-                  aria-pressed={copied}
                 >
                   {copied ? (
-                    <>
-                      <Check className="h-4 w-4" aria-hidden="true" />
-                      <span className="sr-only">Скопировано</span>
-                    </>
+                        <Check className="w-[18px] h-[18px] text-[#34c759]" />
                   ) : (
-                    <>
-                      <Copy className="h-4 w-4" aria-hidden="true" />
-                      <span className="sr-only">Копировать</span>
-                    </>
+                        <Copy className="w-[18px] h-[18px]" />
                   )}
-                </Button>
+                    </button>
               </div>
             </div>
 
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-blue-900 mb-2">Инструкция для сотрудника:</h4>
-              <ol className="text-sm text-blue-800 space-y-1">
-                <li>1. Отсканируйте QR-код или перейдите по ссылке</li>
-                <li>2. Откроется Telegram с ботом</li>
-                <li>3. Нажмите "Начать" в боте</li>
-                <li>4. Сотрудник будет автоматически подключен к системе</li>
+                {/* Инструкция */}
+                <div className="bg-[#f8f8f8] rounded-[12px] p-3 flex flex-col gap-[10px]">
+                  <h4 className="text-sm font-semibold text-black leading-[1.2]">
+                    Инструкция для сотрудника:
+                  </h4>
+                  <ol className="list-decimal text-sm text-black leading-[1.2] space-y-[3px] ml-[21px]">
+                    <li>Отсканируйте QR-код или перейдите по ссылке</li>
+                    <li>Откроется Telegram с ботом</li>
+                    <li>{`Нажмите "Начать" в боте`}</li>
+                    <li>Сотрудник будет автоматически подключен к системе</li>
               </ol>
+                </div>
+              </div>
             </div>
 
-            <DialogFooter>
-              <Button onClick={handleClose}>
+            {/* Кнопка Готово */}
+            <div className="flex gap-2">
+              <button
+                onClick={handleClose}
+                className="bg-[#e16546] px-[17px] py-3 rounded-[40px] text-sm font-medium text-white leading-[1.2] hover:bg-[#d15536] transition-colors"
+              >
                 Готово
-              </Button>
-            </DialogFooter>
+              </button>
+            </div>
           </div>
         )}
       </DialogContent>

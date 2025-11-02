@@ -30,6 +30,10 @@ const secretsSchema = z.object({
   TELEGRAM_BOT_USERNAME: z.string().optional(),
   TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
   
+  // OAuth
+  YANDEX_CLIENT_ID: z.string().optional(),
+  YANDEX_CLIENT_SECRET: z.string().optional(),
+  
   // API Keys
   BOT_API_SECRET: z.string().min(32, 'BOT_API_SECRET must be at least 32 characters'),
   API_SECRET_KEY: z.string().min(32).optional(),

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Play, Square, Coffee, StopCircle } from "lucide-react";
+import { Clock, Play, Square, Coffee, StopCircle, AlertCircle, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -133,10 +133,10 @@ export default function WebAppPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Загружаем данные...</p>
+      <div className="min-h-screen bg-[#FFFFFF] p-4 flex items-center justify-center">
+        <div className="text-center flex flex-col gap-4 items-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#e16546]" />
+          <p className="text-sm text-[#565656]">Загружаем данные...</p>
         </div>
       </div>
     );
@@ -144,18 +144,26 @@ export default function WebAppPage() {
 
   if (!employeeData?.employee) {
     return (
-      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6 text-center">
-            <h2 className="text-lg font-semibold mb-4">Сотрудник не найден</h2>
-            <p className="text-muted-foreground mb-4">
-              Обратитесь к администратору для настройки доступа.
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Telegram ID: {telegramId}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-[#FFFFFF] p-4 flex items-center justify-center">
+        <div className="w-full max-w-md bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0">
+          <div className="flex flex-col gap-5 items-center text-center">
+            <div className="size-[120px] rounded-full bg-[rgba(225,101,70,0.1)] flex items-center justify-center">
+              <AlertCircle className="w-12 h-12 text-[#e16546]" />
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <h2 className="text-[30px] font-semibold text-[#1a1a1a]">Сотрудник не найден</h2>
+              <p className="text-sm text-[#565656] leading-[1.2]">
+                Обратитесь к администратору для настройки доступа.
+              </p>
+            </div>
+            
+            <div className="w-full p-3 bg-[#f8f8f8] rounded-[12px]">
+              <p className="text-xs text-[#959595] mb-1">Telegram ID:</p>
+              <p className="text-sm text-[#1a1a1a] font-medium">{telegramId}</p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

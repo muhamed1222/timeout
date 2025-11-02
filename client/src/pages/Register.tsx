@@ -5,9 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Form,
   FormControl,
@@ -17,7 +14,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Link } from 'wouter';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Loader2 } from 'lucide-react';
 
 const registerSchema = z.object({
   full_name: z.string().min(1, 'Введите полное имя'),
@@ -117,31 +114,33 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center gap-2 mb-2">
-            <UserPlus className="h-6 w-6 text-primary" />
-            <CardTitle className="text-2xl font-bold">Регистрация</CardTitle>
+    <div className="min-h-screen flex items-center justify-center bg-[#FFFFFF] p-4">
+      <div className="w-full max-w-md bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0">
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <UserPlus className="h-6 w-6 text-[#e16546]" />
+              <h1 className="text-[30px] font-semibold text-[#1a1a1a]">Регистрация</h1>
+            </div>
+            <p className="text-sm text-[#565656] leading-[1.2]">
+              Создайте аккаунт администратора и компанию
+            </p>
           </div>
-          <CardDescription>
-            Создайте аккаунт администратора и компанию
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
               <FormField
                 control={form.control}
                 name="full_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Полное имя</FormLabel>
+                    <FormLabel className="text-sm text-[#959595] leading-[1.2]">Полное имя</FormLabel>
                     <FormControl>
-                      <Input
+                      <input
                         type="text"
                         placeholder="Иван Иванов"
                         data-testid="input-fullname"
+                        className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0 w-full"
                         {...field}
                       />
                     </FormControl>
@@ -154,12 +153,13 @@ export default function Register() {
                 name="company_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Название компании</FormLabel>
+                    <FormLabel className="text-sm text-[#959595] leading-[1.2]">Название компании</FormLabel>
                     <FormControl>
-                      <Input
+                      <input
                         type="text"
                         placeholder="ООО Компания"
                         data-testid="input-companyname"
+                        className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0 w-full"
                         {...field}
                       />
                     </FormControl>
@@ -172,12 +172,13 @@ export default function Register() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel className="text-sm text-[#959595] leading-[1.2]">Email</FormLabel>
                     <FormControl>
-                      <Input
+                      <input
                         type="email"
                         placeholder="admin@example.com"
                         data-testid="input-email"
+                        className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0 w-full"
                         {...field}
                       />
                     </FormControl>
@@ -190,12 +191,13 @@ export default function Register() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Пароль</FormLabel>
+                    <FormLabel className="text-sm text-[#959595] leading-[1.2]">Пароль</FormLabel>
                     <FormControl>
-                      <Input
+                      <input
                         type="password"
                         placeholder="••••••"
                         data-testid="input-password"
+                        className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0 w-full"
                         {...field}
                       />
                     </FormControl>
@@ -208,12 +210,13 @@ export default function Register() {
                 name="password_confirm"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Подтверждение пароля</FormLabel>
+                    <FormLabel className="text-sm text-[#959595] leading-[1.2]">Подтверждение пароля</FormLabel>
                     <FormControl>
-                      <Input
+                      <input
                         type="password"
                         placeholder="••••••"
                         data-testid="input-password-confirm"
+                        className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0 w-full"
                         {...field}
                       />
                     </FormControl>
@@ -221,26 +224,34 @@ export default function Register() {
                   </FormItem>
                 )}
               />
-              <Button
+              <button
                 type="submit"
-                className="w-full"
+                className="w-full bg-[#e16546] px-[17px] py-3 rounded-[40px] text-sm font-medium text-white leading-[1.2] hover:bg-[#d15536] transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                 disabled={isPending}
                 data-testid="button-submit"
               >
-                {isPending ? 'Регистрация...' : 'Зарегистрироваться'}
-              </Button>
+                {isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Регистрация...
+                  </>
+                ) : (
+                  'Зарегистрироваться'
+                )}
+              </button>
             </form>
           </Form>
-          <div className="mt-4 text-center text-sm text-muted-foreground">
+
+          <div className="text-center text-sm text-[#565656]">
             Уже есть аккаунт?{' '}
             <Link href="/login">
-              <span className="text-primary hover:underline cursor-pointer" data-testid="link-login">
+              <span className="text-[#e16546] hover:underline cursor-pointer" data-testid="link-login">
                 Войти
               </span>
             </Link>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

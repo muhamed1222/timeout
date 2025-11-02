@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Loader2, Calendar, Clock, Trash2, Edit } from "lucide-react";
+import { Plus, Loader2, Calendar, Clock, Trash2, Edit, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -390,68 +388,75 @@ export default function Schedules() {
   }
 
   return (
-    <div className="space-y-6" data-testid="page-schedules">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Графики работы</h1>
-          <p className="text-muted-foreground">Управление расписанием сотрудников</p>
-        </div>
+    <div className="flex flex-col gap-5" data-testid="page-schedules">
         <div className="flex gap-2">
           <Dialog open={isGenerateOpen} onOpenChange={setIsGenerateOpen}>
             <DialogTrigger asChild>
-              <Button variant="default" data-testid="button-generate-shifts">
-                <Calendar className="w-4 h-4 mr-2" />
+              <button
+                className="bg-[#e16546] px-[17px] py-3 rounded-[40px] flex items-center gap-1.5 text-sm font-medium text-white hover:bg-[#d15536] transition-colors"
+                data-testid="button-generate-shifts"
+              >
+                <Calendar className="w-4 h-4" />
                 Сгенерировать смены
-              </Button>
+              </button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Сгенерировать смены из графика</DialogTitle>
-                <DialogDescription>
-                  Создайте конкретные смены на основе графиков работы для выбранного периода. После генерации бот сможет видеть запланированные смены.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Период генерации</label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Дата начала</label>
+            <DialogContent className="bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0 [&>button]:hidden max-w-md">
+              <div className="flex flex-col gap-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
+                    Сгенерировать смены из графика
+                  </h3>
+                  <button
+                    onClick={() => setIsGenerateOpen(false)}
+                    className="p-1 hover:bg-neutral-100 rounded transition-colors"
+                    aria-label="Закрыть"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-3">
+                    <label className="text-sm font-medium text-black leading-[1.2]">Период генерации</label>
+                    <div className="grid grid-cols-2 gap-[10px]">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-sm text-[#959595] leading-[1.2]">Дата начала</label>
                       <input
                         type="date"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-md"
+                          className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                         data-testid="input-start-date"
                       />
                     </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Дата окончания</label>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-sm text-[#959595] leading-[1.2]">Дата окончания</label>
                       <input
                         type="date"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-md"
+                          className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                         data-testid="input-end-date"
                       />
                     </div>
                   </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Сотрудники (опционально)</label>
-                  <p className="text-xs text-muted-foreground mb-2">
+
+                  <div className="flex flex-col gap-3">
+                    <label className="text-sm font-medium text-black leading-[1.2]">Сотрудники (опционально)</label>
+                    <p className="text-xs text-[#959595] leading-[1.2]">
                     Если не выбраны, смены будут созданы для всех сотрудников с назначенными графиками
                   </p>
-                  <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                    <div className="max-h-40 overflow-y-auto bg-[#f8f8f8] rounded-[12px] p-3 space-y-1">
                     {employeesLoading ? (
                       <div className="flex items-center justify-center p-4">
                         <Loader2 className="w-4 h-4 animate-spin" />
                       </div>
                     ) : employees.length === 0 ? (
-                      <p className="text-xs text-muted-foreground p-2">Нет сотрудников</p>
+                        <p className="text-xs text-[#959595] p-2">Нет сотрудников</p>
                     ) : (
                       employees.map(emp => (
-                        <label key={emp.id} className="flex items-center space-x-2 cursor-pointer hover:bg-muted p-1 rounded">
+                          <label key={emp.id} className="flex items-center gap-2 cursor-pointer hover:bg-[#eeeeee] p-1 rounded px-2">
                           <input
                             type="checkbox"
                             checked={selectedEmployees.includes(emp.id)}
@@ -464,54 +469,75 @@ export default function Schedules() {
                             }}
                             className="rounded"
                           />
-                          <span className="text-sm">{emp.full_name}</span>
+                            <span className="text-sm text-black">{emp.full_name}</span>
                         </label>
                       ))
                     )}
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
+                </div>
+
+                <div className="flex gap-2">
+                  <button
                     onClick={() => setIsGenerateOpen(false)}
+                    className="bg-[#f8f8f8] px-[17px] py-3 rounded-[40px] text-sm text-black leading-[1.2] hover:bg-[#eeeeee] transition-colors"
                   >
                     Отмена
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     onClick={() => generateShiftsMutation.mutate()}
                     disabled={generateShiftsMutation.isPending || !startDate || !endDate || templates.length === 0}
+                    className="bg-[#e16546] px-[17px] py-3 rounded-[40px] text-sm font-medium text-white leading-[1.2] hover:bg-[#d15536] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     data-testid="button-confirm-generate"
                   >
-                    {generateShiftsMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Сгенерировать
-                  </Button>
-                </DialogFooter>
+                    {generateShiftsMutation.isPending ? (
+                      <>
+                        <Loader2 className="inline mr-2 h-4 w-4 animate-spin" />
+                        Генерация...
+                      </>
+                    ) : (
+                      'Сгенерировать'
+                    )}
+                  </button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
           <Dialog open={isBulkAssignOpen} onOpenChange={setIsBulkAssignOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" onClick={() => {
+              <button
+                className="bg-[rgba(225,101,70,0.1)] px-[17px] py-3 rounded-[40px] flex items-center gap-1.5 text-sm font-medium text-[#e16546] hover:bg-[rgba(225,101,70,0.15)] transition-colors"
+                onClick={() => {
                 setBulkSelectedEmployees([]);
                 setBulkScheduleId("");
                 setIsBulkAssignOpen(true);
-              }} data-testid="button-bulk-assign-schedule">
-                <Calendar className="w-4 h-4 mr-2" />
+                }}
+                data-testid="button-bulk-assign-schedule"
+              >
+                <Calendar className="w-4 h-4" />
                 Массовое назначение
-              </Button>
+              </button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Массовое назначение графика</DialogTitle>
-                <DialogDescription>
-                  Выберите график и сотрудников для назначения
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">График</label>
+            <DialogContent className="bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0 [&>button]:hidden max-w-md">
+              <div className="flex flex-col gap-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
+                    Массовое назначение графика
+                  </h3>
+                  <button
+                    onClick={() => setIsBulkAssignOpen(false)}
+                    className="p-1 hover:bg-neutral-100 rounded transition-colors"
+                    aria-label="Закрыть"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-3">
+                    <label className="text-sm font-medium text-black leading-[1.2]">График</label>
                   <Select value={bulkScheduleId} onValueChange={setBulkScheduleId}>
-                    <SelectTrigger>
+                      <SelectTrigger className="bg-[#f8f8f8] border-0 rounded-[12px]">
                       <SelectValue placeholder="Выберите график" />
                     </SelectTrigger>
                     <SelectContent>
@@ -523,35 +549,35 @@ export default function Schedules() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Дата начала</label>
+                  <div className="flex flex-col gap-3">
+                    <label className="text-sm font-medium text-black leading-[1.2]">Дата начала</label>
                   <input
                     type="date"
                     defaultValue={new Date().toISOString().split("T")[0]}
-                    className="w-full px-3 py-2 border rounded-md"
+                      className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                     id="bulk-valid-from"
                   />
                 </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Дата окончания (необязательно)</label>
+                  <div className="flex flex-col gap-3">
+                    <label className="text-sm font-medium text-black leading-[1.2]">Дата окончания (необязательно)</label>
                   <input
                     type="date"
-                    className="w-full px-3 py-2 border rounded-md"
+                      className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                     id="bulk-valid-to"
                   />
                 </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Сотрудники</label>
-                  <div className="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1">
+                  <div className="flex flex-col gap-3">
+                    <label className="text-sm font-medium text-black leading-[1.2]">Сотрудники</label>
+                    <div className="max-h-60 overflow-y-auto bg-[#f8f8f8] rounded-[12px] p-3 space-y-1">
                     {employeesLoading ? (
                       <div className="flex items-center justify-center p-4">
                         <Loader2 className="w-4 h-4 animate-spin" />
                       </div>
                     ) : employees.length === 0 ? (
-                      <p className="text-xs text-muted-foreground p-2">Нет сотрудников</p>
+                      <p className="text-xs text-[#959595] p-2">Нет сотрудников</p>
                     ) : (
                       <>
-                        <label className="flex items-center space-x-2 cursor-pointer hover:bg-muted p-1 rounded">
+                        <label className="flex items-center gap-2 cursor-pointer hover:bg-[#eeeeee] p-1 rounded px-2">
                           <input
                             type="checkbox"
                             checked={bulkSelectedEmployees.length === employees.length && employees.length > 0}
@@ -564,11 +590,11 @@ export default function Schedules() {
                             }}
                             className="rounded"
                           />
-                          <span className="text-sm font-medium">Выбрать всех</span>
+                          <span className="text-sm font-medium text-black">Выбрать всех</span>
                         </label>
-                        <div className="border-t pt-1 mt-1" />
+                        <div className="border-t border-[#eeeeee] pt-1 mt-1" />
                         {employees.map(emp => (
-                          <label key={emp.id} className="flex items-center space-x-2 cursor-pointer hover:bg-muted p-1 rounded">
+                          <label key={emp.id} className="flex items-center gap-2 cursor-pointer hover:bg-[#eeeeee] p-1 rounded px-2">
                             <input
                               type="checkbox"
                               checked={bulkSelectedEmployees.includes(emp.id)}
@@ -581,21 +607,23 @@ export default function Schedules() {
                               }}
                               className="rounded"
                             />
-                            <span className="text-sm">{emp.full_name}</span>
+                            <span className="text-sm text-black">{emp.full_name}</span>
                           </label>
                         ))}
                       </>
                     )}
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
+                </div>
+
+                <div className="flex gap-2">
+                  <button
                     onClick={() => setIsBulkAssignOpen(false)}
+                    className="bg-[#f8f8f8] px-[17px] py-3 rounded-[40px] text-sm text-black leading-[1.2] hover:bg-[#eeeeee] transition-colors"
                   >
                     Отмена
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     onClick={() => {
                       const validFromInput = window.document.getElementById("bulk-valid-from") as HTMLInputElement;
                       const validToInput = window.document.getElementById("bulk-valid-to") as HTMLInputElement;
@@ -617,39 +645,57 @@ export default function Schedules() {
                       });
                     }}
                     disabled={bulkAssignScheduleMutation.isPending || !bulkScheduleId || bulkSelectedEmployees.length === 0}
+                    className="bg-[#e16546] px-[17px] py-3 rounded-[40px] text-sm font-medium text-white leading-[1.2] hover:bg-[#d15536] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {bulkAssignScheduleMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Назначить ({bulkSelectedEmployees.length})
-                  </Button>
-                </DialogFooter>
+                    {bulkAssignScheduleMutation.isPending ? (
+                      <>
+                        <Loader2 className="inline mr-2 h-4 w-4 animate-spin" />
+                        Назначение...
+                      </>
+                    ) : (
+                      `Назначить (${bulkSelectedEmployees.length})`
+                    )}
+                  </button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
           <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" data-testid="button-assign-schedule">
-                <Calendar className="w-4 h-4 mr-2" />
+              <button
+                className="bg-[rgba(225,101,70,0.1)] px-[17px] py-3 rounded-[40px] flex items-center gap-1.5 text-sm font-medium text-[#e16546] hover:bg-[rgba(225,101,70,0.15)] transition-colors"
+                data-testid="button-assign-schedule"
+              >
+                <Calendar className="w-4 h-4" />
                 Назначить график
-              </Button>
+              </button>
             </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Назначить график сотруднику</DialogTitle>
-                <DialogDescription>
-                  Выберите сотрудника и график для назначения
-                </DialogDescription>
-              </DialogHeader>
+            <DialogContent className="bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0 [&>button]:hidden">
+              <div className="flex flex-col gap-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
+                    Назначить график сотруднику
+                  </h3>
+                  <button
+                    onClick={() => setIsAssignOpen(false)}
+                    className="p-1 hover:bg-neutral-100 rounded transition-colors"
+                    aria-label="Закрыть"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
               <Form {...assignForm}>
-                <form onSubmit={assignForm.handleSubmit(onAssignSubmit)} className="space-y-4">
+                  <form onSubmit={assignForm.handleSubmit(onAssignSubmit)} className="flex flex-col gap-5">
                   <FormField
                     control={assignForm.control}
                     name="employee_id"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Сотрудник</FormLabel>
+                        <FormItem className="flex flex-col gap-1">
+                          <FormLabel className="text-sm font-medium text-black leading-[1.2]">Сотрудник</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-employee">
+                              <SelectTrigger className="bg-[#f8f8f8] border-0 rounded-[12px] h-auto px-[14px] py-3" data-testid="select-employee">
                               <SelectValue placeholder="Выберите сотрудника" />
                             </SelectTrigger>
                           </FormControl>
@@ -669,11 +715,11 @@ export default function Schedules() {
                     control={assignForm.control}
                     name="schedule_id"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>График</FormLabel>
+                        <FormItem className="flex flex-col gap-1">
+                          <FormLabel className="text-sm font-medium text-black leading-[1.2]">График</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-schedule">
+                              <SelectTrigger className="bg-[#f8f8f8] border-0 rounded-[12px] h-auto px-[14px] py-3" data-testid="select-schedule">
                               <SelectValue placeholder="Выберите график" />
                             </SelectTrigger>
                           </FormControl>
@@ -693,10 +739,15 @@ export default function Schedules() {
                     control={assignForm.control}
                     name="valid_from"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Дата начала</FormLabel>
+                        <FormItem className="flex flex-col gap-1">
+                          <FormLabel className="text-sm font-medium text-black leading-[1.2]">Дата начала</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} data-testid="input-valid-from" />
+                            <Input 
+                              type="date" 
+                              {...field} 
+                              className="bg-[#f8f8f8] border-0 rounded-[12px] px-[14px] py-3 focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
+                              data-testid="input-valid-from" 
+                            />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -706,27 +757,47 @@ export default function Schedules() {
                     control={assignForm.control}
                     name="valid_to"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Дата окончания (необязательно)</FormLabel>
+                        <FormItem className="flex flex-col gap-1">
+                          <FormLabel className="text-sm font-medium text-black leading-[1.2]">Дата окончания (необязательно)</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} data-testid="input-valid-to" />
+                            <Input 
+                              type="date" 
+                              {...field} 
+                              className="bg-[#f8f8f8] border-0 rounded-[12px] px-[14px] py-3 focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
+                              data-testid="input-valid-to" 
+                            />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <DialogFooter>
-                    <Button
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsAssignOpen(false)}
+                        className="bg-[#f8f8f8] px-[17px] py-3 rounded-[40px] text-sm text-black leading-[1.2] hover:bg-[#eeeeee] transition-colors"
+                      >
+                        Отмена
+                      </button>
+                      <button
                       type="submit"
                       disabled={assignScheduleMutation.isPending}
+                        className="bg-[#e16546] px-[17px] py-3 rounded-[40px] text-sm font-medium text-white leading-[1.2] hover:bg-[#d15536] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       data-testid="button-submit-assign"
                     >
-                      {assignScheduleMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                      Назначить
-                    </Button>
-                  </DialogFooter>
+                        {assignScheduleMutation.isPending ? (
+                          <>
+                            <Loader2 className="inline mr-2 h-4 w-4 animate-spin" />
+                            Назначение...
+                          </>
+                        ) : (
+                          'Назначить'
+                        )}
+                      </button>
+                    </div>
                 </form>
               </Form>
+              </div>
             </DialogContent>
           </Dialog>
           
@@ -739,46 +810,71 @@ export default function Schedules() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button onClick={() => {
+              <button
+                onClick={() => {
                 handleCreateTemplate(); 
-              }} data-testid="button-create-template">
-                <Plus className="w-4 h-4 mr-2" />
+                }}
+                className="bg-[#e16546] px-[17px] py-3 rounded-[40px] flex items-center gap-1.5 text-sm font-medium text-white hover:bg-[#d15536] transition-colors"
+                data-testid="button-create-template"
+              >
+                <Plus className="w-4 h-4" />
                 Создать график
-              </Button>
+              </button>
             </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
+            <DialogContent className="bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0 [&>button]:hidden">
+              <div className="flex flex-col gap-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
                   {editingTemplate ? "Редактировать шаблон графика" : "Создать шаблон графика"}
-                </DialogTitle>
-                <DialogDescription>
-                  Настройте параметры рабочего графика
-                </DialogDescription>
-              </DialogHeader>
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setIsTemplateOpen(false);
+                      setEditingTemplate(null);
+                      templateForm.reset();
+                      setSelectedWorkdays([1, 2, 3, 4, 5]);
+                    }}
+                    className="p-1 hover:bg-neutral-100 rounded transition-colors"
+                    aria-label="Закрыть"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
               <Form {...templateForm}>
-                <form onSubmit={templateForm.handleSubmit(onTemplateSubmit)} className="space-y-4">
+                  <form onSubmit={templateForm.handleSubmit(onTemplateSubmit)} className="flex flex-col gap-5">
                   <FormField
                     control={templateForm.control}
                     name="name"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Название</FormLabel>
+                        <FormItem className="flex flex-col gap-1">
+                          <FormLabel className="text-sm font-medium text-black leading-[1.2]">Название</FormLabel>
                         <FormControl>
-                          <Input placeholder="Стандартный график" {...field} data-testid="input-template-name" />
+                            <Input 
+                              placeholder="Стандартный график" 
+                              {...field} 
+                              className="bg-[#f8f8f8] border-0 rounded-[12px] px-[14px] py-3 focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
+                              data-testid="input-template-name" 
+                            />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-[10px]">
                     <FormField
                       control={templateForm.control}
                       name="shift_start"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Начало смены</FormLabel>
+                          <FormItem className="flex flex-col gap-1">
+                            <FormLabel className="text-sm font-medium text-black leading-[1.2]">Начало смены</FormLabel>
                           <FormControl>
-                            <Input type="time" {...field} data-testid="input-shift-start" />
+                              <Input 
+                                type="time" 
+                                {...field} 
+                                className="bg-[#f8f8f8] border-0 rounded-[12px] px-[14px] py-3 focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
+                                data-testid="input-shift-start" 
+                              />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -788,58 +884,75 @@ export default function Schedules() {
                       control={templateForm.control}
                       name="shift_end"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Конец смены</FormLabel>
+                          <FormItem className="flex flex-col gap-1">
+                            <FormLabel className="text-sm font-medium text-black leading-[1.2]">Конец смены</FormLabel>
                           <FormControl>
-                            <Input type="time" {...field} data-testid="input-shift-end" />
+                              <Input 
+                                type="time" 
+                                {...field} 
+                                className="bg-[#f8f8f8] border-0 rounded-[12px] px-[14px] py-3 focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
+                                data-testid="input-shift-end" 
+                              />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
-                  <div>
-                    <FormLabel>Рабочие дни</FormLabel>
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex flex-col gap-3">
+                      <FormLabel className="text-sm font-medium text-black leading-[1.2]">Рабочие дни</FormLabel>
+                      <div className="flex gap-1.5">
                       {weekDays.map(day => (
-                        <Badge
+                          <button
                           key={day.value}
-                          variant={selectedWorkdays.includes(day.value) ? "default" : "outline"}
-                          className="cursor-pointer hover-elevate"
+                            type="button"
                           onClick={() => toggleWorkday(day.value)}
+                            className={`px-[14px] py-[7px] rounded-lg text-sm leading-[1.2] transition-colors ${
+                              selectedWorkdays.includes(day.value)
+                                ? 'bg-[#e16546] text-white'
+                                : 'bg-[#f8f8f8] text-black'
+                            }`}
                           data-testid={`workday-${day.value}`}
                         >
                           {day.label}
-                        </Badge>
+                          </button>
                       ))}
                     </div>
                   </div>
-                  <DialogFooter>
-                    <Button
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsTemplateOpen(false);
+                          setEditingTemplate(null);
+                          templateForm.reset();
+                          setSelectedWorkdays([1, 2, 3, 4, 5]);
+                        }}
+                        className="bg-[#f8f8f8] px-[17px] py-3 rounded-[40px] text-sm text-black leading-[1.2] hover:bg-[#eeeeee] transition-colors"
+                      >
+                        Отмена
+                      </button>
+                      <button
                       type="submit"
                       disabled={createTemplateMutation.isPending || updateTemplateMutation.isPending}
+                        className="bg-[#e16546] px-[17px] py-3 rounded-[40px] text-sm font-medium text-white leading-[1.2] hover:bg-[#d15536] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       data-testid="button-submit-template"
                     >
-                      {(createTemplateMutation.isPending || updateTemplateMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                      {editingTemplate ? "Сохранить" : "Создать"}
-                    </Button>
-                  </DialogFooter>
+                        {(createTemplateMutation.isPending || updateTemplateMutation.isPending) ? (
+                          <>
+                            <Loader2 className="inline mr-2 h-4 w-4 animate-spin" />
+                            Сохранение...
+                          </>
+                        ) : (
+                          editingTemplate ? "Сохранить" : "Создать"
+                        )}
+                      </button>
+                    </div>
                 </form>
               </Form>
+              </div>
             </DialogContent>
           </Dialog>
-        </div>
-      </div>
-
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-        <Input
-          placeholder="Поиск графиков..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-          data-testid="input-search-schedules"
-        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -851,83 +964,59 @@ export default function Schedules() {
           const employeeCount = assignedEmployees.length;
 
           return (
-            <Card key={template.id} className="hover-elevate" data-testid={`template-card-${template.id}`}>
-              <CardHeader className="pb-3">
+            <div
+              key={template.id}
+              className="bg-[#f8f8f8] rounded-[20px] p-4 flex flex-col gap-4"
+              data-testid={`template-card-${template.id}`}
+            >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base truncate">{template.name}</CardTitle>
-                    <CardDescription className="mt-1">
-                      <div className="flex items-center gap-1 text-sm">
-                        <Clock className="w-3 h-3" />
+                  <h3 className="text-base font-semibold text-black truncate">{template.name}</h3>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Clock className="w-4 h-4 text-[#565656]" />
+                    <span className="text-sm text-[#565656]">
                         {template.rules.shift_start} - {template.rules.shift_end}
+                    </span>
                       </div>
-                      {employeeCount > 0 && (
-                        <div className="text-xs mt-1 text-muted-foreground">
-                          Используется {employeeCount} {employeeCount === 1 ? "сотрудником" : employeeCount < 5 ? "сотрудниками" : "сотрудниками"}
                         </div>
-                      )}
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
+                <div className="flex gap-1.5">
+                  <button
                       onClick={() => handleEditTemplate(template)}
+                    className="bg-[#e16546] rounded-[20px] size-8 flex items-center justify-center hover:bg-[#d15536] transition-colors"
                       data-testid={`button-edit-${template.id}`}
+                    aria-label="Редактировать"
                     >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
+                    <Edit className="w-4 h-4 text-white" />
+                  </button>
+                  <button
                       onClick={() => deleteTemplateMutation.mutate(template.id)}
                       disabled={deleteTemplateMutation.isPending}
+                    className="bg-white rounded-[20px] size-8 flex items-center justify-center hover:bg-neutral-100 transition-colors"
                       data-testid={`button-delete-${template.id}`}
+                    aria-label="Удалить"
                     >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Рабочие дни:</p>
-                  <div className="flex flex-wrap gap-1">
+
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-[#565656]">Рабочие дни:</p>
+                <div className="flex flex-wrap gap-1.5">
                     {template.rules.workdays.sort((a, b) => a - b).map(day => {
                       const dayLabel = weekDays.find(d => d.value === day)?.label || day;
                       return (
-                        <Badge key={day} variant="secondary" className="text-xs">
+                      <div
+                        key={day}
+                        className="bg-[#e16546] px-[14px] py-[7px] rounded-lg text-sm text-white leading-[1.2]"
+                      >
                           {dayLabel}
-                        </Badge>
+                      </div>
                       );
                     })}
                   </div>
-                  {employeeCount > 0 && (
-                    <div className="pt-2 border-t">
-                      <p className="text-xs text-muted-foreground mb-1">
-                        Назначено сотрудникам:
-                      </p>
-                      <div className="max-h-20 overflow-y-auto space-y-1">
-                        {assignedEmployees.slice(0, 3).map((assignment) => (
-                          <div key={`${assignment.employee_id}-${assignment.schedule_id}`} className="text-xs">
-                            <span className="font-medium">{assignment.employee?.full_name}</span>
-                            <span className="text-muted-foreground ml-1">
-                              ({new Date(assignment.valid_from).toLocaleDateString("ru-RU")}
-                              {assignment.valid_to && ` - ${new Date(assignment.valid_to).toLocaleDateString("ru-RU")}`})
-                            </span>
                           </div>
-                        ))}
-                        {assignedEmployees.length > 3 && (
-                          <p className="text-xs text-muted-foreground">
-                            и еще {assignedEmployees.length - 3}...
-                          </p>
-                        )}
                       </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
           );
         })}
       </div>

@@ -35,6 +35,8 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
   },
   server: {
+    port: 5173,
+    strictPort: true, // Не переключаться на другой порт, если 5173 занят
     fs: {
       strict: true,
       deny: ["**/.*"],

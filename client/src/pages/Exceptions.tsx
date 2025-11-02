@@ -124,21 +124,11 @@ export default function Exceptions() {
   }
 
   return (
-    <div className="space-y-6" data-testid="page-exceptions">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Нарушения</h1>
-          <p className="text-muted-foreground">Мониторинг нарушений и проблем</p>
-        </div>
-      </div>
-
-      {/* Search removed by request */}
-
+    <div className="flex flex-col gap-5" data-testid="page-exceptions">
       {/* Exception Cards */}
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4">
         {filteredExceptions.length === 0 ? (
-          <div className="text-center py-8">
+          <div className="text-center py-12">
             <p className="text-muted-foreground">
               {hasFilters ? "Нарушения не найдены" : "Нет активных нарушений"}
             </p>
