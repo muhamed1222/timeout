@@ -1,12 +1,8 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, User, Briefcase, Globe } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 type Employee = {
@@ -28,8 +24,6 @@ interface EditEmployeeModalProps {
 export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: EditEmployeeModalProps) {
   const [fullName, setFullName] = useState("");
   const [position, setPosition] = useState("");
-  const [status, setStatus] = useState("active");
-  const [timezone, setTimezone] = useState("Europe/Moscow");
   
   const { toast } = useToast();
   const { companyId } = useAuth();
@@ -40,13 +34,11 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
     if (employee) {
       setFullName(employee.full_name);
       setPosition(employee.position);
-      setStatus(employee.status);
-      setTimezone(employee.tz || "Europe/Moscow");
     }
   }, [employee]);
 
   const updateEmployeeMutation = useMutation({
-    mutationFn: async (data: { full_name: string; position: string; status: string; tz: string }) => {
+    mutationFn: async (data: { full_name: string; position: string }) => {
       if (!employee) return;
       
       const response = await fetch(`/api/employees/${employee.id}`, {
@@ -107,8 +99,6 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
     updateEmployeeMutation.mutate({
       full_name: fullName.trim(),
       position: position.trim(),
-      status,
-      tz: timezone,
     });
   };
 
@@ -118,113 +108,79 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <User className="w-5 h-5" />
+          <DialogTitle className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
             Редактировать профиль сотрудника
           </DialogTitle>
-          <DialogDescription>
-            Измените информацию о сотруднике
-          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+          {/* Photo */}
+          <div className="flex justify-center">
+            <div className="size-[80px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-2xl">
+              {employee?.full_name
+                .split(' ')
+                .map(n => n[0])
+                .slice(0, 2)
+                .join('')
+                .toUpperCase()}
+            </div>
+          </div>
+
           {/* Full Name */}
           <div className="space-y-2">
-            <Label htmlFor="edit-fullName" className="flex items-center gap-2">
-              <User className="w-4 h-4" />
+            <label htmlFor="edit-fullName" className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block">
               Полное имя *
-            </Label>
-            <Input
+            </label>
+            <input
               id="edit-fullName"
+              type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Иван Иванов"
               required
+              className="w-full px-4 py-3 rounded-[12px] border border-[#eeeeee] bg-white text-[#1a1a1a] text-sm leading-[1.2] focus:outline-none focus:border-[#e16546] transition-colors"
             />
           </div>
 
           {/* Position */}
           <div className="space-y-2">
-            <Label htmlFor="edit-position" className="flex items-center gap-2">
-              <Briefcase className="w-4 h-4" />
+            <label htmlFor="edit-position" className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block">
               Должность *
-            </Label>
-            <Input
+            </label>
+            <input
               id="edit-position"
+              type="text"
               value={position}
               onChange={(e) => setPosition(e.target.value)}
               placeholder="Менеджер"
               required
+              className="w-full px-4 py-3 rounded-[12px] border border-[#eeeeee] bg-white text-[#1a1a1a] text-sm leading-[1.2] focus:outline-none focus:border-[#e16546] transition-colors"
             />
           </div>
 
-          {/* Status */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-status">Статус</Label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger id="edit-status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Активен</SelectItem>
-                <SelectItem value="inactive">Неактивен</SelectItem>
-                <SelectItem value="on_leave">В отпуске</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Timezone */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-timezone" className="flex items-center gap-2">
-              <Globe className="w-4 h-4" />
-              Часовой пояс
-            </Label>
-            <Select value={timezone} onValueChange={setTimezone}>
-              <SelectTrigger id="edit-timezone">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Europe/Moscow">Москва (UTC+3)</SelectItem>
-                <SelectItem value="Europe/Amsterdam">Амстердам (UTC+1)</SelectItem>
-                <SelectItem value="Asia/Yekaterinburg">Екатеринбург (UTC+5)</SelectItem>
-                <SelectItem value="Asia/Novosibirsk">Новосибирск (UTC+7)</SelectItem>
-                <SelectItem value="Asia/Krasnoyarsk">Красноярск (UTC+7)</SelectItem>
-                <SelectItem value="Asia/Irkutsk">Иркутск (UTC+8)</SelectItem>
-                <SelectItem value="Asia/Yakutsk">Якутск (UTC+9)</SelectItem>
-                <SelectItem value="Asia/Vladivostok">Владивосток (UTC+10)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Telegram Info (read-only) */}
-          {employee?.telegram_user_id && (
-            <div className="space-y-2 p-3 bg-muted rounded-md">
-              <Label className="text-sm text-muted-foreground">Telegram ID</Label>
-              <p className="text-sm font-mono">{employee.telegram_user_id}</p>
-            </div>
-          )}
-
-          <DialogFooter className="gap-2">
-            <Button
+          {/* Buttons */}
+          <div className="flex gap-3 pt-2">
+            <button
               type="button"
-              variant="outline"
               onClick={handleCancel}
               disabled={updateEmployeeMutation.isPending}
+              className="flex-1 bg-[#f8f8f8] px-[17px] py-3 rounded-[40px] text-sm font-medium text-[#1a1a1a] hover:bg-[#eeeeee] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Отмена
-            </Button>
-            <Button
+            </button>
+            <button
               type="submit"
               disabled={updateEmployeeMutation.isPending}
+              className="flex-1 bg-[#e16546] px-[17px] py-3 rounded-[40px] text-sm font-medium text-white hover:bg-[#d15536] transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
             >
               {updateEmployeeMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               )}
               Сохранить
-            </Button>
-          </DialogFooter>
+            </button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
