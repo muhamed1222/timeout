@@ -42,9 +42,10 @@ interface EmployeeProfileModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   employee: Employee | null;
+  onEmployeeUpdated?: (updatedEmployee: Employee) => void;
 }
 
-export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeProfileModalProps) {
+export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeUpdated }: EmployeeProfileModalProps) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const { companyId } = useAuth();
@@ -376,10 +377,22 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
         open={showEditModal}
         onOpenChange={setShowEditModal}
         employee={displayEmployee}
-        onSuccess={() => {
+        onSuccess={async () => {
           setShowEditModal(false);
           // Refetch employee data to get updated avatar
-          queryClient.invalidateQueries({ queryKey: ["/api/employees", displayEmployee?.id] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/employees", displayEmployee?.id] });
+          // Fetch fresh data and update parent
+          if (displayEmployee?.id && onEmployeeUpdated) {
+            try {
+              const response = await fetch(`/api/employees/${displayEmployee.id}`);
+              if (response.ok) {
+                const updatedEmployee = await response.json();
+                onEmployeeUpdated(updatedEmployee);
+              }
+            } catch (error) {
+              console.error('Failed to fetch updated employee:', error);
+            }
+          }
         }}
       />
 

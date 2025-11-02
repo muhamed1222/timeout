@@ -513,6 +513,20 @@ export default function Employees() {
           }
         }}
         employee={selectedEmployee}
+        onEmployeeUpdated={(updatedEmployee) => {
+          // Update selectedEmployee with fresh data
+          setSelectedEmployee(updatedEmployee);
+          // Update employee in the list
+          queryClient.setQueriesData(
+            { queryKey: ['/api/companies', companyId, 'employees'] },
+            (old: any) => {
+              if (!old || !Array.isArray(old)) return old;
+              return old.map((emp: Employee) => 
+                emp.id === updatedEmployee.id ? updatedEmployee : emp
+              );
+            }
+          );
+        }}
       />
 
       {/* Delete Employee Confirmation Dialog */}
