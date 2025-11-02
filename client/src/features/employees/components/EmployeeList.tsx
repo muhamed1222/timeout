@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/table';
 import { Plus, Search, Filter } from 'lucide-react';
 import { Employee } from '@shared/types/entities/employee';
+import { getEmployeeAvatarUrl, getEmployeeInitials } from '@/lib/employeeAvatar';
 
 interface EmployeeListProps {
   employees: Employee[];
@@ -66,14 +67,6 @@ export function EmployeeList({
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
 
   return (
     <Card>
@@ -124,14 +117,18 @@ export function EmployeeList({
                   </TableCell>
                 </TableRow>
               ) : (
-                employees.map(employee => (
+                employees.map(employee => {
+                  const avatarUrl = getEmployeeAvatarUrl(employee as any);
+                  const initials = getEmployeeInitials(employee.full_name);
+                  
+                  return (
                   <TableRow key={employee.id}>
                     <TableCell>
                       <div className='flex items-center gap-3'>
                         <Avatar>
-                          <AvatarImage src={employee.avatar_url} />
+                          <AvatarImage src={avatarUrl || undefined} />
                           <AvatarFallback>
-                            {getInitials(employee.full_name)}
+                            {initials}
                           </AvatarFallback>
                         </Avatar>
                         <div>
@@ -185,7 +182,8 @@ export function EmployeeList({
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>

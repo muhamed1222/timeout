@@ -25,6 +25,7 @@ import { getContextErrorMessage } from "@/lib/errorMessages";
 import { useSearchShortcut } from "@/hooks/useKeyboardShortcuts";
 import { useRef } from "react";
 import { useOptimisticDeleteInvite, useOptimisticDeleteEmployee } from "@/hooks/useOptimisticMutations";
+import { getEmployeeAvatarUrl, getEmployeeInitials } from "@/lib/employeeAvatar";
 
 type Employee = {
   id: string;
@@ -33,6 +34,8 @@ type Employee = {
   telegram_user_id: string | null;
   status: string;
   tz: string;
+  avatar_id?: number | null;
+  photo_url?: string | null;
 };
 
 type EmployeeInvite = {
@@ -272,9 +275,8 @@ export default function Employees() {
 
       <div className="flex flex-wrap gap-4">
         {filteredEmployees.map((employee) => {
-          const getInitials = (name: string) => {
-            return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-          };
+          const avatarUrl = getEmployeeAvatarUrl(employee);
+          const initials = getEmployeeInitials(employee.full_name);
 
           return (
             <div
@@ -285,8 +287,21 @@ export default function Employees() {
               {/* Top section: Avatar, Name, Position, Buttons */}
               <div className="flex items-start justify-between">
                 <div className="flex flex-col gap-2">
-                  <div className="size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium">
-                    {getInitials(employee.full_name)}
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={employee.full_name}
+                      className="size-[50px] rounded-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = target.parentElement?.querySelector('.avatar-fallback') as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div className={`size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium avatar-fallback ${avatarUrl ? 'hidden' : ''}`}>
+                    {initials}
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <div className="text-base font-semibold text-black leading-[1.2]">

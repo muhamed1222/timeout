@@ -8,9 +8,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Employee } from '@shared/types';
+import { getEmployeeAvatarUrl, getEmployeeInitials } from '@/lib/employeeAvatar';
 
 interface VirtualizedEmployeeListProps {
   employees: Employee[];
@@ -27,6 +28,8 @@ interface EmployeeRowProps {
 // Мемоизированный компонент строки
 const EmployeeRow = memo<EmployeeRowProps>(({ index, style, data }) => {
   const employee = data[index];
+  const avatarUrl = getEmployeeAvatarUrl(employee as any);
+  const initials = getEmployeeInitials(employee.full_name);
 
   return (
     <div style={style}>
@@ -34,11 +37,9 @@ const EmployeeRow = memo<EmployeeRowProps>(({ index, style, data }) => {
         <CardHeader className='pb-3'>
           <div className='flex items-start gap-3'>
             <Avatar>
+              <AvatarImage src={avatarUrl || undefined} />
               <AvatarFallback>
-                {employee.full_name
-                  .split(' ')
-                  .map(n => n[0])
-                  .join('')}
+                {initials}
               </AvatarFallback>
             </Avatar>
             <div className='flex-1 min-w-0'>
@@ -104,6 +105,11 @@ interface ShiftRowProps {
 
 const ShiftRow = memo<ShiftRowProps>(({ index, style, data }) => {
   const shift = data[index];
+  // If shift has employee data, use it; otherwise use employeeName for initials
+  const avatarUrl = shift.employee ? getEmployeeAvatarUrl(shift.employee) : null;
+  const initials = shift.employee 
+    ? getEmployeeInitials(shift.employee.full_name)
+    : getEmployeeInitials(shift.employeeName);
 
   return (
     <div style={style}>
@@ -111,11 +117,9 @@ const ShiftRow = memo<ShiftRowProps>(({ index, style, data }) => {
         <CardHeader className='pb-3'>
           <div className='flex items-start gap-3'>
             <Avatar>
+              <AvatarImage src={avatarUrl || undefined} />
               <AvatarFallback>
-                {shift.employeeName
-                  .split(' ')
-                  .map((n: string) => n[0])
-                  .join('')}
+                {initials}
               </AvatarFallback>
             </Avatar>
             <div className='flex-1 min-w-0'>

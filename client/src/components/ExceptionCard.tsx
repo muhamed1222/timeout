@@ -1,10 +1,16 @@
 import { AlertTriangle, Clock, FileX, UserX, Coffee } from "lucide-react";
+import { getEmployeeAvatarUrl, getEmployeeInitials } from "@/lib/employeeAvatar";
 
 export type ExceptionType = 'late' | 'no_report' | 'short_day' | 'long_break' | 'no_show';
 
 interface ExceptionCardProps {
   employeeName: string;
   employeeImage?: string;
+  employee?: {
+    photo_url?: string | null;
+    avatar_id?: number | null;
+    full_name: string;
+  };
   type: ExceptionType;
   description: string;
   timestamp: string;
@@ -54,7 +60,8 @@ const severityColors = {
 
 export default function ExceptionCard({ 
   employeeName, 
-  employeeImage, 
+  employeeImage,
+  employee,
   type, 
   description, 
   timestamp, 
@@ -65,9 +72,11 @@ export default function ExceptionCard({
   const config = exceptionConfig[type];
   const Icon = config.icon;
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-  };
+  // Use employee data if provided, otherwise use employeeImage or initials
+  const avatarUrl = employee 
+    ? getEmployeeAvatarUrl(employee)
+    : employeeImage || null;
+  const initials = getEmployeeInitials(employeeName);
 
   const handleResolve = () => {
     console.log('Resolve exception for', employeeName);
@@ -99,8 +108,21 @@ export default function ExceptionCard({
             </div>
             
             <div className="flex items-center gap-2">
-              <div className="size-6 rounded-full bg-[#ff3b30] flex items-center justify-center text-white text-[10px] font-medium">
-                {getInitials(employeeName)}
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={employeeName}
+                  className="size-6 rounded-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const fallback = target.parentElement?.querySelector('.avatar-fallback') as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <div className={`size-6 rounded-full bg-[#ff3b30] flex items-center justify-center text-white text-[10px] font-medium avatar-fallback ${avatarUrl ? 'hidden' : ''}`}>
+                {initials}
               </div>
               <span className="text-sm font-medium text-black">{employeeName}</span>
             </div>
