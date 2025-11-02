@@ -19,6 +19,7 @@ import ratingRouter from "./routes/rating.js";
 import webappRouter from "./routes/webapp.js";
 import violationRulesRouter from "./routes/violation-rules.js";
 import violationsRouter from "./routes/violations.js";
+import healthRouter from "./routes/health.js";
 
 // Rate limiters
 const apiLimiter = rateLimit({
@@ -29,32 +30,32 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-
 // Функция для автоматической очистки приглашений
-async function startInviteCleanup() {
-  setInterval(async () => {
-    try {
-      const deletedCount = await repositories.invite.cleanupExpired();
-      if (deletedCount > 0) {
-        logger.info(`Cleaned up ${deletedCount} expired invites`);
+function startInviteCleanup(): void {
+  setInterval(() => {
+    void (async () => {
+      try {
+        const deletedCount = await repositories.invite.cleanupExpired();
+        if (deletedCount > 0) {
+          logger.info(`Cleaned up ${deletedCount} expired invites`);
+        }
+      } catch (error) {
+        logger.error("Error during invite cleanup", error);
       }
-    } catch (error) {
-      logger.error('Error during invite cleanup', error);
-    }
+    })();
   }, 30 * 1000); // Каждые 30 секунд
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
   // Apply Prometheus metrics middleware (before rate limiter to track all requests)
   app.use("/api", metricsMiddleware);
-  
+
   // Apply global rate limiter to all API routes
   app.use("/api", apiLimiter);
-  
+
   // Register modular routers
   app.use("/api/auth", authRouter);
-  
+
   // Dynamically import Yandex OAuth router
   let authYandexRouter;
   try {
@@ -70,15 +71,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     authYandexRouter = Router();
     authYandexRouter.get("/yandex", (req, res) => {
       logger.error("Yandex OAuth endpoint called but router not loaded");
-      res.status(500).json({ error: "Yandex OAuth router failed to load. Please check server logs and restart." });
+      res
+        .status(500)
+        .json({
+          error: "Yandex OAuth router failed to load. Please check server logs and restart.",
+        });
     });
     authYandexRouter.get("/yandex/callback", (req, res) => {
       logger.error("Yandex OAuth callback called but router not loaded");
-      res.status(500).json({ error: "Yandex OAuth router failed to load. Please check server logs and restart." });
+      res
+        .status(500)
+        .json({
+          error: "Yandex OAuth router failed to load. Please check server logs and restart.",
+        });
     });
     app.use("/api/auth", authYandexRouter);
   }
-  
+
   app.use("/api/companies", companiesRouter);
   app.use("/api/companies", companiesExtendedRouter);
   app.use("/api/employees", employeesRouter);
@@ -91,12 +100,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/webapp", webappRouter);
   app.use("/api/violation-rules", violationRulesRouter);
   app.use("/api/violations", violationsRouter);
+  app.use("/api", healthRouter);
 
   const httpServer = createServer(app);
 
   // Start invite cleanup
   startInviteCleanup();
-  
+
   // Start Prometheus metrics updater
   startMetricsUpdater(60000); // Update every minute
 
