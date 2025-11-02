@@ -48,19 +48,36 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
   const [showEditModal, setShowEditModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const { companyId } = useAuth();
-
-  // Fetch employee statistics
-  const { data: stats, isLoading: statsLoading } = useQuery<EmployeeStats>({
-    queryKey: ["/api/employees", employee?.id, "stats"],
+  const queryClient = useQueryClient();
+  
+  // Fetch fresh employee data when modal opens
+  const { data: freshEmployee } = useQuery<Employee>({
+    queryKey: ["/api/employees", employee?.id],
     queryFn: async () => {
-      const response = await fetch(`/api/employees/${employee?.id}/stats`);
-      if (!response.ok) throw new Error("Failed to fetch stats");
+      if (!employee?.id) return null;
+      const response = await fetch(`/api/employees/${employee.id}`);
+      if (!response.ok) throw new Error("Failed to fetch employee");
       return response.json();
     },
     enabled: !!employee?.id && open,
+    staleTime: 0, // Always fetch fresh data when modal opens
+  });
+  
+  // Use fresh employee data if available, otherwise use prop
+  const displayEmployee = freshEmployee || employee;
+
+  // Fetch employee statistics
+  const { data: stats, isLoading: statsLoading } = useQuery<EmployeeStats>({
+    queryKey: ["/api/employees", displayEmployee?.id, "stats"],
+    queryFn: async () => {
+      const response = await fetch(`/api/employees/${displayEmployee?.id}/stats`);
+      if (!response.ok) throw new Error("Failed to fetch stats");
+      return response.json();
+    },
+    enabled: !!displayEmployee?.id && open,
   });
 
-  if (!employee) return null;
+  if (!displayEmployee) return null;
 
   const getEfficiencyStatus = (efficiency: number) => {
     if (efficiency >= 80) return { icon: "🟢", text: "Отлично", color: "text-green-600" };
@@ -118,24 +135,24 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
                 <div className="flex items-center gap-4">
                   {(() => {
                     // Show photo if available
-                    if (employee.photo_url) {
+                    if (displayEmployee.photo_url) {
                       return (
                         <img
-                          src={employee.photo_url}
-                          alt={employee.full_name}
+                          src={displayEmployee.photo_url}
+                          alt={displayEmployee.full_name}
                           className="size-[50px] rounded-full object-cover"
                         />
                       );
                     }
                     // Show template avatar if selected
-                    if (employee.avatar_id) {
-                      const avatar = TEMPLATE_AVATARS.find(a => a.id === employee.avatar_id);
+                    if (displayEmployee.avatar_id) {
+                      const avatar = TEMPLATE_AVATARS.find(a => a.id === displayEmployee.avatar_id);
                       if (avatar) {
                         return (
                           <div className="relative">
                             <img
                               src={avatar.image}
-                              alt={`Аватарка ${employee.avatar_id}`}
+                              alt={`Аватарка ${displayEmployee.avatar_id}`}
                               className="size-[50px] rounded-full object-cover"
                               onError={(e) => {
                                 // Fallback to initials if image fails
@@ -146,7 +163,7 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
                               }}
                             />
                             <div className="avatar-fallback size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-base hidden">
-                              {employee.full_name
+                              {displayEmployee.full_name
                                 .split(' ')
                                 .map(n => n[0])
                                 .slice(0, 2)
@@ -160,7 +177,7 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
                     // Default to initials
                     return (
                       <div className="size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-base">
-                        {employee.full_name
+                        {displayEmployee.full_name
                           .split(' ')
                           .map(n => n[0])
                           .slice(0, 2)
@@ -171,13 +188,13 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
                   })()}
                   <div>
                     <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
-                      {employee.full_name}
+                      {displayEmployee.full_name}
                     </h3>
                     <p className="text-sm text-[#e16546] leading-[1.2] mt-1">
-                      {employee.position}
+                      {displayEmployee.position}
                     </p>
                     <div className="mt-2">
-                      {getStatusBadge(employee.status)}
+                      {getStatusBadge(displayEmployee.status)}
                     </div>
                   </div>
                 </div>
@@ -195,14 +212,14 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
                 <div>
                   <p className="text-xs text-[#959595] mb-1 leading-[1.2]">Часовой пояс</p>
                   <p className="text-sm font-medium text-[#1a1a1a] leading-[1.2]">
-                    {employee.tz || "Europe/Moscow"}
+                    {displayEmployee.tz || "Europe/Moscow"}
                   </p>
                 </div>
-                {employee.telegram_user_id && (
+                {displayEmployee.telegram_user_id && (
                   <div>
                     <p className="text-xs text-[#959595] mb-1 leading-[1.2]">Telegram ID</p>
                     <p className="text-sm font-mono text-[#1a1a1a] leading-[1.2]">
-                      {employee.telegram_user_id}
+                      {displayEmployee.telegram_user_id}
                     </p>
                   </div>
                 )}
@@ -358,9 +375,11 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
       <EditEmployeeModal
         open={showEditModal}
         onOpenChange={setShowEditModal}
-        employee={employee}
+        employee={displayEmployee}
         onSuccess={() => {
           setShowEditModal(false);
+          // Refetch employee data to get updated avatar
+          queryClient.invalidateQueries({ queryKey: ["/api/employees", displayEmployee?.id] });
         }}
       />
 
@@ -370,7 +389,7 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
               <Calendar className="w-5 h-5 text-[#1a1a1a]" />
-              История работы - {employee.full_name}
+              История работы - {displayEmployee.full_name}
             </DialogTitle>
           </DialogHeader>
           

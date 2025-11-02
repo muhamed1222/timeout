@@ -107,19 +107,34 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
       return result;
     },
     onSuccess: (data) => {
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "employees"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/employees", employee?.id] });
+      console.log('Update successful, received data:', data);
       
-      // Update employee data in cache if returned
+      // Update employee in the employees list cache
       if (data && employee) {
+        queryClient.setQueriesData(
+          { queryKey: ["/api/companies", companyId, "employees"] },
+          (old: any) => {
+            if (!old || !Array.isArray(old)) return old;
+            return old.map((emp: any) => 
+              emp.id === employee.id 
+                ? { ...emp, ...data, avatar_id: data.avatar_id ?? null, photo_url: data.photo_url ?? null }
+                : emp
+            );
+          }
+        );
+        
+        // Also update individual employee cache
         queryClient.setQueryData(["/api/employees", employee.id], (old: any) => {
           if (old) {
-            return { ...old, ...data };
+            return { ...old, ...data, avatar_id: data.avatar_id ?? null, photo_url: data.photo_url ?? null };
           }
-          return data;
+          return { ...data, avatar_id: data.avatar_id ?? null, photo_url: data.photo_url ?? null };
         });
       }
+      
+      // Invalidate queries to refresh data from server
+      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "employees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employees", employee?.id] });
       
       toast({
         title: "Успешно",

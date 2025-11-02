@@ -505,7 +505,13 @@ export default function Employees() {
       {/* Employee Profile Modal */}
       <EmployeeProfileModal
         open={showProfileModal}
-        onOpenChange={setShowProfileModal}
+        onOpenChange={(open) => {
+          setShowProfileModal(open);
+          if (!open) {
+            // Clear selected employee when modal closes
+            setSelectedEmployee(null);
+          }
+        }}
         employee={selectedEmployee}
       />
 
