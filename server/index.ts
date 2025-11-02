@@ -2,11 +2,10 @@
 import { initSentry, Sentry } from "./lib/sentry.js";
 initSentry();
 
-import express, { type Request, Response, NextFunction } from "express";
+import express from "express";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic, log } from "./vite.js";
-import { env } from "./lib/env.js";
 import { scheduler } from "./services/scheduler.js";
 import { configureCors } from "./lib/cors.js";
 import { errorHandler, notFoundHandler } from "./lib/errorHandler.js";
@@ -18,6 +17,9 @@ import { loadSecretsAsync, validateSecretsOnStartup, isProduction, getSecret } f
 import './launchBot.js';
 
 const app = express();
+
+// Respect proxy headers (needed for correct https detection on Vercel/behind proxies)
+app.set("trust proxy", true);
 
 // CORS must be configured before other middleware
 app.use(configureCors());
@@ -32,6 +34,7 @@ app.use(sanitizeInput);
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
   const originalResJson = res.json;
@@ -65,7 +68,7 @@ app.use((req, res, next) => {
     if (isProduction()) {
       await loadSecretsAsync();
     }
-    validateSecretsOnStartup();
+    await validateSecretsOnStartup();
   } catch (error) {
     log(`Failed to load secrets: ${error instanceof Error ? error.message : 'Unknown error'}`);
     process.exit(1);
@@ -78,9 +81,10 @@ app.use((req, res, next) => {
     setupSwagger(app);
   }
 
-// Sentry error handler (must be before other error handlers)
-// @ts-ignore - Sentry types issue
-app.use(Sentry.Handlers?.errorHandler?.() || ((_req: any, _res: any, next: any) => next()));
+  // Sentry error handler (must be before other error handlers)
+  // @ts-ignore - Sentry types issue
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/prefer-nullish-coalescing
+  app.use(Sentry.Handlers?.errorHandler?.() || ((_req: any, _res: any, next: any) => next()));
 
   // Standardized error handling (must be after all routes)
   app.use(notFoundHandler);
