@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 type Employee = {
@@ -22,8 +22,12 @@ interface EditEmployeeModalProps {
 }
 
 export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: EditEmployeeModalProps) {
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [position, setPosition] = useState("");
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { toast } = useToast();
   const { companyId } = useAuth();
@@ -32,19 +36,28 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
   // Update form when employee changes
   useEffect(() => {
     if (employee) {
-      setFullName(employee.full_name);
+      const nameParts = employee.full_name.split(' ');
+      setFirstName(nameParts[0] || "");
+      setLastName(nameParts.slice(1).join(' ') || "");
       setPosition(employee.position);
+      setPhoto(null);
+      setPhotoFile(null);
     }
   }, [employee]);
 
   const updateEmployeeMutation = useMutation({
-    mutationFn: async (data: { full_name: string; position: string }) => {
+    mutationFn: async (data: { full_name: string; position: string; photo?: File }) => {
       if (!employee) return;
       
+      // TODO: Implement photo upload endpoint
+      // For now, only send JSON data (photo upload will be implemented separately)
       const response = await fetch(`/api/employees/${employee.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          full_name: data.full_name,
+          position: data.position,
+        }),
       });
 
       if (!response.ok) {
@@ -75,10 +88,48 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
     },
   });
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: "Ошибка",
+          description: "Размер файла не должен превышать 5 МБ",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Ошибка",
+          description: "Выберите изображение",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setPhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPhoto(null);
+    setPhotoFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!fullName.trim()) {
+    if (!firstName.trim()) {
       toast({
         title: "Ошибка",
         description: "Введите имя сотрудника",
@@ -96,9 +147,12 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
       return;
     }
 
+    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+
     updateEmployeeMutation.mutate({
-      full_name: fullName.trim(),
+      full_name: fullName,
       position: position.trim(),
+      photo: photoFile || undefined,
     });
   };
 
@@ -117,29 +171,85 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
 
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
           {/* Photo */}
-          <div className="flex justify-center">
-            <div className="size-[80px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-2xl">
-              {employee?.full_name
-                .split(' ')
-                .map(n => n[0])
-                .slice(0, 2)
-                .join('')
-                .toUpperCase()}
+          <div className="flex flex-col items-center gap-3">
+            <div className="relative">
+              {photo ? (
+                <div className="relative">
+                  <img
+                    src={photo}
+                    alt="Фото сотрудника"
+                    className="size-[80px] rounded-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    className="absolute -top-1 -right-1 size-6 rounded-full bg-[#ff0006] flex items-center justify-center text-white hover:bg-[#e00000] transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="size-[80px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-2xl relative group">
+                  {employee && (
+                    <>
+                      {employee.full_name
+                        .split(' ')
+                        .map(n => n[0])
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase()}
+                      <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Upload className="w-6 h-6 text-white" />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoChange}
+              className="hidden"
+              id="photo-upload"
+            />
+            <label
+              htmlFor="photo-upload"
+              className="px-4 py-2 rounded-[20px] bg-[#f8f8f8] text-sm font-medium text-[#1a1a1a] hover:bg-[#eeeeee] transition-colors cursor-pointer inline-flex items-center gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              {photo ? "Изменить фото" : "Загрузить фото"}
+            </label>
           </div>
 
-          {/* Full Name */}
+          {/* First Name */}
           <div className="space-y-2">
-            <label htmlFor="edit-fullName" className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block">
-              Полное имя *
+            <label htmlFor="edit-firstName" className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block">
+              Имя *
             </label>
             <input
-              id="edit-fullName"
+              id="edit-firstName"
               type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Иван Иванов"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="Иван"
               required
+              className="w-full px-4 py-3 rounded-[12px] border border-[#eeeeee] bg-white text-[#1a1a1a] text-sm leading-[1.2] focus:outline-none focus:border-[#e16546] transition-colors"
+            />
+          </div>
+
+          {/* Last Name */}
+          <div className="space-y-2">
+            <label htmlFor="edit-lastName" className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block">
+              Фамилия
+            </label>
+            <input
+              id="edit-lastName"
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="Иванов"
               className="w-full px-4 py-3 rounded-[12px] border border-[#eeeeee] bg-white text-[#1a1a1a] text-sm leading-[1.2] focus:outline-none focus:border-[#e16546] transition-colors"
             />
           </div>
