@@ -2,7 +2,6 @@ import { Router } from "express";
 import { repositories } from "../repositories/index.js";
 import { logger } from "../lib/logger.js";
 import { getOrSet } from "../lib/utils/cache.js";
-import { requireCompanyAccess } from "../middleware/auth.js";
 import { NotFoundError, asyncHandler } from "../lib/errorHandler.js";
 import { validateBody, validateParams } from "../middleware/validate.js";
 import { createCompanySchema, updateCompanySchema, companyIdParamSchema } from "../lib/schemas/index.js";
@@ -12,7 +11,7 @@ const router = Router();
 
 // Create company
 router.post("/", validateBody(createCompanySchema), asyncHandler(async (req, res) => {
-  const company = await repositories.company.create(req.body as any);
+  const company = await repositories.company.create(req.body);
   await invalidateCompanyStats(company.id);
   res.json(company);
 }));
@@ -28,7 +27,7 @@ router.get("/:id", validateParams(companyIdParamSchema), asyncHandler(async (req
 
 // Update company
 router.put("/:id", validateParams(companyIdParamSchema), validateBody(updateCompanySchema), asyncHandler(async (req, res) => {
-  const company = await repositories.company.update(req.params.id, req.body as any);
+  const company = await repositories.company.update(req.params.id, req.body);
   if (!company) {
     throw new NotFoundError("Company");
   }
@@ -47,27 +46,29 @@ router.get("/:companyId/stats", async (req, res) => {
       async () => {
         const employees = await repositories.employee.findByCompanyId(companyId);
         const activeShifts = await repositories.shift.findActiveByCompanyId(companyId);
-        const exceptions = await repositories.exception.findByCompanyId(companyId);
+        await repositories.exception.findByCompanyId(companyId);
         const violations = await repositories.violation.findViolationsByCompany(companyId);
         
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toISOString().split("T")[0];
         const todayShifts = activeShifts.filter(shift => {
           const start = new Date((shift as any).planned_start_at);
-          if (isNaN(start.getTime())) return false;
-          return start.toISOString().split('T')[0] === today;
+          if (isNaN(start.getTime())) {
+            return false;
+          }
+          return start.toISOString().split("T")[0] === today;
         });
         
-        const completedShifts = todayShifts.filter(shift => shift.status === 'completed').length;
+        const completedShifts = todayShifts.filter(shift => shift.status === "completed").length;
         
         return {
           totalEmployees: employees.length,
           activeShifts: activeShifts.length,
           completedShifts,
           // Frontend ожидает поле exceptions, используем количество нарушений
-          exceptions: violations.length
+          exceptions: violations.length,
         };
       },
-      120 // Cache for 2 minutes
+      120, // Cache for 2 minutes
     );
     
     res.json(stats);
@@ -89,8 +90,26 @@ router.post("/:companyId/generate-shifts", async (req, res) => {
     const { companyId } = req.params;
     const { startDate, endDate, employeeIds } = req.body;
     
+    // Валидация дат
     if (!startDate || !endDate) {
       return res.status(400).json({ error: "startDate and endDate are required" });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ error: "Invalid date format" });
+    }
+
+    if (end < start) {
+      return res.status(400).json({ error: "endDate must be greater than or equal to startDate" });
+    }
+
+    // Ограничение на диапазон дат (максимум 1 год)
+    const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysDiff > 365) {
+      return res.status(400).json({ error: "Date range cannot exceed 365 days" });
     }
 
     const templates = await repositories.schedule.findByCompanyId(companyId);
@@ -103,7 +122,13 @@ router.post("/:companyId/generate-shifts", async (req, res) => {
       employees.filter(emp => employeeIds.includes(emp.id)) : 
       employees;
 
+    if (targetEmployees.length === 0) {
+      return res.status(400).json({ error: "No employees found for generation" });
+    }
+
     const createdShifts = [];
+    const skippedShifts = [];
+    const employeesWithoutSchedule: string[] = [];
     
     // Optimization: Load all existing shifts at once to avoid N+1 queries
     const targetEmployeeIds = targetEmployees.map(emp => emp.id);
@@ -124,43 +149,110 @@ router.post("/:companyId/generate-shifts", async (req, res) => {
     // Prepare shifts to be created in batch
     const shiftsToCreate = [];
 
+    // Создаем мапу шаблонов для быстрого доступа
+    const templatesMap = new Map(templates.map(t => [t.id, t]));
+
+    // Оптимизация: загружаем все назначения графиков для всех сотрудников заранее
+    const allEmployeeSchedules = await Promise.all(
+      targetEmployees.map(emp => repositories.schedule.findEmployeeSchedules(emp.id)),
+    );
+    
+    // Создаем мапу назначений: employee_id -> массив назначений
+    const employeeSchedulesMap = new Map<string, any[]>();
+    targetEmployees.forEach((emp, idx) => {
+      employeeSchedulesMap.set(emp.id, allEmployeeSchedules[idx]);
+    });
+
     for (const employee of targetEmployees) {
-      const template = templates[0];
-      const rules = template.rules as any; // Type assertion for rules object
-      
-      const start = new Date(startDate);
-      const end = new Date(endDate);
       const existingShifts = employeeShiftsMap.get(employee.id) || [];
+      const employeeScheduleAssignments = employeeSchedulesMap.get(employee.id) || [];
+      let hasScheduleForPeriod = false;
       
+      if (employeeScheduleAssignments.length === 0) {
+        employeesWithoutSchedule.push(employee.id);
+        continue;
+      }
+
+      // Проходим по каждой дате в периоде
       for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
-        const dayOfWeek = date.getDay();
+        // Ищем активное назначение графика для этой даты (в памяти, без запросов к БД)
+        let activeSchedule: any = null;
         
-        if (rules.workdays && rules.workdays.includes(dayOfWeek)) {
-          const shiftStart = new Date(date);
-          const [startHour, startMinute] = rules.shift_start.split(':').map(Number);
-          shiftStart.setHours(startHour, startMinute, 0, 0);
+        for (const assignment of employeeScheduleAssignments) {
+          const validFrom = new Date(assignment.valid_from);
+          const validTo = assignment.valid_to ? new Date(assignment.valid_to) : null;
           
-          const shiftEnd = new Date(date);
-          const [endHour, endMinute] = rules.shift_end.split(':').map(Number);
-          shiftEnd.setHours(endHour, endMinute, 0, 0);
-          
-          const existingShift = existingShifts.find((s: any) => {
-            const shiftDate = new Date(s.planned_start_at);
-            shiftDate.setHours(0, 0, 0, 0);
-            const checkDate = new Date(date);
-            checkDate.setHours(0, 0, 0, 0);
-            return shiftDate.getTime() === checkDate.getTime();
-          });
-          
-          if (!existingShift) {
-            shiftsToCreate.push({
-              employee_id: employee.id,
-              planned_start_at: shiftStart,
-              planned_end_at: shiftEnd,
-              status: 'planned'
-            });
+          // Проверяем, действует ли назначение на эту дату
+          if (date >= validFrom && (!validTo || date <= validTo)) {
+            // Если есть несколько назначений, берем самое позднее (по valid_from)
+            if (!activeSchedule || new Date(assignment.valid_from) > new Date(activeSchedule.valid_from)) {
+              activeSchedule = assignment;
+            }
           }
         }
+        
+        if (!activeSchedule) {
+          // Сотрудник не имеет назначенного графика на эту дату
+          if (!employeesWithoutSchedule.includes(employee.id)) {
+            employeesWithoutSchedule.push(employee.id);
+          }
+          continue;
+        }
+
+        hasScheduleForPeriod = true;
+
+        // Находим шаблон графика
+        const template = templatesMap.get(activeSchedule.schedule_id);
+        if (!template) {
+          logger.warn(`Template not found for schedule_id: ${activeSchedule.schedule_id}`);
+          continue;
+        }
+
+        const rules = template.rules as any;
+        const dayOfWeek = date.getDay();
+        
+        // Проверяем, является ли день рабочим
+        if (!rules.workdays?.includes(dayOfWeek)) {
+          continue;
+        }
+
+        // Проверяем, нет ли уже существующей смены на эту дату
+        const existingShift = existingShifts.find((s: any) => {
+          const shiftDate = new Date(s.planned_start_at);
+          shiftDate.setHours(0, 0, 0, 0);
+          const checkDate = new Date(date);
+          checkDate.setHours(0, 0, 0, 0);
+          return shiftDate.getTime() === checkDate.getTime();
+        });
+        
+        if (existingShift) {
+          skippedShifts.push({
+            employee_id: employee.id,
+            date: date.toISOString().split("T")[0],
+            reason: "shift_exists",
+          });
+          continue;
+        }
+
+        // Создаем смену по правилам графика
+        const shiftStart = new Date(date);
+        const [startHour, startMinute] = rules.shift_start.split(":").map(Number);
+        shiftStart.setHours(startHour, startMinute, 0, 0);
+        
+        const shiftEnd = new Date(date);
+        const [endHour, endMinute] = rules.shift_end.split(":").map(Number);
+        shiftEnd.setHours(endHour, endMinute, 0, 0);
+
+        shiftsToCreate.push({
+          employee_id: employee.id,
+          planned_start_at: shiftStart,
+          planned_end_at: shiftEnd,
+          status: "planned",
+        });
+      }
+
+      if (!hasScheduleForPeriod && !employeesWithoutSchedule.includes(employee.id)) {
+        employeesWithoutSchedule.push(employee.id);
       }
     }
 
@@ -171,14 +263,38 @@ router.post("/:companyId/generate-shifts", async (req, res) => {
     }
     
     // Invalidate cache
-      await invalidateCompanyStats(companyId);
+    await invalidateCompanyStats(companyId);
 
-    res.json({ 
+    const result = {
       message: `Created ${createdShifts.length} shifts`,
-      shifts: createdShifts 
-    });
+      shifts: createdShifts,
+      stats: {
+        created: createdShifts.length,
+        skipped: skippedShifts.length,
+        employeesWithoutSchedule: employeesWithoutSchedule.length,
+        totalEmployees: targetEmployees.length,
+      },
+    };
+
+    if (employeesWithoutSchedule.length > 0) {
+      result.message += `. ${employeesWithoutSchedule.length} employee(s) without assigned schedule were skipped`;
+    }
+
+    res.json(result);
   } catch (error) {
     logger.error("Error generating shifts", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get employee schedules for company
+router.get("/:companyId/employee-schedules", async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const schedules = await repositories.schedule.findEmployeeSchedulesByCompanyId(companyId);
+    res.json(schedules);
+  } catch (error) {
+    logger.error("Error fetching employee schedules", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -191,7 +307,7 @@ router.post("/:companyId/monitor", async (req, res) => {
     const result = await shiftMonitor.processCompanyShifts(companyId);
     res.json({
       message: "Shift monitoring completed",
-      ...result
+      ...result,
     });
   } catch (error) {
     logger.error("Error in shift monitoring", error);
@@ -220,7 +336,7 @@ router.get("/:companyId/exceptions", async (req, res) => {
     // Get both exceptions and violations
     const [exceptions, violations] = await Promise.all([
       repositories.exception.findByCompanyId(companyId),
-      repositories.violation.findViolationsByCompany(companyId)
+      repositories.violation.findViolationsByCompany(companyId),
     ]);
 
     // Transform violations to match exception format for display
@@ -233,19 +349,19 @@ router.get("/:companyId/exceptions", async (req, res) => {
           id: violation.id,
           employee: {
             id: employee?.id || violation.employee_id,
-            full_name: employee?.full_name || 'Неизвестный сотрудник'
+            full_name: employee?.full_name || "Неизвестный сотрудник",
           },
-          exception_type: 'violation',
+          exception_type: "violation",
           description: rule 
-            ? `Нарушение: ${rule.name}${violation.reason ? `. ${violation.reason}` : ''}`
-            : violation.reason || 'Нарушение',
+            ? `Нарушение: ${rule.name}${violation.reason ? `. ${violation.reason}` : ""}`
+            : violation.reason || "Нарушение",
           detected_at: violation.created_at || new Date().toISOString(),
           severity: Number(violation.penalty) > 50 ? 3 : Number(violation.penalty) > 25 ? 2 : 1,
           source: violation.source,
           penalty: violation.penalty,
-          rule_name: rule?.name
+          rule_name: rule?.name,
         };
-      })
+      }),
     );
 
     // Combine exceptions and violations, sort by date
