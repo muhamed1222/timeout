@@ -12,6 +12,8 @@ type Employee = {
   telegram_user_id: string | null;
   status: string;
   tz: string;
+  avatar_id?: number | null;
+  photo_url?: string | null;
 };
 
 interface EditEmployeeModalProps {
@@ -54,9 +56,21 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
       setFirstName(nameParts[0] || "");
       setLastName(nameParts.slice(1).join(' ') || "");
       setPosition(employee.position);
-      setPhoto(null);
-      setPhotoFile(null);
-      setSelectedAvatarId(null);
+      
+      // Restore saved avatar or photo
+      if (employee.photo_url) {
+        setPhoto(employee.photo_url);
+        setPhotoFile(null);
+        setSelectedAvatarId(null);
+      } else if (employee.avatar_id) {
+        setSelectedAvatarId(employee.avatar_id);
+        setPhoto(null);
+        setPhotoFile(null);
+      } else {
+        setPhoto(null);
+        setPhotoFile(null);
+        setSelectedAvatarId(null);
+      }
     }
   }, [employee]);
 
@@ -88,9 +102,20 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
 
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "employees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employees", employee?.id] });
+      
+      // Update employee data in cache if returned
+      if (data && employee) {
+        queryClient.setQueryData(["/api/employees", employee.id], (old: any) => {
+          if (old) {
+            return { ...old, ...data };
+          }
+          return data;
+        });
+      }
       
       toast({
         title: "Успешно",

@@ -1,11 +1,22 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar as CalendarIcon, TrendingUp, Clock, AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { Edit, Calendar, TrendingUp, Clock, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { EditEmployeeModal } from "./EditEmployeeModal";
 import { Skeleton } from "@/components/ui/skeleton";
-import { WorkHistoryCalendar } from "./WorkHistoryCalendar";
+
+// Template avatars - same as in EditEmployeeModal
+const TEMPLATE_AVATARS = [
+  { id: 1, image: "/avatars/1.png" },
+  { id: 2, image: "/avatars/2.png" },
+  { id: 3, image: "/avatars/3.png" },
+  { id: 4, image: "/avatars/4.png" },
+  { id: 5, image: "/avatars/5.png" },
+  { id: 6, image: "/avatars/6.png" },
+  { id: 7, image: "/avatars/7.png" },
+  { id: 8, image: "/avatars/8.png" },
+];
 
 type Employee = {
   id: string;
@@ -14,6 +25,8 @@ type Employee = {
   telegram_user_id: string | null;
   status: string;
   tz: string;
+  avatar_id?: number | null;
+  photo_url?: string | null;
 };
 
 interface EmployeeStats {
@@ -24,15 +37,6 @@ interface EmployeeStats {
   absence_count: number;
   avg_work_hours: number;
 }
-
-type Shift = {
-  id: string;
-  planned_start_at: string;
-  planned_end_at: string;
-  actual_start_at: string | null;
-  actual_end_at: string | null;
-  status: string;
-};
 
 interface EmployeeProfileModalProps {
   open: boolean;
@@ -56,23 +60,42 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
     enabled: !!employee?.id && open,
   });
 
-  // Fetch employee shifts for calendar
-  const { data: shifts = [], isLoading: shiftsLoading } = useQuery<Shift[]>({
-    queryKey: ["/api/employees", employee?.id, "shifts"],
-    queryFn: async () => {
-      const response = await fetch(`/api/employees/${employee?.id}/shifts?limit=1000`);
-      if (!response.ok) throw new Error("Failed to fetch shifts");
-      return response.json();
-    },
-    enabled: !!employee?.id && showHistoryModal,
-  });
-
   if (!employee) return null;
 
   const getEfficiencyStatus = (efficiency: number) => {
     if (efficiency >= 80) return { icon: "🟢", text: "Отлично", color: "text-green-600" };
     if (efficiency >= 60) return { icon: "🟡", text: "Средне", color: "text-yellow-600" };
     return { icon: "🔴", text: "Низкий уровень", color: "text-red-600" };
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return (
+          <div className="bg-[rgba(52,199,89,0.08)] text-[#34c759] rounded-full px-[10px] py-1 inline-flex items-center text-xs font-medium leading-[1.2]">
+            Активен
+          </div>
+        );
+      case "inactive":
+      case "terminated":
+        return (
+          <div className="bg-[rgba(255,0,0,0.08)] text-[#ff0006] rounded-full px-[10px] py-1 inline-flex items-center text-xs font-medium leading-[1.2]">
+            {status === "terminated" ? "Уволен" : "Неактивен"}
+          </div>
+        );
+      case "on_leave":
+        return (
+          <div className="bg-[rgba(255,204,0,0.08)] text-[#ffcc00] rounded-full px-[10px] py-1 inline-flex items-center text-xs font-medium leading-[1.2]">
+            В отпуске
+          </div>
+        );
+      default:
+        return (
+          <div className="bg-white rounded-full px-[10px] py-1 inline-flex items-center text-xs font-medium text-[#565656] leading-[1.2] border border-[#eeeeee]">
+            {status}
+          </div>
+        );
+    }
   };
 
   const efficiencyIndex = stats?.efficiency_index ?? 0;
@@ -91,23 +114,98 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
           <div className="space-y-4">
             {/* 1. Основная информация */}
             <div className="bg-[#f8f8f8] rounded-[20px] p-4">
-              <div className="flex items-center gap-4">
-                <div className="size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-base">
-                  {employee.full_name
-                    .split(' ')
-                    .map(n => n[0])
-                    .slice(0, 2)
-                    .join('')
-                    .toUpperCase()}
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  {(() => {
+                    // Show photo if available
+                    if (employee.photo_url) {
+                      return (
+                        <img
+                          src={employee.photo_url}
+                          alt={employee.full_name}
+                          className="size-[50px] rounded-full object-cover"
+                        />
+                      );
+                    }
+                    // Show template avatar if selected
+                    if (employee.avatar_id) {
+                      const avatar = TEMPLATE_AVATARS.find(a => a.id === employee.avatar_id);
+                      if (avatar) {
+                        return (
+                          <div className="relative">
+                            <img
+                              src={avatar.image}
+                              alt={`Аватарка ${employee.avatar_id}`}
+                              className="size-[50px] rounded-full object-cover"
+                              onError={(e) => {
+                                // Fallback to initials if image fails
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const fallback = target.parentElement?.querySelector('.avatar-fallback') as HTMLElement;
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
+                            <div className="avatar-fallback size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-base hidden">
+                              {employee.full_name
+                                .split(' ')
+                                .map(n => n[0])
+                                .slice(0, 2)
+                                .join('')
+                                .toUpperCase()}
+                            </div>
+                          </div>
+                        );
+                      }
+                    }
+                    // Default to initials
+                    return (
+                      <div className="size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-base">
+                        {employee.full_name
+                          .split(' ')
+                          .map(n => n[0])
+                          .slice(0, 2)
+                          .join('')
+                          .toUpperCase()}
+                      </div>
+                    );
+                  })()}
+                  <div>
+                    <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
+                      {employee.full_name}
+                    </h3>
+                    <p className="text-sm text-[#e16546] leading-[1.2] mt-1">
+                      {employee.position}
+                    </p>
+                    <div className="mt-2">
+                      {getStatusBadge(employee.status)}
+                    </div>
+                  </div>
                 </div>
+                <button
+                  onClick={() => setShowEditModal(true)}
+                  className="bg-[#e16546] px-[17px] py-3 rounded-[40px] flex items-center gap-2 text-sm font-medium text-white hover:bg-[#d15536] transition-colors"
+                >
+                  <Edit className="w-4 h-4" />
+                  Редактировать профиль
+                </button>
+              </div>
+
+              {/* Additional Info */}
+              <div className="mt-6 grid grid-cols-2 gap-4 pt-4 border-t border-[#eeeeee]">
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
-                    {employee.full_name}
-                  </h3>
-                  <p className="text-sm text-[#e16546] leading-[1.2] mt-1">
-                    {employee.position}
+                  <p className="text-xs text-[#959595] mb-1 leading-[1.2]">Часовой пояс</p>
+                  <p className="text-sm font-medium text-[#1a1a1a] leading-[1.2]">
+                    {employee.tz || "Europe/Moscow"}
                   </p>
                 </div>
+                {employee.telegram_user_id && (
+                  <div>
+                    <p className="text-xs text-[#959595] mb-1 leading-[1.2]">Telegram ID</p>
+                    <p className="text-sm font-mono text-[#1a1a1a] leading-[1.2]">
+                      {employee.telegram_user_id}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -236,7 +334,7 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
             {/* 3. История */}
             <div className="bg-[#f8f8f8] rounded-[20px] p-4">
               <div className="flex items-center gap-2 mb-4">
-                <CalendarIcon className="w-5 h-5 text-[#1a1a1a]" />
+                <Calendar className="w-5 h-5 text-[#1a1a1a]" />
                 <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
                   История работы
                 </h3>
@@ -248,7 +346,7 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
                 onClick={() => setShowHistoryModal(true)}
                 className="w-full bg-white px-[17px] py-3 rounded-[40px] flex items-center justify-center gap-2 text-sm font-medium text-[#1a1a1a] hover:bg-[#eeeeee] transition-colors border border-[#eeeeee]"
               >
-                <CalendarIcon className="w-4 h-4" />
+                <Calendar className="w-4 h-4" />
                 Открыть историю
               </button>
             </div>
@@ -266,50 +364,61 @@ export function EmployeeProfileModal({ open, onOpenChange, employee }: EmployeeP
         }}
       />
 
-      {/* History Modal */}
+      {/* History Modal - TODO: Implement detailed calendar view */}
       <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0">
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
-              <CalendarIcon className="w-5 h-5 text-[#1a1a1a]" />
+              <Calendar className="w-5 h-5 text-[#1a1a1a]" />
               История работы - {employee.full_name}
             </DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4 mt-4">
-            {/* Legend */}
+            {/* Info Card */}
             <div className="bg-[#f8f8f8] rounded-[20px] p-4">
-              <h4 className="text-sm font-semibold text-[#1a1a1a] mb-3 leading-[1.2]">
-                Легенда календаря
-              </h4>
-              <div className="grid grid-cols-4 gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="size-6 rounded-full bg-[rgba(52,199,89,0.08)] border-2 border-[#34c759]"></div>
-                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">🟢 Работал</span>
+              <div className="flex items-start gap-3">
+                <div className="bg-white rounded-full size-10 flex items-center justify-center flex-shrink-0">
+                  <AlertCircle className="w-5 h-5 text-[#e16546]" />
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="size-6 rounded-full bg-[rgba(255,204,0,0.08)] border-2 border-[#ffcc00]"></div>
-                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">🟡 Опоздание</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="size-6 rounded-full bg-[rgba(255,0,0,0.08)] border-2 border-[#ff0006]"></div>
-                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">🔴 Пропуск</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="size-6 rounded-full bg-white border-2 border-[#eeeeee]"></div>
-                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">⚪️ Выходной</span>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-[#1a1a1a] mb-1 leading-[1.2]">
+                    Функция в разработке
+                  </h4>
+                  <p className="text-sm text-[#959595] leading-[1.2]">
+                    Календарь с детальной историей работы будет реализован в следующей версии.
+                    Здесь будет отображаться календарь по месяцам с отмеченными рабочими днями,
+                    пропусками, опозданиями и выходными.
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Calendar */}
-            {shiftsLoading ? (
-              <div className="bg-[#f8f8f8] rounded-[20px] p-4">
-                <Skeleton className="h-[400px] w-full rounded-[12px]" />
+            {/* Legend Preview */}
+            <div className="bg-[#f8f8f8] rounded-[20px] p-4">
+              <h4 className="text-sm font-semibold text-[#1a1a1a] mb-3 leading-[1.2]">
+                Легенда календаря
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="size-6 rounded-full bg-[rgba(52,199,89,0.08)] border-2 border-[#34c759]"></div>
+                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">Рабочий день</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="size-6 rounded-full bg-[rgba(255,204,0,0.08)] border-2 border-[#ffcc00]"></div>
+                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">Опоздание</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="size-6 rounded-full bg-[rgba(255,0,0,0.08)] border-2 border-[#ff0006]"></div>
+                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">Пропуск</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="size-6 rounded-full bg-white border-2 border-[#eeeeee]"></div>
+                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">Выходной</span>
+                </div>
               </div>
-            ) : (
-              <WorkHistoryCalendar employeeId={employee.id} shifts={shifts} />
-            )}
+
+            </div>
           </div>
         </DialogContent>
       </Dialog>
