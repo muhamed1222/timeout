@@ -284,7 +284,7 @@ export default function Reports() {
                       {report.done_items && report.done_items.length > 0 && (
                         <>
                           {report.done_items.map((item, index) => (
-                            <p key={index} className={index < report.done_items.length - 1 ? 'mb-[10px]' : ''}>
+                            <p key={index} className={index < (report.done_items?.length ?? 0) - 1 ? 'mb-[10px]' : ''}>
                               {index + 1}. {item}
                             </p>
                           ))}

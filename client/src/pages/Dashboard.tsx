@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 import DashboardStats from "@/components/DashboardStats";
 import { ShiftsTable } from "@/components/ShiftsTable";
 import { EfficiencyAnalytics } from "@/components/EfficiencyAnalytics";

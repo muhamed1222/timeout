@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus, Loader2, QrCode, Copy, Check, Trash2, Phone, Mail, Edit, Trash } from "lucide-react";
+import { Search, Plus, Loader2, QrCode, Copy, Check, Trash2, Edit, Trash } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -333,26 +333,8 @@ export default function Employees() {
                 </div>
               </div>
 
-              {/* Bottom section: Phone, Email, ID */}
+              {/* Bottom section: ID */}
               <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-1.5">
-                  {employee.phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5 text-[#959595]" />
-                      <span className="text-sm text-[#959595] leading-[1.2]">
-                        {employee.phone}
-                      </span>
-                    </div>
-                  )}
-                  {employee.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5 text-[#959595]" />
-                      <span className="text-sm text-[#959595] leading-[1.2]">
-                        {employee.email}
-                      </span>
-                  </div>
-                )}
-                </div>
                 <div className="bg-white rounded-[20px] px-[10px] py-1 inline-flex items-center justify-center w-fit">
                   <span className="text-sm text-[#565656] leading-[1.2]">
                     ID: {employee.id.slice(0, 8)}
