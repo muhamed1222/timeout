@@ -51,7 +51,7 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
   const { companyId } = useAuth();
   const queryClient = useQueryClient();
   
-  // Fetch fresh employee data when modal opens
+  // Fetch fresh employee data when modal opens, but use cache if available
   const { data: freshEmployee } = useQuery<Employee>({
     queryKey: ["/api/employees", employee?.id],
     queryFn: async () => {
@@ -61,7 +61,8 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
       return response.json();
     },
     enabled: !!employee?.id && open,
-    staleTime: 0, // Always fetch fresh data when modal opens
+    staleTime: 1000 * 30, // Consider data fresh for 30 seconds
+    gcTime: 1000 * 60 * 5, // Keep in cache for 5 minutes
   });
   
   // Use fresh employee data if available, otherwise use prop
@@ -379,20 +380,22 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
         employee={displayEmployee}
         onSuccess={async () => {
           setShowEditModal(false);
-          // Refetch employee data to get updated avatar
-          await queryClient.invalidateQueries({ queryKey: ["/api/employees", displayEmployee?.id] });
-          // Fetch fresh data and update parent
-          if (displayEmployee?.id && onEmployeeUpdated) {
-            try {
-              const response = await fetch(`/api/employees/${displayEmployee.id}`);
-              if (response.ok) {
-                const updatedEmployee = await response.json();
-                onEmployeeUpdated(updatedEmployee);
+          // Wait a bit for the cache to update, then refetch
+          setTimeout(async () => {
+            await queryClient.invalidateQueries({ queryKey: ["/api/employees", displayEmployee?.id] });
+            // Fetch fresh data and update parent
+            if (displayEmployee?.id && onEmployeeUpdated) {
+              try {
+                const response = await fetch(`/api/employees/${displayEmployee.id}`);
+                if (response.ok) {
+                  const updatedEmployee = await response.json();
+                  onEmployeeUpdated(updatedEmployee);
+                }
+              } catch (error) {
+                console.error('Failed to fetch updated employee:', error);
               }
-            } catch (error) {
-              console.error('Failed to fetch updated employee:', error);
             }
-          }
+          }, 600);
         }}
       />
 

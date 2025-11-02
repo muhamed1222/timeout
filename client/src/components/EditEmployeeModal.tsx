@@ -91,6 +91,13 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
       // Always include avatar_id - null if not selected, number if selected
       body.avatar_id = data.avatarId ?? null;
 
+      // If avatar_id is null (no avatar selected), explicitly clear photo_url
+      // This ensures that when user removes avatar, both fields are cleared
+      if (data.avatarId === null || data.avatarId === undefined) {
+        body.photo_url = null;
+      }
+      
+      // If explicitly clearing photo (user removed uploaded photo), clear photo_url
       if (data.clearPhoto) {
         body.photo_url = null;
       }
@@ -116,15 +123,22 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
     onSuccess: (data) => {
       console.log('Update successful, received data:', data);
       
+      // Ensure data has correct avatar fields
+      const updatedData = {
+        ...data,
+        avatar_id: data.avatar_id ?? null,
+        photo_url: data.photo_url ?? null,
+      };
+      
       // Update employee in the employees list cache
-      if (data && employee) {
+      if (updatedData && employee) {
         queryClient.setQueriesData(
           { queryKey: ["/api/companies", companyId, "employees"] },
           (old: any) => {
             if (!old || !Array.isArray(old)) return old;
             return old.map((emp: any) => 
               emp.id === employee.id 
-                ? { ...emp, ...data, avatar_id: data.avatar_id ?? null, photo_url: data.photo_url ?? null }
+                ? { ...emp, ...updatedData }
                 : emp
             );
           }
@@ -133,15 +147,18 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
         // Also update individual employee cache
         queryClient.setQueryData(["/api/employees", employee.id], (old: any) => {
           if (old) {
-            return { ...old, ...data, avatar_id: data.avatar_id ?? null, photo_url: data.photo_url ?? null };
+            return { ...old, ...updatedData };
           }
-          return { ...data, avatar_id: data.avatar_id ?? null, photo_url: data.photo_url ?? null };
+          return updatedData;
         });
       }
       
-      // Invalidate queries to refresh data from server
-      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "employees"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/employees", employee?.id] });
+      // Invalidate queries after a short delay to allow server to process
+      // This ensures the server has time to save the changes before refetching
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "employees"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/employees", employee?.id] });
+      }, 500);
       
       toast({
         title: "Успешно",
@@ -242,14 +259,15 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
 
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
 
+    // Determine if we're clearing photo (user removed photo or selected avatar)
+    const isClearingPhoto = (!!initialPhotoUrl && !photo && !photoFile && !selectedAvatarId);
+
     updateEmployeeMutation.mutate({
       full_name: fullName,
       position: position.trim(),
       photo: photoFile || undefined,
       avatarId: selectedAvatarId,
-      clearPhoto:
-        (!!initialPhotoUrl && !photo && !photoFile) ||
-        (selectedAvatarId !== null && selectedAvatarId !== undefined),
+      clearPhoto: isClearingPhoto,
     });
   };
 
