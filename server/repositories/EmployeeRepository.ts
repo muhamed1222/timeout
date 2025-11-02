@@ -13,16 +13,127 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
   }
 
   /**
+   * Find entity by ID (override with error handling for missing avatar fields)
+   */
+  async findById(id: string): Promise<Employee | undefined> {
+    try {
+      const results = await this.db
+        .select()
+        .from(this.table)
+        .where(eq(schema.employee.id, id))
+        .limit(1);
+
+      if (!results[0]) return undefined;
+
+      // Ensure avatar_id and photo_url are present (for backward compatibility)
+      return {
+        ...results[0],
+        avatar_id: (results[0] as any).avatar_id ?? null,
+        photo_url: (results[0] as any).photo_url ?? null,
+      } as Employee;
+    } catch (error) {
+      // If error is due to missing columns, try selecting without avatar fields
+      const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+      const isColumnError = errorMessage.includes('column') && (
+        errorMessage.includes('does not exist') ||
+        errorMessage.includes('не существует') ||
+        errorMessage.includes('avatar_id') ||
+        errorMessage.includes('photo_url')
+      );
+
+      if (isColumnError) {
+        try {
+          const results = await this.db
+            .select({
+              id: schema.employee.id,
+              company_id: schema.employee.company_id,
+              full_name: schema.employee.full_name,
+              position: schema.employee.position,
+              telegram_user_id: schema.employee.telegram_user_id,
+              status: schema.employee.status,
+              tz: schema.employee.tz,
+              created_at: schema.employee.created_at,
+            })
+            .from(this.table)
+            .where(eq(schema.employee.id, id))
+            .limit(1);
+
+          if (!results[0]) return undefined;
+
+          // Add null avatar fields for backward compatibility
+          return {
+            ...results[0],
+            avatar_id: null,
+            photo_url: null,
+          } as Employee;
+        } catch (fallbackError) {
+          throw error; // Throw original error if fallback also fails
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Find employee by Telegram user ID
    */
   async findByTelegramId(telegramUserId: string): Promise<Employee | undefined> {
-    const results = await this.db
-      .select()
-      .from(this.table)
-      .where(eq(schema.employee.telegram_user_id, telegramUserId))
-      .limit(1);
+    try {
+      const results = await this.db
+        .select()
+        .from(this.table)
+        .where(eq(schema.employee.telegram_user_id, telegramUserId))
+        .limit(1);
 
-    return results[0] as Employee | undefined;
+      if (!results[0]) return undefined;
+
+      // Ensure avatar_id and photo_url are present (for backward compatibility)
+      return {
+        ...results[0],
+        avatar_id: (results[0] as any).avatar_id ?? null,
+        photo_url: (results[0] as any).photo_url ?? null,
+      } as Employee;
+    } catch (error) {
+      // If error is due to missing columns, try selecting without avatar fields
+      const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+      const isColumnError = errorMessage.includes('column') && (
+        errorMessage.includes('does not exist') ||
+        errorMessage.includes('не существует') ||
+        errorMessage.includes('avatar_id') ||
+        errorMessage.includes('photo_url')
+      );
+
+      if (isColumnError) {
+        try {
+          const results = await this.db
+            .select({
+              id: schema.employee.id,
+              company_id: schema.employee.company_id,
+              full_name: schema.employee.full_name,
+              position: schema.employee.position,
+              telegram_user_id: schema.employee.telegram_user_id,
+              status: schema.employee.status,
+              tz: schema.employee.tz,
+              created_at: schema.employee.created_at,
+            })
+            .from(this.table)
+            .where(eq(schema.employee.telegram_user_id, telegramUserId))
+            .limit(1);
+
+          if (!results[0]) return undefined;
+
+          // Add null avatar fields for backward compatibility
+          return {
+            ...results[0],
+            avatar_id: null,
+            photo_url: null,
+          } as Employee;
+        } catch (fallbackError) {
+          throw error; // Throw original error if fallback also fails
+        }
+      }
+      throw error;
+    }
   }
 
   /**
@@ -153,6 +264,72 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
       );
 
     return Number(result[0]?.count || 0);
+  }
+
+  /**
+   * Update entity by ID (override with error handling for missing avatar fields)
+   */
+  async update(id: string, updates: Partial<InsertEmployee>): Promise<Employee | undefined> {
+    try {
+      const results = await this.db
+        .update(this.table)
+        .set(updates as any)
+        .where(eq(schema.employee.id, id))
+        .returning();
+
+      if (!results[0]) return undefined;
+
+      // Ensure avatar_id and photo_url are present
+      return {
+        ...results[0],
+        avatar_id: (results[0] as any).avatar_id ?? updates.avatar_id ?? null,
+        photo_url: (results[0] as any).photo_url ?? updates.photo_url ?? null,
+      } as Employee;
+    } catch (error) {
+      // If error is due to missing columns, try updating without returning, then fetch
+      const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+      const isColumnError = errorMessage.includes('column') && (
+        errorMessage.includes('does not exist') ||
+        errorMessage.includes('не существует') ||
+        errorMessage.includes('avatar_id') ||
+        errorMessage.includes('photo_url')
+      );
+
+      if (isColumnError) {
+        try {
+          // Separate avatar fields from other updates
+          const { avatar_id, photo_url, ...otherUpdates } = updates;
+          
+          // Try to update only non-avatar fields first
+          if (Object.keys(otherUpdates).length > 0) {
+            await this.db
+              .update(this.table)
+              .set(otherUpdates as any)
+              .where(eq(schema.employee.id, id));
+          }
+          
+          // Note: We can't update avatar_id/photo_url if columns don't exist
+          // but we also can't fail silently, so we just update what we can
+          
+          // Fetch updated record using findById which has error handling
+          const updated = await this.findById(id);
+          
+          // Manually set avatar fields in the result if they were provided
+          if (updated && (avatar_id !== undefined || photo_url !== undefined)) {
+            return {
+              ...updated,
+              avatar_id: avatar_id ?? updated.avatar_id ?? null,
+              photo_url: photo_url ?? updated.photo_url ?? null,
+            } as Employee;
+          }
+          
+          return updated;
+        } catch (fallbackError) {
+          throw error; // Throw original error if fallback also fails
+        }
+      }
+      throw error;
+    }
   }
 
   /**

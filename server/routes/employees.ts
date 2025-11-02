@@ -17,35 +17,67 @@ router.post("/", validateBody(createEmployeeSchema), asyncHandler(async (req, re
 
 // Get employee by ID
 router.get("/:id", validateParams(employeeIdParamSchema), asyncHandler(async (req, res) => {
-  const employee = await repositories.employee.findById(req.params.id);
-  if (!employee) {
-    throw new NotFoundError("Employee");
+  try {
+    const employee = await repositories.employee.findById(req.params.id);
+    if (!employee) {
+      throw new NotFoundError("Employee");
+    }
+    // Ensure avatar fields are present
+    const employeeWithDefaults = {
+      ...employee,
+      avatar_id: employee.avatar_id ?? null,
+      photo_url: employee.photo_url ?? null,
+    };
+    res.json(employeeWithDefaults);
+  } catch (error) {
+    logger.error("Error fetching employee by ID", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      employeeId: req.params.id,
+    });
+    throw error;
   }
-  res.json(employee);
 }));
 
 // Update employee
 router.put("/:id", validateParams(employeeIdParamSchema), validateBody(updateEmployeeSchema), asyncHandler(async (req, res) => {
-  logger.info('Updating employee', { 
-    id: req.params.id, 
-    body: req.body,
-    avatar_id: req.body.avatar_id,
-    full_name: req.body.full_name 
-  });
-  
-  const employee = await repositories.employee.update(req.params.id, req.body as any);
-  if (!employee) {
-    throw new NotFoundError("Employee");
+  try {
+    logger.info('Updating employee', { 
+      id: req.params.id, 
+      body: req.body,
+      avatar_id: req.body.avatar_id,
+      full_name: req.body.full_name 
+    });
+    
+    const employee = await repositories.employee.update(req.params.id, req.body as any);
+    if (!employee) {
+      throw new NotFoundError("Employee");
+    }
+    
+    // Ensure avatar fields are present
+    const employeeWithDefaults = {
+      ...employee,
+      avatar_id: employee.avatar_id ?? null,
+      photo_url: employee.photo_url ?? null,
+    };
+    
+    logger.info('Employee updated', { 
+      id: employeeWithDefaults.id,
+      full_name: employeeWithDefaults.full_name,
+      avatar_id: employeeWithDefaults.avatar_id,
+      photo_url: employeeWithDefaults.photo_url
+    });
+    
+    res.json(employeeWithDefaults);
+  } catch (error) {
+    logger.error("Error updating employee", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      employeeId: req.params.id,
+      body: req.body,
+    });
+    throw error;
   }
-  
-  logger.info('Employee updated', { 
-    id: employee.id,
-    full_name: employee.full_name,
-    avatar_id: (employee as any).avatar_id,
-    photo_url: (employee as any).photo_url
-  });
-  
-  res.json(employee);
 }));
 
 // Delete employee
@@ -62,13 +94,14 @@ router.delete("/:id", validateParams(employeeIdParamSchema), asyncHandler(async 
 
 // Get employee statistics
 router.get("/:id/stats", validateParams(employeeIdParamSchema), asyncHandler(async (req, res) => {
-  const employee = await repositories.employee.findById(req.params.id);
-  if (!employee) {
-    throw new NotFoundError("Employee");
-  }
+  try {
+    const employee = await repositories.employee.findById(req.params.id);
+    if (!employee) {
+      throw new NotFoundError("Employee");
+    }
 
-  // Get all shifts for this employee
-  const shifts = await repositories.shift.findByEmployeeId(req.params.id, 1000);
+    // Get all shifts for this employee
+    const shifts = await repositories.shift.findByEmployeeId(req.params.id, 1000);
   
   // Calculate statistics
   const totalShifts = shifts.length;
@@ -105,14 +138,22 @@ router.get("/:id/stats", validateParams(employeeIdParamSchema), asyncHandler(asy
   const efficiencyScore = Math.max(0, completedShifts - lateCount * 0.5 - absenceCount * 2);
   const efficiencyIndex = totalShifts > 0 ? (efficiencyScore / totalShifts) * 100 : 0;
 
-  res.json({
-    efficiency_index: Math.min(100, Math.max(0, efficiencyIndex)),
-    total_shifts: totalShifts,
-    completed_shifts: completedShifts,
-    late_count: lateCount,
-    absence_count: absenceCount,
-    avg_work_hours: avgWorkHours,
-  });
+    res.json({
+      efficiency_index: Math.min(100, Math.max(0, efficiencyIndex)),
+      total_shifts: totalShifts,
+      completed_shifts: completedShifts,
+      late_count: lateCount,
+      absence_count: absenceCount,
+      avg_work_hours: avgWorkHours,
+    });
+  } catch (error) {
+    logger.error("Error fetching employee stats", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      employeeId: req.params.id,
+    });
+    throw error;
+  }
 }));
 
 // Get employee by Telegram ID
