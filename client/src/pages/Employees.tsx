@@ -1,29 +1,19 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus, Loader2, QrCode, Copy, Check, Trash2, Edit, Trash } from "lucide-react";
+import { Plus, Loader2, QrCode, Copy, Check, Trash2, Edit, Trash } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient, queryConfig } from "@/lib/queryClient";
 import { AddEmployeeModal } from "@/components/AddEmployeeModal";
 import { EmployeeProfileModal } from "@/components/EmployeeProfileModal";
-import { ErrorState } from "@/components/ErrorBoundary";
 import { EmployeeListSkeleton } from "@/components/LoadingSkeletons";
-import { useRetry } from "@/hooks/useRetry";
-import { getContextErrorMessage } from "@/lib/errorMessages";
 import { useSearchShortcut } from "@/hooks/useKeyboardShortcuts";
-import { useRef } from "react";
 import { useOptimisticDeleteInvite, useOptimisticDeleteEmployee } from "@/hooks/useOptimisticMutations";
 import { getEmployeeAvatarUrl, getEmployeeInitials } from "@/lib/employeeAvatar";
 
@@ -54,17 +44,11 @@ type InviteLink = {
   qr_code_url: string;
 };
 
-const inviteFormSchema = z.object({
-  full_name: z.string().min(1, "Введите имя сотрудника"),
-  position: z.string().min(1, "Введите должность"),
-  tz: z.string().default("Europe/Moscow")
-});
-
-type InviteFormValues = z.infer<typeof inviteFormSchema>;
+// Invite form is handled by AddEmployeeModal component
+// Schema and types are no longer needed here
 
 export default function Employees() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [searchQuery] = useState('');
   const [selectedInvite, setSelectedInvite] = useState<InviteLink | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
@@ -79,14 +63,15 @@ export default function Employees() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   useSearchShortcut(searchInputRef);
 
-  const handleAddEmployee = () => {
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+  const handleAddEmployee = (): void => {
     setShowAddEmployeeModal(true);
   };
 
   // Оптимистичная мутация для удаления приглашения
   const deleteInviteMutation = useOptimisticDeleteInvite();
 
-  const handleDeleteInvite = (inviteId: string) => {
+  const handleDeleteInvite = (inviteId: string): void => {
     deleteInviteMutation.mutate(inviteId, {
       onSuccess: () => {
         toast({
@@ -107,12 +92,12 @@ export default function Employees() {
   // Оптимистичная мутация для удаления сотрудника
   const deleteEmployeeMutation = useOptimisticDeleteEmployee();
 
-  const handleDeleteEmployee = (employee: Employee) => {
+  const handleDeleteEmployee = (employee: Employee): void => {
     setEmployeeToDelete(employee);
     setShowDeleteDialog(true);
   };
 
-  const confirmDeleteEmployee = () => {
+  const confirmDeleteEmployee = (): void => {
     if (employeeToDelete) {
       deleteEmployeeMutation.mutate(employeeToDelete.id, {
         onSuccess: () => {
@@ -136,13 +121,17 @@ export default function Employees() {
 
   const { data: employees = [], isLoading: employeesLoading, refetch: refetchEmployees } = useQuery<Employee[]>({
     queryKey: ['/api/companies', companyId, 'employees'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/companies/${companyId}/employees`);
+      return response.json();
+    },
     enabled: !!companyId,
     ...queryConfig.employees,
     // Регулярно обновляем список сотрудников, чтобы отобразить тех, кто подключился через Telegram
     refetchInterval: 5000,
   });
 
-  const { data: invites = [], isLoading: invitesLoading, refetch: refetchInvites } = useQuery<EmployeeInvite[]>({
+  const { data: invites = [], refetch: refetchInvites } = useQuery<EmployeeInvite[]>({
     queryKey: ['/api/companies', companyId, 'employee-invites'],
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/companies/${companyId}/employee-invites`);
@@ -154,39 +143,10 @@ export default function Employees() {
     refetchInterval: 5000,
   });
 
-  const createInviteMutation = useMutation({
-    mutationFn: async (data: InviteFormValues): Promise<EmployeeInvite> => {
-      const response = await apiRequest('POST', `/api/employee-invites`, { ...data, company_id: companyId });
-      return response.json();
-    },
-    onSuccess: (data: EmployeeInvite) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'employee-invites'] });
-      form.reset();
-      fetchInviteLink(data.code);
-      toast({
-        title: "Приглашение создано",
-        description: "Инвайт-код успешно создан"
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось создать приглашение",
-        variant: "destructive"
-      });
-    }
-  });
+  // Invite creation is handled by AddEmployeeModal component
+  // No need for createInviteMutation or form here
 
-  const form = useForm<InviteFormValues>({
-    resolver: zodResolver(inviteFormSchema),
-    defaultValues: {
-      full_name: "",
-      position: "",
-      tz: "Europe/Moscow"
-    }
-  });
-
-  const fetchInviteLink = async (code: string) => {
+  const fetchInviteLink = async (code: string): Promise<void> => {
     try {
       const response = await apiRequest('GET', `/api/employee-invites/${code}/link`);
       const data = await response.json();
@@ -203,16 +163,19 @@ export default function Employees() {
           : errorMessage,
         variant: "destructive"
       });
+      // eslint-disable-next-line no-console
       console.error('Error fetching invite link:', error);
     }
   };
 
-  const onSubmit = (data: InviteFormValues) => {
-    createInviteMutation.mutate(data);
-  };
+  // Form submission is handled by AddEmployeeModal
+  // const onSubmit = (data: InviteFormValues) => {
+  //   createInviteMutation.mutate(data);
+  // };
 
-  const handleCopyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
+  const handleCopyCode = (code: string): void => {
+    // eslint-disable-next-line no-undef
+    void navigator.clipboard.writeText(code);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
     toast({
@@ -221,8 +184,9 @@ export default function Employees() {
     });
   };
 
-  const handleCopyLink = (link: string) => {
-    navigator.clipboard.writeText(link);
+  const handleCopyLink = (link: string): void => {
+    // eslint-disable-next-line no-undef
+    void navigator.clipboard.writeText(link);
     toast({
       title: "Скопировано",
       description: "Ссылка скопирована в буфер обмена"
@@ -235,10 +199,6 @@ export default function Employees() {
   );
 
   const activeInvites = invites.filter(inv => !inv.used_at);
-
-  // Retry hooks
-  const employeesRetry = useRetry(['/api/companies', companyId, 'employees']);
-  const invitesRetry = useRetry(['/api/companies', companyId, 'employee-invites']);
 
   // Loading state
   if (authLoading || employeesLoading) {
@@ -364,7 +324,9 @@ export default function Employees() {
                     <Button
                       size="icon"
                       variant="outline"
-                      onClick={() => handleCopyCode(invite.code)}
+                      onClick={(): void => {
+                        void handleCopyCode(invite.code);
+                      }}
                       data-testid={`button-copy-invite-${invite.id}`}
                     >
                       <Copy className="w-3 h-3" />
@@ -383,7 +345,9 @@ export default function Employees() {
                     variant="outline"
                     size="sm"
                     className="w-full"
-                    onClick={() => fetchInviteLink(invite.code)}
+                    onClick={(): void => {
+                      void fetchInviteLink(invite.code);
+                    }}
                     data-testid={`button-show-qr-${invite.id}`}
                   >
                     <QrCode className="w-4 h-4 mr-2" />
@@ -446,7 +410,9 @@ export default function Employees() {
                   <Button
                     size="icon"
                     variant="outline"
-                    onClick={() => handleCopyCode(selectedInvite.code)}
+                    onClick={(): void => {
+                      void handleCopyCode(selectedInvite.code);
+                    }}
                     data-testid="button-copy-code"
                   >
                     {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -467,7 +433,9 @@ export default function Employees() {
                   <Button
                     size="icon"
                     variant="outline"
-                    onClick={() => handleCopyLink(selectedInvite.deep_link)}
+                    onClick={() => {
+                      void handleCopyLink(selectedInvite.deep_link);
+                    }}
                     data-testid="button-copy-link"
                   >
                     <Copy className="w-4 h-4" />
@@ -501,7 +469,7 @@ export default function Employees() {
           // Update employee in the list
           queryClient.setQueriesData(
             { queryKey: ['/api/companies', companyId, 'employees'] },
-            (old: any) => {
+            (old: Employee[] | unknown) => {
               if (!old || !Array.isArray(old)) return old;
               return old.map((emp: Employee) => 
                 emp.id === updatedEmployee.id ? updatedEmployee : emp
