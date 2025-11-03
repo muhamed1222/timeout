@@ -40,13 +40,48 @@ export default function Dashboard() {
     ...queryConfig.dashboard,
     queryKey: ['/api/companies', companyId, 'stats'],
     queryFn: async () => {
-      const res = await fetch(`/api/companies/${companyId}/stats`);
-      if (!res.ok) throw new Error('Failed to fetch stats');
-      return res.json();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 seconds timeout
+      
+      try {
+        const res = await fetch(`/api/companies/${companyId}/stats`, {
+          signal: controller.signal,
+          credentials: 'include',
+        });
+        clearTimeout(timeoutId);
+        
+        if (!res.ok) {
+          // If we get a 503 with fallback data, use it
+          if (res.status === 503) {
+            const data = await res.json();
+            if (data.fallback) {
+              return data.fallback;
+            }
+          }
+          throw new Error(`Failed to fetch stats: ${res.status}`);
+        }
+        return res.json();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new Error('Request timeout - database unavailable');
+        }
+        throw error;
+      }
     },
     enabled: !!companyId,
     refetchInterval: 30000, // Refresh every 30 seconds
     staleTime: 20000,
+    retry: (failureCount, error) => {
+      // Don't retry on timeout or 503 errors
+      if (error instanceof Error && (
+        error.message.includes('timeout') || 
+        error.message.includes('unavailable')
+      )) {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
 
   // Fetch active shifts
@@ -54,13 +89,43 @@ export default function Dashboard() {
     ...queryConfig.live,
     queryKey: ['/api/companies', companyId, 'shifts', 'active'],
     queryFn: async () => {
-      const res = await fetch(`/api/companies/${companyId}/shifts/active`);
-      if (!res.ok) throw new Error('Failed to fetch shifts');
-      return res.json();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 seconds timeout
+      
+      try {
+        const res = await fetch(`/api/companies/${companyId}/shifts/active`, {
+          signal: controller.signal,
+          credentials: 'include',
+        });
+        clearTimeout(timeoutId);
+        
+        if (!res.ok) {
+          if (res.status === 503) {
+            // Return empty array on service unavailable
+            return [];
+          }
+          throw new Error(`Failed to fetch shifts: ${res.status}`);
+        }
+        return res.json();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === 'AbortError') {
+          // Return empty array on timeout instead of throwing
+          return [];
+        }
+        throw error;
+      }
     },
     enabled: !!companyId,
     refetchInterval: 30000,
     staleTime: 20000,
+    retry: (failureCount, error) => {
+      // Don't retry on timeout
+      if (error instanceof Error && error.message.includes('timeout')) {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
 
   // Fetch completed shifts for today

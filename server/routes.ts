@@ -46,7 +46,12 @@ function startInviteCleanup(): void {
   }, 30 * 1000); // Каждые 30 секунд
 }
 
+import { requestTimeout } from './middleware/timeout.js';
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Apply request timeout middleware (before everything else)
+  app.use("/api", requestTimeout(8000)); // 8 seconds timeout for API requests
+
   // Apply Prometheus metrics middleware (before rate limiter to track all requests)
   app.use("/api", metricsMiddleware);
 

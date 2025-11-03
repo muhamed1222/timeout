@@ -15,18 +15,57 @@ export function useAuth() {
     loading: true
   });
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const user = session?.user ?? null;
-      const companyId = user?.user_metadata?.company_id ?? null;
-      setAuthState({
-        user,
-        companyId,
-        loading: false
+        useEffect(() => {
+          let isMounted = true;
+    
+    // Set timeout for auth check (5 seconds)
+    const timeoutId: ReturnType<typeof setTimeout> = setTimeout(() => {
+      if (isMounted) {
+        setAuthState({
+          user: null,
+          companyId: null,
+          loading: false
+        });
+      }
+    }, 5000);
+
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        clearTimeout(timeoutId);
+        if (!isMounted) return;
+        
+        if (error) {
+          console.error('Auth error:', error);
+          setAuthState({
+            user: null,
+            companyId: null,
+            loading: false
+          });
+          return;
+        }
+
+        const user = session?.user ?? null;
+        const companyId = user?.user_metadata?.company_id ?? null;
+        setAuthState({
+          user,
+          companyId,
+          loading: false
+        });
+      })
+      .catch((error) => {
+        clearTimeout(timeoutId);
+        console.error('Auth check failed:', error);
+        if (isMounted) {
+          setAuthState({
+            user: null,
+            companyId: null,
+            loading: false
+          });
+        }
       });
-    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
       const user = session?.user ?? null;
       const companyId = user?.user_metadata?.company_id ?? null;
       setAuthState({
@@ -36,7 +75,11 @@ export function useAuth() {
       });
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   return authState;

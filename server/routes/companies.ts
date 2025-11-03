@@ -18,11 +18,42 @@ router.post("/", validateBody(createCompanySchema), asyncHandler(async (req, res
 
 // Get company by ID
 router.get("/:id", validateParams(companyIdParamSchema), asyncHandler(async (req, res) => {
-  const company = await repositories.company.findById(req.params.id);
-  if (!company) {
-    throw new NotFoundError("Company");
+  const timeout = setTimeout(() => {
+    if (!res.headersSent) {
+      logger.warn("Company fetch timeout", { companyId: req.params.id });
+      res.status(503).json({
+        error: "Request timeout",
+        message: "Database query took too long. Please try again."
+      });
+    }
+  }, 5000);
+
+  try {
+    const company = await Promise.race([
+      repositories.company.findById(req.params.id),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Database query timeout")), 4500)
+      ) as Promise<never>
+    ]);
+    
+    clearTimeout(timeout);
+    if (!company) {
+      throw new NotFoundError("Company");
+    }
+    res.json(company);
+  } catch (error) {
+    clearTimeout(timeout);
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+    if (!res.headersSent) {
+      logger.error("Error fetching company", error);
+      res.status(503).json({
+        error: "Database unavailable",
+        message: "Unable to fetch company. Please try again later."
+      });
+    }
   }
-  res.json(company);
 }));
 
 // Update company
@@ -36,51 +67,81 @@ router.put("/:id", validateParams(companyIdParamSchema), validateBody(updateComp
 
 // Get company statistics (with caching)
 router.get("/:companyId/stats", async (req, res) => {
+  // Set timeout for the entire request (5 seconds)
+  const timeout = setTimeout(() => {
+    if (!res.headersSent) {
+      logger.warn("Company stats request timeout", { companyId: req.params.companyId });
+      res.status(503).json({
+        error: "Request timeout",
+        message: "Database query took too long. Please try again.",
+        fallback: {
+          totalEmployees: 0,
+          activeShifts: 0,
+          completedShifts: 0,
+          exceptions: 0,
+        }
+      });
+    }
+  }, 5000);
+
   try {
     const { companyId } = req.params;
     const cacheKey = `company:${companyId}:stats`;
     
     // Use cache utility with async cache
-    const stats = await getOrSet(
-      cacheKey,
-      async () => {
-        const employees = await repositories.employee.findByCompanyId(companyId);
-        const activeShifts = await repositories.shift.findActiveByCompanyId(companyId);
-        await repositories.exception.findByCompanyId(companyId);
-        const violations = await repositories.violation.findViolationsByCompany(companyId);
-        
-        const today = new Date().toISOString().split("T")[0];
-        const todayShifts = activeShifts.filter(shift => {
-          const start = new Date((shift as any).planned_start_at);
-          if (isNaN(start.getTime())) {
-            return false;
-          }
-          return start.toISOString().split("T")[0] === today;
-        });
-        
-        const completedShifts = todayShifts.filter(shift => shift.status === "completed").length;
-        
-        return {
-          totalEmployees: employees.length,
-          activeShifts: activeShifts.length,
-          completedShifts,
-          // Frontend ожидает поле exceptions, используем количество нарушений
-          exceptions: violations.length,
-        };
-      },
-      120, // Cache for 2 minutes
-    );
+    const stats = await Promise.race([
+      getOrSet(
+        cacheKey,
+        async () => {
+          const employees = await repositories.employee.findByCompanyId(companyId);
+          const activeShifts = await repositories.shift.findActiveByCompanyId(companyId);
+          await repositories.exception.findByCompanyId(companyId);
+          const violations = await repositories.violation.findViolationsByCompany(companyId);
+          
+          const today = new Date().toISOString().split("T")[0];
+          const todayShifts = activeShifts.filter(shift => {
+            const start = new Date((shift as any).planned_start_at);
+            if (isNaN(start.getTime())) {
+              return false;
+            }
+            return start.toISOString().split("T")[0] === today;
+          });
+          
+          const completedShifts = todayShifts.filter(shift => shift.status === "completed").length;
+          
+          return {
+            totalEmployees: employees.length,
+            activeShifts: activeShifts.length,
+            completedShifts,
+            // Frontend ожидает поле exceptions, используем количество нарушений
+            exceptions: violations.length,
+          };
+        },
+        120, // Cache for 2 minutes
+      ),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Database query timeout")), 4500)
+      ) as Promise<never>
+    ]);
     
+    clearTimeout(timeout);
     res.json(stats);
   } catch (error) {
+    clearTimeout(timeout);
     logger.error("Error fetching company stats", error);
     // Soft fallback to keep UI functional even if storage fails
-    res.json({
-      totalEmployees: 0,
-      activeShifts: 0,
-      completedShifts: 0,
-      exceptions: 0,
-    });
+    if (!res.headersSent) {
+      res.status(503).json({
+        error: "Database unavailable",
+        message: "Unable to fetch statistics. Please try again later.",
+        fallback: {
+          totalEmployees: 0,
+          activeShifts: 0,
+          completedShifts: 0,
+          exceptions: 0,
+        }
+      });
+    }
   }
 });
 
