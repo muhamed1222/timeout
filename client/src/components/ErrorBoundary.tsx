@@ -1,5 +1,10 @@
+/**
+ * Компонент границы ошибок
+ * Перехватывает ошибки React и отображает fallback UI
+ */
+
 import React, { Component, ErrorInfo, ReactNode } from "react";
-import { Button } from "./ui/button";
+import { Button } from "@/ui/button";
 import { AlertCircle } from "lucide-react";
 
 interface Props {

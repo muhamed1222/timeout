@@ -1,4 +1,5 @@
 /**
+import "@testing-library/jest-dom/vitest";
  * Unit tests for StatusBadge component
  */
 

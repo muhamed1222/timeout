@@ -6,7 +6,7 @@
 
 import { useNetworkStatus } from "@/lib/errorHandling";
 import { WifiOff } from "lucide-react";
-import { Alert, AlertDescription } from "./ui/alert";
+import { Alert, AlertDescription } from "@/ui/alert";
 
 export function OfflineBanner() {
   const isOnline = useNetworkStatus();

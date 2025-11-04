@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/ui/input";
+import { Label } from "@/ui/label";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/ui/form";
 import { Loader2, Lock, Eye, EyeOff, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -107,7 +107,7 @@ export default function Security() {
             <FormField
               control={form.control}
               name="currentPassword"
-              render={({ field }) => (
+              render={({ field }: any) => (
                 <FormItem className="flex flex-col gap-1">
                   <FormLabel className="text-sm font-medium text-black leading-[1.2]">Текущий пароль</FormLabel>
                   <FormControl>
@@ -140,7 +140,7 @@ export default function Security() {
             <FormField
               control={form.control}
               name="newPassword"
-              render={({ field }) => (
+              render={({ field }: any) => (
                 <FormItem className="flex flex-col gap-1">
                   <FormLabel className="text-sm font-medium text-black leading-[1.2]">Новый пароль</FormLabel>
                   <FormControl>
@@ -173,7 +173,7 @@ export default function Security() {
             <FormField
               control={form.control}
               name="confirmPassword"
-              render={({ field }) => (
+              render={({ field }: any) => (
                 <FormItem className="flex flex-col gap-1">
                   <FormLabel className="text-sm font-medium text-black leading-[1.2]">Подтвердите новый пароль</FormLabel>
                   <FormControl>

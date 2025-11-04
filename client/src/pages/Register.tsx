@@ -12,7 +12,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
+} from "@/ui/form";
 import { Link } from "wouter";
 import { UserPlus, Loader2 } from "lucide-react";
 
@@ -132,7 +132,7 @@ export default function Register() {
               <FormField
                 control={form.control}
                 name="full_name"
-                render={({ field }) => (
+                render={({ field }: any) => (
                   <FormItem>
                     <FormLabel className="text-sm text-[#959595] leading-[1.2]">Полное имя</FormLabel>
                     <FormControl>
@@ -151,7 +151,7 @@ export default function Register() {
               <FormField
                 control={form.control}
                 name="company_name"
-                render={({ field }) => (
+                render={({ field }: any) => (
                   <FormItem>
                     <FormLabel className="text-sm text-[#959595] leading-[1.2]">Название компании</FormLabel>
                     <FormControl>
@@ -170,7 +170,7 @@ export default function Register() {
               <FormField
                 control={form.control}
                 name="email"
-                render={({ field }) => (
+                render={({ field }: any) => (
                   <FormItem>
                     <FormLabel className="text-sm text-[#959595] leading-[1.2]">Email</FormLabel>
                     <FormControl>
@@ -189,7 +189,7 @@ export default function Register() {
               <FormField
                 control={form.control}
                 name="password"
-                render={({ field }) => (
+                render={({ field }: any) => (
                   <FormItem>
                     <FormLabel className="text-sm text-[#959595] leading-[1.2]">Пароль</FormLabel>
                     <FormControl>
@@ -208,7 +208,7 @@ export default function Register() {
               <FormField
                 control={form.control}
                 name="password_confirm"
-                render={({ field }) => (
+                render={({ field }: any) => (
                   <FormItem>
                     <FormLabel className="text-sm text-[#959595] leading-[1.2]">Подтверждение пароля</FormLabel>
                     <FormControl>

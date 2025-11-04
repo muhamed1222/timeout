@@ -1,6 +1,7 @@
+import { useMemo, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/ui/button";
 import DashboardStats from "@/components/DashboardStats";
 import { ShiftsTable } from "@/components/ShiftsTable";
 import { EfficiencyAnalytics } from "@/components/EfficiencyAnalytics";
@@ -31,6 +32,17 @@ interface ActiveShift {
   status: string;
 }
 
+// Выносим функцию за пределы компонента для оптимизации
+const getShiftStatus = (shift: ActiveShift): "active" | "break" | "completed" => {
+  if (shift.status === "completed") {
+    return "completed";
+  }
+  // Определяем статус "break" по наличию активного перерыва (можно расширить)
+  if (shift.status === "active") {
+    return "active";
+  }
+  return "active";
+};
 
 export default function Dashboard() {
   const { companyId, loading: authLoading } = useAuth();
@@ -129,84 +141,124 @@ export default function Dashboard() {
   });
 
   // Fetch completed shifts for today
-  const today = new Date().toISOString().split("T")[0];
-  const { data: completedShiftsData = [], isLoading: completedLoading } = useQuery<ActiveShift[]>({
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const { data: completedShiftsData = [], isLoading: completedLoading, error: completedError } = useQuery<ActiveShift[]>({
     ...queryConfig.dashboard,
     queryKey: ["/api/companies", companyId, "shifts", "completed", today],
     queryFn: async () => {
-      const res = await fetch(`/api/companies/${companyId}/shifts/active`);
-      if (!res.ok) {
-        throw new Error("Failed to fetch shifts");
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 seconds timeout
+      
+      try {
+        const res = await fetch(`/api/companies/${companyId}/shifts/active`, {
+          signal: controller.signal,
+          credentials: "include",
+        });
+        clearTimeout(timeoutId);
+        
+        if (!res.ok) {
+          if (res.status === 503) {
+            // Return empty array on service unavailable
+            return [];
+          }
+          throw new Error(`Failed to fetch completed shifts: ${res.status}`);
+        }
+        const allShifts = await res.json();
+        return allShifts.filter((shift: ActiveShift) => 
+          shift.status === "completed" && 
+          shift.planned_start_at.startsWith(today),
+        );
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === "AbortError") {
+          // Return empty array on timeout instead of throwing
+          return [];
+        }
+        throw error;
       }
-      const allShifts = await res.json();
-      return allShifts.filter((shift: ActiveShift) => 
-        shift.status === "completed" && 
-        shift.planned_start_at.startsWith(today),
-      );
     },
     enabled: !!companyId,
+    retry: (failureCount, error) => {
+      // Don't retry on timeout
+      if (error instanceof Error && error.message.includes("timeout")) {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
 
-  // Fetch ratings for analytics
-  const todayDate = new Date();
-  const startOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
-  const endOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0);
-  const periodStart = startOfMonth.toISOString().split("T")[0];
-  const periodEnd = endOfMonth.toISOString().split("T")[0];
+  // Fetch ratings for analytics - мемоизируем период
+  const { periodStart, periodEnd } = useMemo(() => {
+    const todayDate = new Date();
+    const startOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
+    const endOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0);
+    return {
+      periodStart: startOfMonth.toISOString().split("T")[0],
+      periodEnd: endOfMonth.toISOString().split("T")[0],
+    };
+  }, []); // Пересчитывается только при монтировании
 
+  // Мемоизируем трансформацию активных смен
+  const activeShiftsTableData = useMemo(() => {
+    return activeShifts.map(shift => ({
+      id: shift.id,
+      employeeName: shift.employee.full_name,
+      position: shift.employee.position || "Сотрудник",
+      startedAt: shift.actual_start_at 
+        ? new Date(shift.actual_start_at).toLocaleTimeString("ru-RU", { 
+          hour: "2-digit", 
+          minute: "2-digit",
+          second: "2-digit",
+        })
+        : new Date(shift.planned_start_at).toLocaleTimeString("ru-RU", { 
+          hour: "2-digit", 
+          minute: "2-digit", 
+        }),
+      rating: "100%", // Можно получить из рейтингов
+      status: getShiftStatus(shift),
+    }));
+  }, [activeShifts]);
 
-  const getShiftStatus = (shift: ActiveShift): "active" | "break" | "completed" => {
-    if (shift.status === "completed") {
-      return "completed";
-    }
-    // Определяем статус "break" по наличию активного перерыва (можно расширить)
-    if (shift.status === "active") {
-      return "active";
-    }
-    return "active";
-  };
+  // Мемоизируем трансформацию завершенных смен
+  const completedShiftsTableData = useMemo(() => {
+    return completedShiftsData.map(shift => ({
+      id: shift.id,
+      employeeName: shift.employee.full_name,
+      position: shift.employee.position || "Сотрудник",
+      startedAt: shift.actual_start_at 
+        ? new Date(shift.actual_start_at).toLocaleTimeString("ru-RU", { 
+          hour: "2-digit", 
+          minute: "2-digit", 
+        })
+        : new Date(shift.planned_start_at).toLocaleTimeString("ru-RU", { 
+          hour: "2-digit", 
+          minute: "2-digit", 
+        }),
+      rating: "66%", // Можно получить из рейтингов
+      status: "completed" as const,
+    }));
+  }, [completedShiftsData]);
 
-  // Transform active shifts for table
-  const activeShiftsTableData = activeShifts.map(shift => ({
-    id: shift.id,
-    employeeName: shift.employee.full_name,
-    position: shift.employee.position || "Сотрудник",
-    startedAt: shift.actual_start_at 
-      ? new Date(shift.actual_start_at).toLocaleTimeString("ru-RU", { 
-        hour: "2-digit", 
-        minute: "2-digit",
-        second: "2-digit",
-      })
-      : new Date(shift.planned_start_at).toLocaleTimeString("ru-RU", { 
-        hour: "2-digit", 
-        minute: "2-digit", 
-      }),
-    rating: "100%", // Можно получить из рейтингов
-    status: getShiftStatus(shift),
-  }));
-
-  // Transform completed shifts for table
-  const completedShiftsTableData = completedShiftsData.map(shift => ({
-    id: shift.id,
-    employeeName: shift.employee.full_name,
-    position: shift.employee.position || "Сотрудник",
-    startedAt: shift.actual_start_at 
-      ? new Date(shift.actual_start_at).toLocaleTimeString("ru-RU", { 
-        hour: "2-digit", 
-        minute: "2-digit", 
-      })
-      : new Date(shift.planned_start_at).toLocaleTimeString("ru-RU", { 
-        hour: "2-digit", 
-        minute: "2-digit", 
-      }),
-    rating: "66%", // Можно получить из рейтингов
-    status: "completed" as const,
-  }));
-
-
-  // Retry hooks for failed queries
+  // Retry hooks for failed queries - мемоизируем колбэки
   const statsRetry = useRetry(["/api/companies", companyId, "stats"]);
   const shiftsRetry = useRetry(["/api/companies", companyId, "shifts", "active"]);
+  const completedRetry = useRetry(["/api/companies", companyId, "shifts", "completed", today]);
+  
+  const handleStatsRetry = useCallback(() => {
+    statsRetry.retry();
+  }, [statsRetry]);
+  
+  const handleShiftsRetry = useCallback(() => {
+    shiftsRetry.retry();
+  }, [shiftsRetry]);
+
+  const handleCompletedRetry = useCallback(() => {
+    completedRetry.retry();
+  }, [completedRetry]);
+
+  const handleReload = useCallback(() => {
+    window.location.reload();
+  }, []);
 
   // Loading state
   if (authLoading || statsLoading || shiftsLoading || completedLoading) {
@@ -215,19 +267,31 @@ export default function Dashboard() {
 
   // Error states with retry
   if (statsError) {
+    const errorMsg = getContextErrorMessage("dashboard", "stats");
     return (
       <ErrorState
-        message={getContextErrorMessage("dashboard", "stats")}
-        onRetry={() => statsRetry.retry()}
+        message={errorMsg.message}
+        onRetry={handleStatsRetry}
       />
     );
   }
 
   if (shiftsError) {
+    const errorMsg = getContextErrorMessage("shifts", "fetch");
     return (
       <ErrorState
-        message={getContextErrorMessage("shifts", "fetch")}
-        onRetry={() => shiftsRetry.retry()}
+        message={errorMsg.message}
+        onRetry={handleShiftsRetry}
+      />
+    );
+  }
+
+  if (completedError) {
+    const errorMsg = getContextErrorMessage("shifts", "fetch");
+    return (
+      <ErrorState
+        message={errorMsg.message}
+        onRetry={handleCompletedRetry}
       />
     );
   }
@@ -246,7 +310,7 @@ export default function Dashboard() {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
         <p className="text-destructive">Ошибка загрузки данных</p>
-        <Button onClick={() => window.location.reload()}>
+        <Button onClick={handleReload}>
           Обновить страницу
         </Button>
       </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/ui/dialog";
 import { Loader2, LogOut } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { queryClient } from "@/lib/queryClient";

@@ -6,12 +6,12 @@
 
 import React from "react";
 
-interface VisuallyHiddenProps {
+interface IVisuallyHiddenProps {
   children: React.ReactNode;
   as?: keyof JSX.IntrinsicElements;
 }
 
-export function VisuallyHidden({ children, as: Component = "span" }: VisuallyHiddenProps) {
+export function VisuallyHidden({ children, as: Component = "span" }: IVisuallyHiddenProps) {
   return (
     <Component
       style={{

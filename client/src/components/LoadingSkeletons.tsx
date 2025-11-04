@@ -4,8 +4,8 @@
  * Provides skeleton screens for better perceived performance
  */
 
-import { Skeleton } from "./ui/skeleton";
-import { Card, CardContent, CardHeader } from "./ui/card";
+import { Skeleton } from "@/ui/skeleton";
+import { Card, CardContent, CardHeader } from "@/ui/card";
 
 /**
  * Dashboard loading skeleton

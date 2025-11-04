@@ -20,6 +20,7 @@ import webappRouter from "./routes/webapp.js";
 import violationRulesRouter from "./routes/violation-rules.js";
 import violationsRouter from "./routes/violations.js";
 import healthRouter from "./routes/health.js";
+import cronRouter from "./routes/cron.js";
 
 // Rate limiters
 const apiLimiter = rateLimit({
@@ -55,8 +56,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Apply Prometheus metrics middleware (before rate limiter to track all requests)
   app.use("/api", metricsMiddleware);
 
-  // Apply global rate limiter to all API routes
-  app.use("/api", apiLimiter);
+  // Apply global rate limiter to all API routes (except cron endpoints)
+  app.use("/api", (req, res, next) => {
+    // Skip rate limiting for cron endpoints (they are protected by CRON_SECRET)
+    if (req.path.startsWith("/cron/")) {
+      return next();
+    }
+    return apiLimiter(req, res, next);
+  });
 
   // Register modular routers
   app.use("/api/auth", authRouter);
@@ -106,6 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/violation-rules", violationRulesRouter);
   app.use("/api/violations", violationsRouter);
   app.use("/api", healthRouter);
+  app.use("/api/cron", cronRouter);
 
   const httpServer = createServer(app);
 

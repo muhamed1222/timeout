@@ -5,8 +5,8 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { Dialog, DialogContent } from "./ui/dialog";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
+import { Dialog, DialogContent } from "@/ui/dialog";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/ui/command";
 import { useCommandPalette, useEscapeShortcut } from "@/hooks/useKeyboardShortcuts";
 import { useLocation } from "wouter";
 import { 

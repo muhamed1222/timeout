@@ -1,9 +1,9 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/ui/badge";
 import { Clock, CheckCircle, Coffee, XCircle, AlertTriangle } from "lucide-react";
 
 export type ShiftStatus = "planned" | "active" | "break" | "done" | "missed" | "late";
 
-interface StatusBadgeProps {
+interface IStatusBadgeProps {
   status: ShiftStatus;
   text?: string;
   showIcon?: boolean;
@@ -42,7 +42,7 @@ const statusConfig = {
   },
 };
 
-export default function StatusBadge({ status, text, showIcon = true }: StatusBadgeProps) {
+export default function StatusBadge({ status, text, showIcon = true }: IStatusBadgeProps) {
   const config = statusConfig[status];
   const Icon = config.icon;
   const displayText = text || config.defaultText;

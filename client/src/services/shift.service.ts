@@ -53,14 +53,31 @@ export class ShiftService {
     sort?: SortOptions,
     pagination?: PaginationOptions,
   ): Promise<Shift[]> {
-    const params = {
-      ...filters,
-      ...sort,
-      ...pagination,
-    };
+    const params: Record<string, string | number | boolean> = {};
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params[key] = String(value);
+        }
+      });
+    }
+    if (sort) {
+      Object.entries(sort).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params[key] = String(value);
+        }
+      });
+    }
+    if (pagination) {
+      Object.entries(pagination).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params[key] = typeof value === 'number' ? value : String(value);
+        }
+      });
+    }
 
     const response = await apiService.get<Shift[]>(
-      `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts`,
+      API_ENDPOINTS.COMPANIES.SHIFTS.BASE(companyId),
       params,
     );
 
@@ -71,6 +88,7 @@ export class ShiftService {
   async getShift(companyId: string, shiftId: string): Promise<Shift> {
     const response = await apiService.get<Shift>(
       API_ENDPOINTS.COMPANIES.SHIFTS.BY_ID(companyId, shiftId),
+      {},
     );
 
     return response;
@@ -79,7 +97,7 @@ export class ShiftService {
   // Создание смены
   async createShift(companyId: string, data: CreateShiftData): Promise<Shift> {
     const response = await apiService.post<ApiResponse<Shift>>(
-      `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts`,
+      API_ENDPOINTS.COMPANIES.SHIFTS.BASE(companyId),
       data,
     );
 
@@ -123,6 +141,7 @@ export class ShiftService {
   async startShift(companyId: string, shiftId: string): Promise<Shift> {
     const response = await apiService.post<ApiResponse<Shift>>(
       `${API_ENDPOINTS.COMPANIES.SHIFTS.BY_ID(companyId, shiftId)}/start`,
+      {},
     );
 
     if (response.error) {
@@ -156,12 +175,17 @@ export class ShiftService {
     employeeId: string,
     filters?: FilterOptions,
   ): Promise<Shift[]> {
-    const params = {
-      ...filters,
-    };
+    const params: Record<string, string | number | boolean> = {};
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params[key] = String(value);
+        }
+      });
+    }
 
     const response = await apiService.get<Shift[]>(
-      `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/employees/${employeeId}/shifts`,
+      `${API_ENDPOINTS.COMPANIES.BASE(companyId)}/employees/${employeeId}/shifts`,
       params,
     );
 
@@ -175,7 +199,8 @@ export class ShiftService {
   ): Promise<Shift | null> {
     try {
       const response = await apiService.get<Shift>(
-        `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/employees/${employeeId}/current-shift`,
+        `${API_ENDPOINTS.COMPANIES.BASE(companyId)}/employees/${employeeId}/current-shift`,
+        {},
       );
 
       return response;
@@ -191,7 +216,7 @@ export class ShiftService {
     shifts: CreateShiftData[],
   ): Promise<Shift[]> {
     const response = await apiService.post<ApiResponse<Shift[]>>(
-      `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts/bulk`,
+      `${API_ENDPOINTS.COMPANIES.SHIFTS.BASE(companyId)}/bulk`,
       { shifts },
     );
 
@@ -209,7 +234,7 @@ export class ShiftService {
     data: UpdateShiftData,
   ): Promise<void> {
     const response = await apiService.patch<ApiResponse>(
-      `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts/bulk`,
+      `${API_ENDPOINTS.COMPANIES.SHIFTS.BASE(companyId)}/bulk`,
       { shiftIds, data },
     );
 
@@ -220,8 +245,8 @@ export class ShiftService {
 
   // Массовое удаление смен
   async bulkDeleteShifts(companyId: string, shiftIds: string[]): Promise<void> {
-    const response = await apiService.delete<ApiResponse>(
-      `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts/bulk`,
+    const response = await apiService.post<ApiResponse>(
+      `${API_ENDPOINTS.COMPANIES.SHIFTS.BASE(companyId)}/bulk/delete`,
       { shiftIds },
     );
 
@@ -235,12 +260,17 @@ export class ShiftService {
     companyId: string,
     filters?: FilterOptions,
   ): Promise<any> {
-    const params = {
-      ...filters,
-    };
+    const params: Record<string, string | number | boolean> = {};
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params[key] = String(value);
+        }
+      });
+    }
 
     const response = await apiService.get<any>(
-      `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts/stats`,
+      `${API_ENDPOINTS.COMPANIES.SHIFTS.BASE(companyId)}/stats`,
       params,
     );
 
@@ -253,7 +283,7 @@ export class ShiftService {
     format: "csv" | "xlsx" = "csv",
   ): Promise<void> {
     await apiService.downloadFile(
-      `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts/export?format=${format}`,
+      `${API_ENDPOINTS.COMPANIES.SHIFTS.BASE(companyId)}/export?format=${format}`,
       `shifts.${format}`,
     );
   }
@@ -283,7 +313,7 @@ export class ShiftService {
     endDate: string,
   ): Promise<Shift[]> {
     const response = await apiService.get<Shift[]>(
-      `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts/period`,
+      `${API_ENDPOINTS.COMPANIES.SHIFTS.BASE(companyId)}/period`,
       { startDate, endDate },
     );
 

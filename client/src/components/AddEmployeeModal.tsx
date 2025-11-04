@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/ui/button";
+import { Input } from "@/ui/input";
+import { Label } from "@/ui/label";
+import { Textarea } from "@/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -72,11 +72,6 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
   
   const createEmployeeMutation = useMutation({
     mutationFn: async (data: { full_name: string; position: string }) => {
-      // Проверяем, что companyId существует
-      if (!companyId) {
-        throw new Error("Компания не найдена. Пожалуйста, войдите заново.");
-      }
-
       // Создаем только инвайт для сотрудника
       const response = await fetch("/api/employee-invites", {
         method: "POST",
@@ -89,32 +84,8 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
       });
 
       if (!response.ok) {
-        let errorMessage = "Ошибка создания инвайта";
-        try {
-          const errorData = await response.json();
-          // Структура ошибки: { error: { message, code, statusCode, details } }
-          const errorMessageFromServer = errorData.error?.message || errorData.error || errorMessage;
-          
-          // Проверяем тип ошибки и возвращаем понятное сообщение
-          if (response.status === 404) {
-            // Проверяем, если это ошибка "Company not found"
-            if (errorMessageFromServer.includes("Company") || errorData.error?.code === "NOT_FOUND") {
-              errorMessage = "Компания не найдена. Пожалуйста, обновите страницу или войдите заново.";
-            } else {
-              errorMessage = errorMessageFromServer;
-            }
-          } else if (response.status === 400) {
-            errorMessage = errorMessageFromServer || "Неверные данные. Проверьте введенную информацию.";
-          } else {
-            errorMessage = errorMessageFromServer;
-          }
-        } catch {
-          // Если не удалось распарсить JSON, используем статус
-          if (response.status === 404) {
-            errorMessage = "Компания не найдена. Пожалуйста, обновите страницу или войдите заново.";
-          }
-        }
-        throw new Error(errorMessage);
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Ошибка создания инвайта");
       }
 
       return response.json();

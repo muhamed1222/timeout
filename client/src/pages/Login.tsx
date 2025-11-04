@@ -12,7 +12,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
+} from "@/ui/form";
 import { LogIn, Copy, Check, Loader2, Mail } from "lucide-react";
 
 const loginSchema = z.object({
@@ -458,7 +458,7 @@ export default function Login() {
                       <FormField
                         control={loginForm.control}
                         name="email"
-                        render={({ field }) => (
+                        render={({ field }: any) => (
                           <FormItem>
                             <FormLabel className="text-sm text-[#959595] leading-[1.2]">Email</FormLabel>
                             <FormControl>
@@ -477,7 +477,7 @@ export default function Login() {
                       <FormField
                         control={loginForm.control}
                         name="password"
-                        render={({ field }) => (
+                        render={({ field }: any) => (
                           <FormItem>
                             <FormLabel className="text-sm text-[#959595] leading-[1.2]">Пароль</FormLabel>
                             <FormControl>
@@ -568,7 +568,7 @@ export default function Login() {
                     <FormField
                       control={registerForm.control}
                       name="full_name"
-                      render={({ field }) => (
+                      render={({ field }: any) => (
                         <FormItem>
                           <FormLabel className="text-sm text-[#959595] leading-[1.2]">Полное имя</FormLabel>
                           <FormControl>
@@ -587,7 +587,7 @@ export default function Login() {
                     <FormField
                       control={registerForm.control}
                       name="company_name"
-                      render={({ field }) => (
+                      render={({ field }: any) => (
                         <FormItem>
                           <FormLabel className="text-sm text-[#959595] leading-[1.2]">Название компании</FormLabel>
                           <FormControl>
@@ -606,7 +606,7 @@ export default function Login() {
                     <FormField
                       control={registerForm.control}
                       name="email"
-                      render={({ field }) => (
+                      render={({ field }: any) => (
                         <FormItem>
                           <FormLabel className="text-sm text-[#959595] leading-[1.2]">Email</FormLabel>
                           <FormControl>
@@ -625,7 +625,7 @@ export default function Login() {
                     <FormField
                       control={registerForm.control}
                       name="password"
-                      render={({ field }) => (
+                      render={({ field }: any) => (
                         <FormItem>
                           <FormLabel className="text-sm text-[#959595] leading-[1.2]">Пароль</FormLabel>
                           <FormControl>
@@ -644,7 +644,7 @@ export default function Login() {
                     <FormField
                       control={registerForm.control}
                       name="password_confirm"
-                      render={({ field }) => (
+                      render={({ field }: any) => (
                         <FormItem>
                           <FormLabel className="text-sm text-[#959595] leading-[1.2]">Подтверждение пароля</FormLabel>
                           <FormControl>

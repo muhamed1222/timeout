@@ -183,7 +183,7 @@ describe('Security Middleware', () => {
     });
 
     it('should log suspicious activity in path parameters', () => {
-      req.params = { id: "1' OR '1'='1" };
+      req.params = { id: "<script>alert('xss')</script>" };
       vi.mocked(req.get!).mockReturnValue('Mozilla/5.0');
 
       securityLogger(req as Request, res as Response, next);

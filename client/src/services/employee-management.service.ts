@@ -1,5 +1,5 @@
 // Сервис для управления сотрудниками
-import { Employee, EmployeeInvite } from "@shared/types";
+import type { Employee, EmployeeInvite } from "@shared/schema";
 import { apiService } from "./api.service";
 
 export interface EmployeeSearchCriteria {
@@ -67,29 +67,31 @@ export class EmployeeManagementService {
     return employees.map(employee => ({
       id: employee.id,
       fullName: employee.full_name,
-      position: employee.position,
+      position: employee.position || "",
       status: employee.status as "active" | "inactive" | "terminated",
       timezone: employee.tz || "UTC",
-      telegramUserId: employee.telegram_user_id,
+      telegramUserId: employee.telegram_user_id || undefined,
       hasTelegram: !!employee.telegram_user_id,
-      createdAt: employee.created_at,
+      createdAt: employee.created_at ? (employee.created_at instanceof Date ? employee.created_at.toISOString() : String(employee.created_at)) : new Date().toISOString(),
     }));
   }
 
   // Трансформация приглашений для отображения
   transformInvitesForDisplay(invites: EmployeeInvite[]): InviteDisplayData[] {
     return invites.map(invite => {
-      const code = (invite as any).code || "";
-      const fullName = (invite as any).full_name || "";
-      const expiresAt = invite.expires_at || (invite as any).created_at || new Date().toISOString();
+      const code = invite.code || "";
+      const fullName = invite.full_name || "";
+      // EmployeeInvite doesn't have expires_at, so we'll use a default (7 days from creation)
+      const createdAt = invite.created_at ? (invite.created_at instanceof Date ? invite.created_at : new Date(invite.created_at)) : new Date();
+      const expiresAt = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
       
       return {
         id: invite.id,
         code,
         fullName,
-        position: invite.position,
+        position: invite.position || "",
         expiresAt,
-        isExpired: invite.expires_at ? new Date(invite.expires_at) < new Date() : false,
+        isExpired: new Date(expiresAt) < new Date(),
         deepLink: `https://t.me/your_bot?start=${code}`,
         qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://t.me/your_bot?start=${code}`,
       };
@@ -230,7 +232,24 @@ export class EmployeeManagementService {
     }
   }
 
-  // Получение данных для страницы сотрудников
+  /**
+   * Получает все необходимые данные для страницы управления сотрудниками
+   * 
+   * Агрегирует данные о сотрудниках и приглашениях, выполняет их трансформацию
+   * для отображения, вычисляет статистику и фильтрует активные приглашения.
+   * Все запросы выполняются параллельно для оптимизации.
+   * 
+   * @param companyId - ID компании для загрузки данных
+   * @returns Промис с объектом, содержащим сотрудников, приглашения, трансформированные данные,
+   *          статистику и активные приглашения
+   * @throws {Error} Если не удалось загрузить данные страницы сотрудников
+   * 
+   * @example
+   * ```ts
+   * const data = await service.getEmployeePageData(companyId);
+   * // Возвращает полный набор данных для страницы сотрудников
+   * ```
+   */
   async getEmployeePageData(companyId: string): Promise<{
     employees: Employee[];
     invites: EmployeeInvite[];

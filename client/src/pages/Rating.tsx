@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Award, ChevronDown, AlertTriangle, X } from "lucide-react";
 import EmployeeAvatar from "@/components/EmployeeAvatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 
 interface EmployeeRating {
   id: string;
@@ -271,18 +271,20 @@ export default function Rating() {
   }
 
   if (employeesError) {
+    const errorMsg = getContextErrorMessage("employees", "fetch");
     return (
       <ErrorState
-        message={getContextErrorMessage("employees", "fetch")}
+        message={errorMsg.message}
         onRetry={() => employeesRetry.retry()}
       />
     );
   }
 
   if (ratingError) {
+    const errorMsg = getContextErrorMessage("ratings", "fetch");
     return (
       <ErrorState
-        message={getContextErrorMessage("ratings", "fetch")}
+        message={errorMsg.message}
         onRetry={() => ratingsRetry.retry()}
       />
     );

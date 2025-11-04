@@ -159,14 +159,32 @@ export function containsSqlInjection(input: string): boolean {
     return false;
   }
   
+  // First check if it's likely HTML/XSS - if so, don't treat as SQL injection
+  // This prevents false positives like <script> being caught as SQL injection
+  // Check for HTML tags (including escaped versions in JSON strings)
+  if (/<[a-z][\s\S]*>/i.test(input) || 
+      /&lt;[a-z]/i.test(input) ||
+      /\\u003c[a-z]/i.test(input) ||
+      (/script/i.test(input) && /<|&lt;/i.test(input))) {
+    // Likely HTML/XSS, not SQL injection - let XSS sanitization handle it
+    return false;
+  }
+  
   const sqlPatterns = [
-    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|SCRIPT)\b)/i,
-    /('|(\\')|(;)|(\\;)|(--)|(\\\/\\\*)|(\\\*\\\/)|(\+)|(\%27))/i,
+    // Removed SCRIPT from here to avoid false positives with <script> tags
+    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION)\b)/i,
+    /(;)\s*(DROP|DELETE|INSERT|UPDATE|CREATE|ALTER)/i,
     /(\bOR\b\s*\d+\s*=\s*\d+)/i,
     /(\bAND\b\s*\d+\s*=\s*\d+)/i,
     /(\bUNION\b.*\bSELECT\b)/i,
+    /(\b1\s*=\s*1\b)/i,
+    /(\b1\s*=\s*'1'\b)/i,
+    // SQL comment patterns (but not if it's inside HTML tags)
+    /(--[^\n]*)/i,
+    /(\/\*[\s\S]*\*\/)/i,
   ];
   
+  // Only check SQL patterns if not HTML/XSS
   return sqlPatterns.some(pattern => pattern.test(input));
 }
 
@@ -257,6 +275,16 @@ export function deepSanitize<T>(input: T, options?: {
       return value; // Prevent stack overflow
     }
     
+    // Preserve Date objects
+    if (value instanceof Date) {
+      return value;
+    }
+    
+    // Preserve null and undefined
+    if (value === null || value === undefined) {
+      return value;
+    }
+    
     if (typeof value === "string") {
       // Check for dangerous patterns
       if (containsSqlInjection(value)) {
@@ -274,6 +302,11 @@ export function deepSanitize<T>(input: T, options?: {
     }
     
     if (value && typeof value === "object") {
+      // Check if it's a special object type that should be preserved
+      if (value instanceof RegExp || value instanceof Error || value instanceof Map || value instanceof Set) {
+        return value;
+      }
+      
       const sanitized: Record<string, unknown> = {};
       for (const key in value) {
         if (Object.prototype.hasOwnProperty.call(value, key)) {

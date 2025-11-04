@@ -1,19 +1,53 @@
-import * as React from "react";
+// Оптимизированный хук для определения мобильного устройства
+
+import { useState, useEffect, useRef } from "react";
 
 const MOBILE_BREAKPOINT = 768;
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
-    const onChange = () => {
+  useEffect(() => {
+    // Проверяем сразу при монтировании
+    const checkIsMobile = () => {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     };
-    mql.addEventListener("change", onChange);
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-    return () => mql.removeEventListener("change", onChange);
+
+    checkIsMobile();
+
+    // Используем ResizeObserver для более эффективного отслеживания
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserverRef.current = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const width = entry.contentRect.width;
+          setIsMobile(width < MOBILE_BREAKPOINT);
+        }
+      });
+
+      resizeObserverRef.current.observe(document.body);
+    } else {
+      // Fallback для старых браузеров
+      const handleResize = () => {
+        setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+      };
+
+      window.addEventListener("resize", handleResize);
+
+      return () => {
+        window.removeEventListener("resize", handleResize);
+      };
+    }
+
+    return () => {
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+      }
+    };
   }, []);
 
-  return !!isMobile;
+  return isMobile;
 }
+
+// Экспорт для обратной совместимости
+export const useMobile = useIsMobile;

@@ -1,12 +1,16 @@
+import { useMemo, useCallback } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
+import { LazyMotion, domAnimation, AnimatePresence, m } from "framer-motion";
 import { queryClient } from "./lib/queryClient";
+import { slideUp } from "@/lib/motionPresets";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { Toaster } from "@/ui/toaster";
+import { TooltipProvider } from "@/ui/tooltip";
+import { SidebarProvider } from "@/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2, Bell, ChevronDown } from "lucide-react";
+import { Button } from "@/ui/button";
 import { NotificationsPopover } from "@/components/NotificationsPopover";
 import { UserMenuPopover } from "@/components/UserMenuPopover";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -75,30 +79,99 @@ function MainRouter() {
   );
 }
 
+// Выносим за пределы компонента для оптимизации
+const PAGE_TITLES: Record<string, string> = {
+  "/": "Дашборд",
+  "/exceptions": "Нарушения",
+  "/rating": "Рейтинг",
+  "/employees": "Сотрудники",
+  "/reports": "Отчеты",
+  "/settings": "Настройки",
+  "/account/security": "Пароль и безопасность",
+  "/legal": "Юридическая информация",
+  "/help": "Помощь и поддержка",
+  "/company": "Настройки",
+};
+
 function getPageTitle(location: string): string {
-  const titles: Record<string, string> = {
-    "/": "Дашборд",
-    "/exceptions": "Нарушения",
-    "/rating": "Рейтинг",
-    "/employees": "Сотрудники",
-    "/reports": "Отчеты",
-    "/settings": "Настройки",
-    "/account/security": "Пароль и безопасность",
-    "/legal": "Юридическая информация",
-    "/help": "Помощь и поддержка",
-    "/company": "Настройки",
-  };
-  return titles[location] || "Страница";
+  return PAGE_TITLES[location] || "Страница";
 }
 
 function AppContent() {
   const [location] = useLocation();
   const { user, loading } = useAuth();
 
-  const style = {
+  // Мемоизируем стили и заголовок страницы
+  const style = useMemo(() => ({
     "--sidebar-width": "303px",
     "--sidebar-width-icon": "4rem",
-  };
+  } as React.CSSProperties), []);
+
+  const pageTitle = useMemo(() => getPageTitle(location), [location]);
+
+  // Мемоизируем колбэки для уведомлений
+  const handleNotificationAccept1 = useCallback(() => {
+    console.log("Принято нарушение 1");
+  }, []);
+
+  const handleNotificationReject1 = useCallback(() => {
+    console.log("Отклонено нарушение 1");
+  }, []);
+
+  const handleNotificationAccept2 = useCallback(() => {
+    console.log("Принято нарушение 2");
+  }, []);
+
+  const handleNotificationReject2 = useCallback(() => {
+    console.log("Отклонено нарушение 2");
+  }, []);
+
+  // Мемоизируем массив уведомлений
+  const notifications = useMemo(() => [
+    {
+      id: "1",
+      employeeName: "Иван Венгер",
+      message: "Выявлено нарушение: опоздал на 4 минуты",
+      onAccept: handleNotificationAccept1,
+      onReject: handleNotificationReject1,
+    },
+    {
+      id: "2",
+      employeeName: "Иван Венгер",
+      message: "Выявлено нарушение: опоздал на 2 часа",
+      onAccept: handleNotificationAccept2,
+      onReject: handleNotificationReject2,
+    },
+  ], [handleNotificationAccept1, handleNotificationReject1, handleNotificationAccept2, handleNotificationReject2]);
+
+  // Мемоизируем триггер для уведомлений
+  const notificationsTrigger = useMemo(() => (
+    <Button 
+      variant="outline"
+      size="icon"
+      className="relative rounded-full w-11 h-11"
+      aria-label="Уведомления (2)"
+    >
+      <Bell className="w-6 h-6" />
+      <div className="absolute bg-destructive border border-white text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center top-[3px] right-[3px] p-0 pointer-events-none">
+        2
+      </div>
+    </Button>
+  ), []);
+
+  // Мемоизируем триггер для меню пользователя
+  const userMenuTrigger = useMemo(() => (
+    <Button 
+      variant="outline"
+      className="rounded-full px-[5px] py-[5px] pr-[13px] flex items-center gap-2"
+      aria-label="Меню пользователя"
+    >
+      <div className="bg-destructive rounded-full size-8 overflow-hidden">
+        {/* Placeholder for user avatar */}
+      </div>
+      <ChevronDown className="w-5 h-5" />
+    </Button>
+  ), []);
 
   if (loading) {
     return (
@@ -137,7 +210,7 @@ function AppContent() {
   }
 
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
+    <SidebarProvider style={style}>
       {/* Skip to main content link for keyboard users */}
       <a 
         href="#main-content" 
@@ -150,49 +223,14 @@ function AppContent() {
         <AppSidebar />
         <div className="flex flex-col flex-1 bg-[#FFFFFF]">
           <header className="flex items-center justify-between bg-[#FFFFFF] pt-5 pr-5 pb-5" role="banner">
-            <h1 className="text-[30px] font-semibold text-[#1a1a1a]">{getPageTitle(location)}</h1>
+            <h1 className="text-[30px] font-semibold text-[#1a1a1a]">{pageTitle}</h1>
             <div className="flex items-center gap-4">
               <NotificationsPopover
-                notifications={[
-                  {
-                    id: "1",
-                    employeeName: "Иван Венгер",
-                    message: "Выявлено нарушение: опоздал на 4 минуты",
-                    onAccept: () => console.log("Принято нарушение 1"),
-                    onReject: () => console.log("Отклонено нарушение 1"),
-                  },
-                  {
-                    id: "2",
-                    employeeName: "Иван Венгер",
-                    message: "Выявлено нарушение: опоздал на 2 часа",
-                    onAccept: () => console.log("Принято нарушение 2"),
-                    onReject: () => console.log("Отклонено нарушение 2"),
-                  },
-                ]}
-                trigger={
-                  <button 
-                    className="relative border border-neutral-100 rounded-full w-11 h-11 flex items-center justify-center hover:bg-neutral-50 transition-colors cursor-pointer"
-                    aria-label="Уведомления (2)"
-                  >
-                    <Bell className="w-6 h-6" />
-                    <div className="absolute bg-[#ff3b30] border border-white text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center top-[3px] right-[3px] p-0 pointer-events-none">
-                      2
-                    </div>
-                  </button>
-                }
+                notifications={notifications}
+                trigger={notificationsTrigger}
               />
               <UserMenuPopover
-                trigger={
-                  <button 
-                    className="border border-neutral-100 rounded-full px-[5px] py-[5px] pr-[13px] flex items-center gap-2 hover:bg-neutral-50 transition-colors cursor-pointer"
-                    aria-label="Меню пользователя"
-                  >
-                    <div className="bg-[#ff3b30] rounded-full size-8 overflow-hidden">
-                      {/* Placeholder for user avatar */}
-                    </div>
-                    <ChevronDown className="w-5 h-5" />
-                  </button>
-                }
+                trigger={userMenuTrigger}
               />
             </div>
           </header>
@@ -202,7 +240,19 @@ function AppContent() {
             role="main"
             aria-label="Основной контент"
           >
-            <MainRouter />
+            <LazyMotion features={domAnimation}>
+              <AnimatePresence mode="wait">
+                <m.div
+                  key={location}
+                  variants={slideUp}
+                  initial="hidden"
+                  animate="show"
+                  exit="exit"
+                >
+                  <MainRouter />
+                </m.div>
+              </AnimatePresence>
+            </LazyMotion>
             <CommandPalette />
           </main>
         </div>

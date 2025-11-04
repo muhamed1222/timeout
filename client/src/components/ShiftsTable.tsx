@@ -1,56 +1,32 @@
-import { Badge } from "@/components/ui/badge";
+/**
+ * Компонент таблицы смен
+ * Отображает список смен в табличном формате с информацией о сотруднике и статусе
+ */
 
-interface ShiftRow {
-  id: string;
-  employeeName: string;
-  position: string;
-  startedAt: string;
-  rating: string;
-  status: "active" | "break" | "completed";
-}
+import { memo } from "react";
+import type { ShiftRow } from "@/types";
+import { getShiftStatusConfig } from "@/lib/utils/statusBadge";
+import { Badge } from "@/ui/badge";
 
-interface ShiftsTableProps {
+export interface IShiftsTableProps {
+  /** Заголовок таблицы */
   title: string;
+  /** Массив смен для отображения */
   shifts: ShiftRow[];
 }
 
-export function ShiftsTable({ title, shifts }: ShiftsTableProps) {
-  const getStatusBadge = (status: ShiftRow["status"]) => {
-    switch (status) {
-      case "active":
-        return (
-          <Badge className="bg-[rgba(52,199,89,0.08)] text-[#34c759] hover:bg-[rgba(52,199,89,0.08)] rounded-full px-6 py-1">
-            Активен
-          </Badge>
-        );
-      case "break":
-        return (
-          <Badge className="bg-[rgba(255,204,0,0.08)] text-[#ffcc00] hover:bg-[rgba(255,204,0,0.08)] rounded-full px-6 py-1">
-            Обед
-          </Badge>
-        );
-      case "completed":
-        return (
-          <Badge className="bg-[rgba(255,0,0,0.08)] text-[#ff0006] hover:bg-[rgba(255,0,0,0.08)] rounded-full px-6 py-1">
-            Завершил
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
-
+export const ShiftsTable = memo(function ShiftsTable({ title, shifts }: IShiftsTableProps) {
   return (
-    <div className="bg-[#f8f8f8] rounded-[20px] p-4">
-      <h3 className="text-xl font-semibold text-[#1a1a1a] mb-4">{title}</h3>
+    <div className="bg-muted rounded-lg p-4">
+      <h3 className="text-xl font-semibold text-foreground mb-4">{title}</h3>
       <div className="flex flex-col gap-2">
         {/* Header */}
         <div className="flex items-start w-full">
-          <div className="flex-1 text-sm text-neutral-500">ФИО</div>
-          <div className="flex-1 text-sm text-neutral-500">Должность</div>
-          <div className="flex-1 text-sm text-neutral-500">Начал</div>
-          <div className="flex-1 text-sm text-neutral-500">Рейтинг</div>
-          <div className="flex-1 text-sm text-neutral-500">Статус</div>
+          <div className="flex-1 text-sm text-muted-foreground">ФИО</div>
+          <div className="flex-1 text-sm text-muted-foreground">Должность</div>
+          <div className="flex-1 text-sm text-muted-foreground">Начал</div>
+          <div className="flex-1 text-sm text-muted-foreground">Рейтинг</div>
+          <div className="flex-1 text-sm text-muted-foreground">Статус</div>
         </div>
         {/* Rows */}
         {shifts.length === 0 ? (
@@ -61,19 +37,27 @@ export function ShiftsTable({ title, shifts }: ShiftsTableProps) {
           shifts.map((shift) => (
             <div key={shift.id} className="flex items-start w-full">
               <div className="flex-1 flex items-center gap-2">
-                <div className="text-base text-[#1a1a1a]">{shift.employeeName}</div>
+                <div className="text-base text-foreground">{shift.employeeName}</div>
               </div>
-              <div className="flex-1 flex items-center justify-center text-base text-neutral-500">
+              <div className="flex-1 flex items-center justify-center text-base text-muted-foreground">
                 {shift.position}
               </div>
-              <div className="flex-1 flex items-center justify-center text-base text-neutral-500">
+              <div className="flex-1 flex items-center justify-center text-base text-muted-foreground">
                 {shift.startedAt}
               </div>
-              <div className="flex-1 flex items-center justify-center text-base text-neutral-500">
+              <div className="flex-1 flex items-center justify-center text-base text-muted-foreground">
                 {shift.rating}
               </div>
               <div className="flex-1 flex items-center">
-                {getStatusBadge(shift.status)}
+                {(() => {
+                  const config = getShiftStatusConfig(shift.status);
+                  if (!config) return null;
+                  return (
+                    <Badge className={config.className}>
+                      {config.label}
+                    </Badge>
+                  );
+                })()}
               </div>
             </div>
           ))
@@ -81,5 +65,5 @@ export function ShiftsTable({ title, shifts }: ShiftsTableProps) {
       </div>
     </div>
   );
-}
+});
 

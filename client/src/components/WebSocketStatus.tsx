@@ -5,13 +5,13 @@
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { Wifi, WifiOff } from "lucide-react";
 
-interface WebSocketStatusProps {
+interface IWebSocketStatusProps {
   userId?: string;
   companyId?: string;
   employeeId?: string;
 }
 
-export function WebSocketStatus({ userId, companyId, employeeId }: WebSocketStatusProps) {
+export function WebSocketStatus({ userId, companyId, employeeId }: IWebSocketStatusProps) {
   const { isConnected } = useWebSocket({
     userId,
     companyId,

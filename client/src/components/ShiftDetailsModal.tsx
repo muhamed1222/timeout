@@ -4,13 +4,13 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
+} from "@/ui/dialog";
+import { Badge } from "@/ui/badge";
 import { Clock, Calendar, User, MapPin, MessageSquare } from "lucide-react";
 import type { ShiftStatus } from "./StatusBadge";
 import StatusBadge from "./StatusBadge";
 
-interface ShiftDetailsModalProps {
+interface IShiftDetailsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   employeeName: string;
@@ -32,7 +32,7 @@ export default function ShiftDetailsModal({
   status,
   location,
   lastReport,
-}: ShiftDetailsModalProps) {
+}: IShiftDetailsModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">

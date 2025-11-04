@@ -9,7 +9,7 @@ import { ErrorType } from "./errorHandling";
 /**
  * Error message translations (Russian by default, can be extended for i18n)
  */
-export const errorMessages: Record<ErrorType, Record<string, string>> = {
+export const errorMessages: Record<ErrorType, { title: string; message: string; action: string }> = {
   [ErrorType.NETWORK]: {
     title: "Ошибка сети",
     message: "Не удалось подключиться к серверу. Проверьте подключение к интернету и попробуйте снова.",
@@ -61,44 +61,44 @@ export function getErrorMessage(errorType: ErrorType): {
 /**
  * Context-specific error messages
  */
-export const contextErrors = {
+export const contextErrors: Record<string, Record<string, { title: string; message: string; action: string }>> = {
   employees: {
-    fetch: "Не удалось загрузить список сотрудников",
-    create: "Не удалось создать сотрудника",
-    update: "Не удалось обновить данные сотрудника",
-    delete: "Не удалось удалить сотрудника",
-    notFound: "Сотрудник не найден",
+    fetch: { title: "Ошибка загрузки", message: "Не удалось загрузить список сотрудников", action: "Попробовать снова" },
+    create: { title: "Ошибка создания", message: "Не удалось создать сотрудника", action: "Попробовать снова" },
+    update: { title: "Ошибка обновления", message: "Не удалось обновить данные сотрудника", action: "Попробовать снова" },
+    delete: { title: "Ошибка удаления", message: "Не удалось удалить сотрудника", action: "Попробовать снова" },
+    notFound: { title: "Не найдено", message: "Сотрудник не найден", action: "Вернуться назад" },
   },
   shifts: {
-    fetch: "Не удалось загрузить смены",
-    create: "Не удалось создать смену",
-    update: "Не удалось обновить смену",
-    delete: "Не удалось удалить смену",
-    notFound: "Смена не найдена",
+    fetch: { title: "Ошибка загрузки", message: "Не удалось загрузить смены", action: "Попробовать снова" },
+    create: { title: "Ошибка создания", message: "Не удалось создать смену", action: "Попробовать снова" },
+    update: { title: "Ошибка обновления", message: "Не удалось обновить смену", action: "Попробовать снова" },
+    delete: { title: "Ошибка удаления", message: "Не удалось удалить смену", action: "Попробовать снова" },
+    notFound: { title: "Не найдено", message: "Смена не найдена", action: "Вернуться назад" },
   },
   ratings: {
-    fetch: "Не удалось загрузить рейтинг",
-    update: "Не удалось обновить рейтинг",
-    adjust: "Не удалось изменить рейтинг",
+    fetch: { title: "Ошибка загрузки", message: "Не удалось загрузить рейтинг", action: "Попробовать снова" },
+    update: { title: "Ошибка обновления", message: "Не удалось обновить рейтинг", action: "Попробовать снова" },
+    adjust: { title: "Ошибка изменения", message: "Не удалось изменить рейтинг", action: "Попробовать снова" },
   },
   violations: {
-    fetch: "Не удалось загрузить нарушения",
-    create: "Не удалось добавить нарушение",
-    delete: "Не удалось удалить нарушение",
+    fetch: { title: "Ошибка загрузки", message: "Не удалось загрузить нарушения", action: "Попробовать снова" },
+    create: { title: "Ошибка создания", message: "Не удалось добавить нарушение", action: "Попробовать снова" },
+    delete: { title: "Ошибка удаления", message: "Не удалось удалить нарушение", action: "Попробовать снова" },
   },
   invites: {
-    fetch: "Не удалось загрузить приглашения",
-    create: "Не удалось создать приглашение",
-    delete: "Не удалось удалить приглашение",
-    notFound: "Приглашение не найдено",
+    fetch: { title: "Ошибка загрузки", message: "Не удалось загрузить приглашения", action: "Попробовать снова" },
+    create: { title: "Ошибка создания", message: "Не удалось создать приглашение", action: "Попробовать снова" },
+    delete: { title: "Ошибка удаления", message: "Не удалось удалить приглашение", action: "Попробовать снова" },
+    notFound: { title: "Не найдено", message: "Приглашение не найдено", action: "Вернуться назад" },
   },
   company: {
-    fetch: "Не удалось загрузить данные компании",
-    update: "Не удалось обновить данные компании",
+    fetch: { title: "Ошибка загрузки", message: "Не удалось загрузить данные компании", action: "Попробовать снова" },
+    update: { title: "Ошибка обновления", message: "Не удалось обновить данные компании", action: "Попробовать снова" },
   },
   dashboard: {
-    fetch: "Не удалось загрузить данные дашборда",
-    stats: "Не удалось загрузить статистику",
+    fetch: { title: "Ошибка загрузки", message: "Не удалось загрузить данные дашборда", action: "Попробовать снова" },
+    stats: { title: "Ошибка загрузки", message: "Не удалось загрузить статистику", action: "Попробовать снова" },
   },
 };
 
@@ -107,14 +107,14 @@ export const contextErrors = {
  */
 export function getContextErrorMessage(
   context: keyof typeof contextErrors,
-  action: string,
-): string {
+  action: keyof typeof contextErrors[typeof context],
+): { title: string; message: string; action: string } {
   const contextError = contextErrors[context];
   return (
-    contextError[action as keyof typeof contextError] ||
-    `Ошибка при выполнении действия: ${action}`
+    contextError[action] || {
+      title: "Неизвестная ошибка",
+      message: `Произошла непредвиденная ошибка при выполнении действия: ${String(action)}`,
+      action: "Попробовать снова",
+    }
   );
 }
-
-
-

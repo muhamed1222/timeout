@@ -56,6 +56,9 @@ const secretsSchema = z.object({
   // Audit
   AUDIT_LOG_SECRET: z.string().optional(),
   
+  // Cron Jobs
+  CRON_SECRET: z.string().optional(),
+  
   // Test (optional)
   TEST_DATABASE_URL: z.string().url().optional(),
   TEST_SECRET: z.string().optional(),
@@ -77,7 +80,12 @@ export async function loadSecretsAsync(): Promise<Secrets> {
 
   try {
     // In production, try AWS Secrets Manager first
-    if (process.env.NODE_ENV === "production" && isAWSSecretsManagerEnabled()) {
+    // Skip AWS Secrets Manager on Vercel (use environment variables from Vercel Dashboard instead)
+    if (
+      process.env.NODE_ENV === "production" &&
+      !process.env.VERCEL &&
+      isAWSSecretsManagerEnabled()
+    ) {
       try {
         logger.info("Loading secrets from AWS Secrets Manager");
         const awsSecrets = await loadSecretsFromAWS();
@@ -88,6 +96,8 @@ export async function loadSecretsAsync(): Promise<Secrets> {
         logger.error("Failed to load from AWS Secrets Manager, falling back to env vars", { error });
         // Fall through to environment variables
       }
+    } else if (process.env.VERCEL) {
+      logger.info("Running on Vercel - using environment variables from Vercel Dashboard");
     }
 
     // In test environment, provide sensible defaults to avoid hard .env deps
@@ -108,7 +118,11 @@ export async function loadSecretsAsync(): Promise<Secrets> {
     cachedSecrets = secrets;
     
     logger.info("Secrets loaded and validated successfully", {
-      source: isProduction() && isAWSSecretsManagerEnabled() ? "AWS Secrets Manager" : "Environment Variables",
+      source: process.env.VERCEL
+        ? "Vercel Environment Variables"
+        : isProduction() && isAWSSecretsManagerEnabled()
+        ? "AWS Secrets Manager"
+        : "Environment Variables",
     });
     
     return secrets;

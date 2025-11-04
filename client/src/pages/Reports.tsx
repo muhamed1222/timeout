@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/ui/button";
+import { Input } from "@/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
+import { Badge } from "@/ui/badge";
 import { Download, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 import { DayPicker, DateRange } from "react-day-picker";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -172,7 +172,7 @@ export default function Reports() {
   if (error) {
     return (
       <ErrorState
-        message={getContextErrorMessage("dashboard", "fetch")}
+        message={(() => { const errorMsg = getContextErrorMessage("dashboard", "fetch"); return errorMsg.message; })()}
         onRetry={() => reportsRetry.retry()}
       />
     );

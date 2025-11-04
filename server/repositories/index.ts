@@ -18,7 +18,7 @@ import { logger } from "../lib/logger.js";
 let connectionString = process.env.DATABASE_URL!;
 
 // Если используется pooler и он не работает, пробуем автоматически переключиться на прямое подключение
-if (connectionString.includes("pooler.supabase.com:6543")) {
+if (connectionString && connectionString.includes("pooler.supabase.com:6543")) {
   // Извлекаем project ref и пароль
   const match = connectionString.match(/postgres\.([^:]+):([^@]+)@/);
   if (match) {
@@ -54,7 +54,7 @@ if (connectionString.includes("pooler.supabase.com:6543")) {
 }
 
 const client = postgres(connectionString, { 
-  ssl: connectionString.includes("supabase") ? { rejectUnauthorized: false } : false,
+  ssl: connectionString && connectionString.includes("supabase") ? { rejectUnauthorized: false } : false,
   connect_timeout: 10, // 10 seconds timeout for connection
   idle_timeout: 20, // 20 seconds timeout for idle connections
   max_lifetime: 60 * 30, // 30 minutes max lifetime

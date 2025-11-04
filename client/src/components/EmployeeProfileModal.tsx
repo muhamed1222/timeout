@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
+import { Button } from "@/ui/button";
 import { Edit, Calendar, TrendingUp, Clock, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { EditEmployeeModal } from "./EditEmployeeModal";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/ui/skeleton";
 import { normalizeAvatarId } from "@/lib/employeeAvatar";
 import { EmployeeCalendarView } from "./EmployeeCalendarView";
 
@@ -31,7 +32,7 @@ type Employee = {
   photo_url?: string | null;
 };
 
-interface EmployeeStats {
+interface IEmployeeStats {
   efficiency_index: number;
   total_shifts: number;
   completed_shifts: number;
@@ -40,14 +41,14 @@ interface EmployeeStats {
   avg_work_hours: number;
 }
 
-interface EmployeeProfileModalProps {
+interface IEmployeeProfileModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   employee: Employee | null;
   onEmployeeUpdated?: (updatedEmployee: Employee) => void;
 }
 
-export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeUpdated }: EmployeeProfileModalProps) {
+export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeUpdated }: IEmployeeProfileModalProps) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -76,7 +77,7 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
   const displayEmployee = freshEmployee || employee;
 
   // Fetch employee statistics
-  const { data: stats, isLoading: statsLoading } = useQuery<EmployeeStats>({
+  const { data: stats, isLoading: statsLoading } = useQuery<IEmployeeStats>({
     queryKey: ["/api/employees", displayEmployee?.id, "stats"],
     queryFn: async () => {
       const response = await fetch(`/api/employees/${displayEmployee?.id}/stats`);
@@ -218,13 +219,13 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
                     </div>
                   </div>
                 </div>
-                <button
+                <Button
                   onClick={() => setShowEditModal(true)}
-                  className="bg-[#e16546] px-[17px] py-3 rounded-[40px] flex items-center gap-2 text-sm font-medium text-white hover:bg-[#d15536] transition-colors"
+                  className="flex items-center gap-2"
                 >
                   <Edit className="w-4 h-4" />
                   Редактировать профиль
-                </button>
+                </Button>
               </div>
 
               {/* Additional Info */}

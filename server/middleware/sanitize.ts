@@ -24,7 +24,14 @@ export function sanitizeBody(req: Request, res: Response, next: NextFunction): v
   try {
     if (req.body && typeof req.body === "object") {
       // Check for SQL injection patterns first
-      const bodyString = JSON.stringify(req.body);
+      // Use a custom replacer to preserve Date objects
+      const bodyString = JSON.stringify(req.body, (key, value) => {
+        // Skip Date objects in SQL injection check - they're serialized differently
+        if (value instanceof Date) {
+          return value.toISOString();
+        }
+        return value;
+      });
       if (containsSqlInjection(bodyString)) {
         logger.warn("SQL injection pattern detected in request body", {
           path: req.path,

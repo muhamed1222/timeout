@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
 import { HelpCircle, BookOpen, MessageSquare, ChevronDown, ChevronUp, Mail, Phone, MapPin, Clock, Download, PlayCircle, FileText, Users, Calendar, Award, Settings } from "lucide-react";
 
 interface FAQItem {

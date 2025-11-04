@@ -14,10 +14,13 @@ describe('BaseRepository', () => {
   let mockTable: any;
 
   beforeEach(() => {
-    // Mock table
+    // Mock table with proper structure for trackQuery
     mockTable = {
       id: 'id',
       name: 'name',
+      _: {
+        name: 'test_table',
+      },
     };
 
     // Mock database with query builder methods
@@ -48,30 +51,46 @@ describe('BaseRepository', () => {
   describe('findById', () => {
     it('should find entity by ID', async () => {
       const mockResult = [{ id: '1', name: 'Test' }];
-      mockDb.returning = vi.fn().mockResolvedValue(mockResult);
       
-      // Mock the query chain
-      const mockQuery = {
-        limit: vi.fn().mockResolvedValue(mockResult),
+      // Mock the query chain properly
+      const mockLimit = {
+        then: (resolve: any) => resolve(mockResult),
       };
-      mockDb.where = vi.fn().mockReturnValue(mockQuery);
-      mockDb.from = vi.fn().mockReturnValue(mockQuery);
-      mockDb.select = vi.fn().mockReturnValue(mockQuery);
+      const mockWhere = {
+        limit: vi.fn().mockReturnValue(mockLimit),
+      };
+      const mockFrom = {
+        where: vi.fn().mockReturnValue(mockWhere),
+      };
+      const mockSelect = {
+        from: vi.fn().mockReturnValue(mockFrom),
+      };
+      
+      mockDb.select = vi.fn().mockReturnValue(mockSelect);
 
       const result = await repository.findById('1');
 
       expect(mockDb.select).toHaveBeenCalled();
-      expect(mockDb.from).toHaveBeenCalledWith(mockTable);
+      expect(mockSelect.from).toHaveBeenCalledWith(mockTable);
       expect(result).toEqual(mockResult[0]);
     });
 
     it('should return undefined if not found', async () => {
-      const mockQuery = {
-        limit: vi.fn().mockResolvedValue([]),
+      // Mock the query chain properly
+      const mockLimit = {
+        then: (resolve: any) => resolve([]),
       };
-      mockDb.where = vi.fn().mockReturnValue(mockQuery);
-      mockDb.from = vi.fn().mockReturnValue(mockQuery);
-      mockDb.select = vi.fn().mockReturnValue(mockQuery);
+      const mockWhere = {
+        limit: vi.fn().mockReturnValue(mockLimit),
+      };
+      const mockFrom = {
+        where: vi.fn().mockReturnValue(mockWhere),
+      };
+      const mockSelect = {
+        from: vi.fn().mockReturnValue(mockFrom),
+      };
+      
+      mockDb.select = vi.fn().mockReturnValue(mockSelect);
 
       const result = await repository.findById('non-existent');
 
@@ -210,12 +229,23 @@ describe('BaseRepository', () => {
 
   describe('exists', () => {
     it('should return true if entity exists', async () => {
-      const mockQuery = {
-        limit: vi.fn().mockResolvedValue([{ id: '1' }]),
+      const mockResult = [{ id: '1' }];
+      
+      // Mock the query chain properly (same as findById)
+      const mockLimit = {
+        then: (resolve: any) => resolve(mockResult),
       };
-      mockDb.where = vi.fn().mockReturnValue(mockQuery);
-      mockDb.from = vi.fn().mockReturnValue(mockQuery);
-      mockDb.select = vi.fn().mockReturnValue(mockQuery);
+      const mockWhere = {
+        limit: vi.fn().mockReturnValue(mockLimit),
+      };
+      const mockFrom = {
+        where: vi.fn().mockReturnValue(mockWhere),
+      };
+      const mockSelect = {
+        from: vi.fn().mockReturnValue(mockFrom),
+      };
+      
+      mockDb.select = vi.fn().mockReturnValue(mockSelect);
 
       const result = await repository.exists('1');
 
@@ -223,12 +253,21 @@ describe('BaseRepository', () => {
     });
 
     it('should return false if entity does not exist', async () => {
-      const mockQuery = {
-        limit: vi.fn().mockResolvedValue([]),
+      // Mock the query chain properly (same as findById)
+      const mockLimit = {
+        then: (resolve: any) => resolve([]),
       };
-      mockDb.where = vi.fn().mockReturnValue(mockQuery);
-      mockDb.from = vi.fn().mockReturnValue(mockQuery);
-      mockDb.select = vi.fn().mockReturnValue(mockQuery);
+      const mockWhere = {
+        limit: vi.fn().mockReturnValue(mockLimit),
+      };
+      const mockFrom = {
+        where: vi.fn().mockReturnValue(mockWhere),
+      };
+      const mockSelect = {
+        from: vi.fn().mockReturnValue(mockFrom),
+      };
+      
+      mockDb.select = vi.fn().mockReturnValue(mockSelect);
 
       const result = await repository.exists('non-existent');
 

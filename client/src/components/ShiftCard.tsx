@@ -1,11 +1,11 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/ui/card";
+import { Button } from "@/ui/button";
 import { Clock, MapPin, MessageSquare } from "lucide-react";
 import EmployeeAvatar from "./EmployeeAvatar";
 import StatusBadge, { type ShiftStatus } from "./StatusBadge";
 import { usePrefetchEmployee, usePrefetchEmployeeStats } from "@/hooks/usePrefetch";
 
-interface ShiftCardProps {
+interface IShiftCardProps {
   employeeName: string;
   employeeImage?: string;
   position: string;
@@ -17,6 +17,8 @@ interface ShiftCardProps {
   employeeId?: string; // For prefetching
   onViewDetails?: () => void;
   onSendMessage?: () => void;
+  /** Индекс для staggered анимации */
+  index?: number;
 }
 
 export default function ShiftCard({ 
@@ -30,8 +32,9 @@ export default function ShiftCard({
   lastReport,
   employeeId,
   onViewDetails,
-  onSendMessage, 
-}: ShiftCardProps) {
+  onSendMessage,
+  index = 0,
+}: IShiftCardProps) {
   const prefetchEmployee = usePrefetchEmployee();
   const prefetchStats = usePrefetchEmployeeStats();
 
@@ -59,6 +62,7 @@ export default function ShiftCard({
       role="article"
       aria-labelledby={`shift-${employeeName.toLowerCase().replace(" ", "-")}-title`}
       onMouseEnter={handleMouseEnter}
+      index={index}
     >
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">

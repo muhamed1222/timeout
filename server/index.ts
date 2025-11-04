@@ -112,8 +112,13 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
     
     // Start scheduled tasks (monitoring, reminders)
-    scheduler.startAll();
-    log("Schedulers started");
+    // Skip scheduler on Vercel - use Vercel Cron Jobs instead
+    if (!process.env.VERCEL) {
+      scheduler.startAll();
+      log("Schedulers started");
+    } else {
+      log("Running on Vercel - schedulers disabled (use Vercel Cron Jobs)");
+    }
   });
 
   // Graceful shutdown

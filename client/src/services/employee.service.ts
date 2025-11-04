@@ -42,11 +42,28 @@ export class EmployeeService {
     sort?: SortOptions,
     pagination?: PaginationOptions,
   ): Promise<Employee[]> {
-    const params = {
-      ...filters,
-      ...sort,
-      ...pagination,
-    };
+    const params: Record<string, string | number | boolean> = {};
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params[key] = String(value);
+        }
+      });
+    }
+    if (sort) {
+      Object.entries(sort).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params[key] = String(value);
+        }
+      });
+    }
+    if (pagination) {
+      Object.entries(pagination).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params[key] = typeof value === 'number' ? value : String(value);
+        }
+      });
+    }
 
     const response = await apiService.get<Employee[]>(
       API_ENDPOINTS.COMPANIES.EMPLOYEES(companyId),

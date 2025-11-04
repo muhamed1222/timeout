@@ -1,8 +1,9 @@
 // Хук для работы с дашбордом
 import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { dashboardService, DashboardStats, ShiftDisplayData, ActivityItem } from "../../services/dashboard.service";
-import { Shift } from "@shared/types";
+import { dashboardService, DashboardStats, ShiftDisplayData, IActivityItem } from "../../services/dashboard.service";
+import type { Shift } from "@shared/schema";
+import type { ShiftWithEmployee } from "@shared/api-types";
 
 export interface UseDashboardOptions {
   companyId: string;
@@ -47,7 +48,7 @@ export function useDashboard({
     isLoading: shiftsLoading,
     error: shiftsError,
     refetch: refetchShifts,
-  } = useQuery<Shift[]>({
+  } = useQuery<ShiftWithEmployee[]>({
     queryKey: ["active-shifts", companyId],
     queryFn: () => dashboardService.getActiveShifts(companyId),
     enabled: enabled && !!companyId, // Используем явный флаг enabled

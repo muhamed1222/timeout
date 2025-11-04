@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/ui/button";
+import { Input } from "@/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { Plus, Loader2, Calendar, Clock, Trash2, Edit, X, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -742,7 +742,7 @@ export default function Schedules() {
                   <FormField
                     control={assignForm.control}
                     name="employee_id"
-                    render={({ field }) => (
+                    render={({ field }: any) => (
                       <FormItem className="flex flex-col gap-1">
                         <FormLabel className="text-sm font-medium text-black leading-[1.2]">Сотрудник</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -766,7 +766,7 @@ export default function Schedules() {
                   <FormField
                     control={assignForm.control}
                     name="schedule_id"
-                    render={({ field }) => (
+                    render={({ field }: any) => (
                       <FormItem className="flex flex-col gap-1">
                         <FormLabel className="text-sm font-medium text-black leading-[1.2]">График</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -790,7 +790,7 @@ export default function Schedules() {
                   <FormField
                     control={assignForm.control}
                     name="valid_from"
-                    render={({ field }) => (
+                    render={({ field }: any) => (
                       <FormItem className="flex flex-col gap-1">
                         <FormLabel className="text-sm font-medium text-black leading-[1.2]">Дата начала</FormLabel>
                         <FormControl>
@@ -808,7 +808,7 @@ export default function Schedules() {
                   <FormField
                     control={assignForm.control}
                     name="valid_to"
-                    render={({ field }) => (
+                    render={({ field }: any) => (
                       <FormItem className="flex flex-col gap-1">
                         <FormLabel className="text-sm font-medium text-black leading-[1.2]">Дата окончания (необязательно)</FormLabel>
                         <FormControl>
@@ -898,7 +898,7 @@ export default function Schedules() {
                   <FormField
                     control={templateForm.control}
                     name="name"
-                    render={({ field }) => (
+                    render={({ field }: any) => (
                       <FormItem className="flex flex-col gap-1">
                         <FormLabel className="text-sm font-medium text-black leading-[1.2]">Название</FormLabel>
                         <FormControl>
@@ -917,7 +917,7 @@ export default function Schedules() {
                     <FormField
                       control={templateForm.control}
                       name="shift_start"
-                      render={({ field }) => (
+                      render={({ field }: any) => (
                         <FormItem className="flex flex-col gap-1">
                           <FormLabel className="text-sm font-medium text-black leading-[1.2]">Начало смены</FormLabel>
                           <FormControl>
@@ -935,7 +935,7 @@ export default function Schedules() {
                     <FormField
                       control={templateForm.control}
                       name="shift_end"
-                      render={({ field }) => (
+                      render={({ field }: any) => (
                         <FormItem className="flex flex-col gap-1">
                           <FormLabel className="text-sm font-medium text-black leading-[1.2]">Конец смены</FormLabel>
                           <FormControl>

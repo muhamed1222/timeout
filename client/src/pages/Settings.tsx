@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/ui/input";
+import { Label } from "@/ui/label";
+import { Switch } from "@/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/table";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/ui/form";
 import { Loader2, Bell, Globe, Building2, AlertTriangle, Plus, Edit, Trash2, X, Calendar, Clock } from "lucide-react";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger } from "@/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -709,7 +709,7 @@ export default function Settings() {
                 <FormField
                   control={companyForm.control}
                   name="name"
-                  render={({ field }) => (
+                  render={({ field }: any) => (
                     <FormItem className="flex flex-col gap-1">
                       <FormLabel className="text-sm font-medium text-black leading-[1.2]">Название компании</FormLabel>
                       <FormControl>
@@ -728,7 +728,7 @@ export default function Settings() {
                 <FormField
                   control={companyForm.control}
                   name="tz"
-                  render={({ field }) => (
+                  render={({ field }: any) => (
                     <FormItem className="flex flex-col gap-1">
                       <FormLabel className="text-sm font-medium text-black leading-[1.2]">Часовой пояс компании</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
@@ -1080,7 +1080,7 @@ export default function Settings() {
                           <FormField
                             control={assignForm.control}
                             name="employee_id"
-                            render={({ field }) => (
+                            render={({ field }: any) => (
                               <FormItem className="flex flex-col gap-1">
                                 <FormLabel className="text-sm font-medium text-black leading-[1.2]">Сотрудник</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -1104,7 +1104,7 @@ export default function Settings() {
                           <FormField
                             control={assignForm.control}
                             name="schedule_id"
-                            render={({ field }) => (
+                            render={({ field }: any) => (
                               <FormItem className="flex flex-col gap-1">
                                 <FormLabel className="text-sm font-medium text-black leading-[1.2]">График</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -1128,7 +1128,7 @@ export default function Settings() {
                           <FormField
                             control={assignForm.control}
                             name="valid_from"
-                            render={({ field }) => (
+                            render={({ field }: any) => (
                               <FormItem className="flex flex-col gap-1">
                                 <FormLabel className="text-sm font-medium text-black leading-[1.2]">Дата начала</FormLabel>
                                 <FormControl>
@@ -1145,7 +1145,7 @@ export default function Settings() {
                           <FormField
                             control={assignForm.control}
                             name="valid_to"
-                            render={({ field }) => (
+                            render={({ field }: any) => (
                               <FormItem className="flex flex-col gap-1">
                                 <FormLabel className="text-sm font-medium text-black leading-[1.2]">Дата окончания (необязательно)</FormLabel>
                                 <FormControl>
@@ -1227,7 +1227,7 @@ export default function Settings() {
                           <FormField
                             control={templateForm.control}
                             name="name"
-                            render={({ field }) => (
+                            render={({ field }: any) => (
                               <FormItem className="flex flex-col gap-1">
                                 <FormLabel className="text-sm font-medium text-black leading-[1.2]">Название</FormLabel>
                                 <FormControl>
@@ -1245,7 +1245,7 @@ export default function Settings() {
                             <FormField
                               control={templateForm.control}
                               name="shift_start"
-                              render={({ field }) => (
+                              render={({ field }: any) => (
                                 <FormItem className="flex flex-col gap-1">
                                   <FormLabel className="text-sm font-medium text-black leading-[1.2]">Начало смены</FormLabel>
                                   <FormControl>
@@ -1262,7 +1262,7 @@ export default function Settings() {
                             <FormField
                               control={templateForm.control}
                               name="shift_end"
-                              render={({ field }) => (
+                              render={({ field }: any) => (
                                 <FormItem className="flex flex-col gap-1">
                                   <FormLabel className="text-sm font-medium text-black leading-[1.2]">Конец смены</FormLabel>
                                   <FormControl>
@@ -1632,7 +1632,7 @@ export default function Settings() {
                   <FormField
                     control={violationForm.control}
                     name="code"
-                    render={({ field }) => (
+                    render={({ field }: any) => (
                       <FormItem className="flex flex-col gap-1">
                         <FormLabel className="text-sm font-medium text-black leading-[1.2]">Код нарушения</FormLabel>
                         <FormControl>
@@ -1650,7 +1650,7 @@ export default function Settings() {
                   <FormField
                     control={violationForm.control}
                     name="name"
-                    render={({ field }) => (
+                    render={({ field }: any) => (
                       <FormItem className="flex flex-col gap-1">
                         <FormLabel className="text-sm font-medium text-black leading-[1.2]">Название нарушения</FormLabel>
                         <FormControl>
@@ -1668,7 +1668,7 @@ export default function Settings() {
                   <FormField
                     control={violationForm.control}
                     name="penalty_percent"
-                    render={({ field }) => (
+                    render={({ field }: any) => (
                       <FormItem className="flex flex-col gap-1">
                         <FormLabel className="text-sm font-medium text-black leading-[1.2]">Штраф (%)</FormLabel>
                         <FormControl>
@@ -1689,7 +1689,7 @@ export default function Settings() {
                   <FormField
                     control={violationForm.control}
                     name="auto_detectable"
-                    render={({ field }) => (
+                    render={({ field }: any) => (
                       <FormItem className="flex flex-row items-center justify-between bg-[#f8f8f8] rounded-[12px] p-3">
                         <div className="flex flex-col gap-0.5">
                           <FormLabel className="text-sm font-medium text-black leading-[1.2]">Автоматическое определение</FormLabel>
@@ -1710,7 +1710,7 @@ export default function Settings() {
                   <FormField
                     control={violationForm.control}
                     name="is_active"
-                    render={({ field }) => (
+                    render={({ field }: any) => (
                       <FormItem className="flex flex-row items-center justify-between bg-[#f8f8f8] rounded-[12px] p-3">
                         <div className="flex flex-col gap-0.5">
                           <FormLabel className="text-sm font-medium text-black leading-[1.2]">Активно</FormLabel>

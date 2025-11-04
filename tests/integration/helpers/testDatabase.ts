@@ -1,4 +1,4 @@
-import { db } from '../../../server/storage.js';
+import { db } from '../../../server/repositories/index.js';
 import { sql } from 'drizzle-orm';
 
 /**
@@ -6,15 +6,21 @@ import { sql } from 'drizzle-orm';
  */
 export async function cleanDatabase() {
   // Delete in correct order to respect foreign key constraints
-  await db.execute(sql`TRUNCATE TABLE report CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE daily_report CASCADE`);
   await db.execute(sql`TRUNCATE TABLE exception CASCADE`);
-  await db.execute(sql`TRUNCATE TABLE violation CASCADE`);
-  await db.execute(sql`TRUNCATE TABLE break CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE violations CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE break_interval CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE work_interval CASCADE`);
   await db.execute(sql`TRUNCATE TABLE shift CASCADE`);
-  await db.execute(sql`TRUNCATE TABLE rating_period CASCADE`);
-  await db.execute(sql`TRUNCATE TABLE violation_rule CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE employee_rating CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE company_violation_rules CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE reminder CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE employee_schedule CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE schedule_template CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE employee_invite CASCADE`);
   await db.execute(sql`TRUNCATE TABLE employee CASCADE`);
   await db.execute(sql`TRUNCATE TABLE company CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE audit_log CASCADE`);
 }
 
 /**

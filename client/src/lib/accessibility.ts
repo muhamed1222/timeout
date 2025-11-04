@@ -343,7 +343,7 @@ export function useRovingTabIndex(itemsCount: number) {
 /**
  * Accessible button props
  */
-export function getAccessibleButtonProps(
+export function IgetAccessibleButtonProps(
   label: string,
   onClick: () => void,
 ): React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -357,7 +357,7 @@ export function getAccessibleButtonProps(
 /**
  * Accessible link props
  */
-export function getAccessibleLinkProps(
+export function IgetAccessibleLinkProps(
   label: string,
   href: string,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {

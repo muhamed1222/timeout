@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/ui/button";
+import { Input } from "@/ui/input";
+import { Label } from "@/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -9,11 +9,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/ui/dialog";
 import { Copy, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-interface QRCodeModalProps {
+interface IQRCodeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   inviteData: {
@@ -29,7 +29,7 @@ export function QRCodeModal({
   open,
   onOpenChange,
   inviteData,
-}: QRCodeModalProps) {
+}: IQRCodeModalProps) {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 

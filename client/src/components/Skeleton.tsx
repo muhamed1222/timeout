@@ -6,7 +6,7 @@
 
 import { cn } from "@/lib/utils";
 
-interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ISkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: "text" | "circular" | "rectangular" | "rounded";
   width?: string | number;
   height?: string | number;
@@ -20,7 +20,7 @@ export function Skeleton({
   height,
   count = 1,
   ...props
-}: SkeletonProps) {
+}: ISkeletonProps) {
   const getVariantClasses = () => {
     switch (variant) {
       case "text":

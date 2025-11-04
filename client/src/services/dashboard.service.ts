@@ -1,5 +1,5 @@
 // Сервис для бизнес-логики дашборда
-import { Shift } from "@shared/types";
+import type { Shift } from "@shared/schema";
 import type { ShiftWithEmployee } from "@shared/api-types";
 import { apiService } from "./api.service";
 
@@ -21,7 +21,7 @@ export interface ShiftDisplayData {
   location?: string;
 }
 
-export interface ActivityItem {
+export interface IActivityItem {
   id: string;
   type: string;
   employeeName: string;
@@ -64,7 +64,21 @@ export class DashboardService {
     }
   }
 
-  // Трансформация данных смен для отображения
+  /**
+   * Трансформирует данные смен с информацией о сотрудниках в формат для отображения
+   * 
+   * Преобразует сырые данные смен из API в структурированный формат с форматированным временем,
+   * статусами и информацией о сотрудниках. Использует fallback значения для отсутствующих данных.
+   * 
+   * @param shifts - Массив смен с данными о сотрудниках
+   * @returns Массив данных смен, готовых для отображения в UI
+   * 
+   * @example
+   * ```ts
+   * const displayData = service.transformShiftsForDisplay(shifts);
+   * // Возвращает массив ShiftDisplayData с отформатированными данными
+   * ```
+   */
   transformShiftsForDisplay(shifts: ShiftWithEmployee[]): ShiftDisplayData[] {
     return shifts.map(shift => ({
       id: shift.id,
@@ -79,12 +93,22 @@ export class DashboardService {
         minute: "2-digit",
       }),
       status: this.getShiftStatus(shift),
-      lastReport: shift.notes || undefined,
+      lastReport: undefined, // Shift doesn't have notes field in schema
       location: undefined, // Location data not available in current schema
     }));
   }
 
-  // Определение статуса смены
+  /**
+   * Определяет статус смены на основе данных из базы
+   * 
+   * Анализирует статус смены и преобразует его в упрощенный формат для UI.
+   * Обрабатывает различные статусы: completed, active, и определяет опоздания.
+   * 
+   * @param shift - Смена (Shift или ShiftWithEmployee) с данными о статусе
+   * @returns Статус смены в упрощенном формате: "active" | "break" | "late" | "done"
+   * 
+   * @private
+   */
   private getShiftStatus(shift: Shift | ShiftWithEmployee): "active" | "break" | "late" | "done" {
     if (shift.status === "completed") {
       return "done";
@@ -109,8 +133,8 @@ export class DashboardService {
   }
 
   // Генерация активности на основе смен
-  generateActivitiesFromShifts(shifts: ShiftWithEmployee[]): ActivityItem[] {
-    const activities: ActivityItem[] = [];
+  generateActivitiesFromShifts(shifts: ShiftWithEmployee[]): IActivityItem[] {
+    const activities: IActivityItem[] = [];
 
     shifts.forEach(shift => {
       const employeeName = shift.employee?.full_name || "Неизвестный сотрудник";
@@ -181,12 +205,28 @@ export class DashboardService {
     URL.revokeObjectURL(link.href);
   }
 
-  // Получение данных для дашборда
+  /**
+   * Получает все необходимые данные для отображения дашборда
+   * 
+   * Агрегирует данные из различных источников: статистику компании, активные смены,
+   * трансформированные данные для отображения и активность. Все запросы выполняются параллельно
+   * для оптимизации производительности.
+   * 
+   * @param companyId - ID компании для загрузки данных
+   * @returns Промис с объектом, содержащим статистику, смены, трансформированные данные и активность
+   * @throws {Error} Если не удалось загрузить данные дашборда
+   * 
+   * @example
+   * ```ts
+   * const data = await service.getDashboardData(companyId);
+   * // Возвращает { stats, activeShifts, transformedShifts, activities }
+   * ```
+   */
   async getDashboardData(companyId: string): Promise<{
     stats: DashboardStats;
     activeShifts: ShiftWithEmployee[];
     transformedShifts: ShiftDisplayData[];
-    activities: ActivityItem[];
+    activities: IActivityItem[];
   }> {
     try {
       const [stats, activeShifts] = await Promise.all([

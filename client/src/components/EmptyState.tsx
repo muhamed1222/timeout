@@ -4,7 +4,7 @@
  * Displays helpful empty states with actions
  */
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/ui/button";
 import { cn } from "@/lib/utils";
 import { 
   FileX, 
@@ -16,7 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-interface EmptyStateProps {
+interface IEmptyStateProps {
   icon?: LucideIcon;
   title: string;
   description?: string;
@@ -33,7 +33,7 @@ export function EmptyState({
   description,
   action,
   className,
-}: EmptyStateProps) {
+}: IEmptyStateProps) {
   return (
     <div 
       className={cn(

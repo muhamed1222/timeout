@@ -6,7 +6,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { optimisticAdd, optimisticRemove, optimisticUpdateItem, generateTempId, replaceTempId } from "@/lib/optimisticUpdates";
-import type { Employee, EmployeeInvite } from "@shared/types";
+import type { Employee, EmployeeInvite } from "@shared/schema";
 
 /**
  * Optimistic mutation for creating an employee invite
@@ -48,15 +48,15 @@ export function useOptimisticCreateInvite() {
       const optimisticInvite: EmployeeInvite = {
         id: tempId,
         company_id: variables.company_id,
-        full_name: variables.full_name,
-        position: variables.position,
+        full_name: variables.full_name || null,
+        position: variables.position || null,
         code: `temp_${tempId}`,
-        created_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        created_at: new Date(),
+        used_by_employee: null,
         used_at: null,
       };
 
-      optimisticAdd(queryClient, ["/api/companies", variables.company_id, "employee-invites"], optimisticInvite);
+      optimisticAdd(queryClient, ["/api/companies", variables.company_id, "employee-invites"] as any[], optimisticInvite);
 
       return { previousInvites, tempId, companyId: variables.company_id };
     },
@@ -121,7 +121,7 @@ export function useOptimisticDeleteInvite() {
           const previousInvites = query.state.data as EmployeeInvite[] | undefined;
           
           // Optimistically remove
-          optimisticRemove(queryClient, query.queryKey, inviteId);
+          optimisticRemove(queryClient, query.queryKey as any[], inviteId);
           
           return { previousInvites, queryKey: query.queryKey };
         }
@@ -178,7 +178,7 @@ export function useOptimisticDeleteEmployee() {
           const previousEmployees = query.state.data as Employee[] | undefined;
           
           // Optimistically remove
-          optimisticRemove(queryClient, query.queryKey, employeeId);
+          optimisticRemove(queryClient, query.queryKey as any[], employeeId);
           
           return { previousEmployees, queryKey: query.queryKey };
         }

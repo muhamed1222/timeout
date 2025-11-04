@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+// Using built-in fetch (Node 18+)
 
 // Тестовые данные
 const testUpdates = [

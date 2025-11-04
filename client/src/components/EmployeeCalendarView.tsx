@@ -1,12 +1,12 @@
 import { useState, useMemo } from "react";
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar } from "@/ui/calendar";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from "date-fns";
 import { ru } from "date-fns/locale/ru";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/ui/skeleton";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/ui/button";
 
 interface Shift {
   id: string;
@@ -18,7 +18,7 @@ interface Shift {
   status: "planned" | "active" | "completed" | "cancelled";
 }
 
-interface Exception {
+interface IException {
   id: string;
   employee_id: string;
   date: string;
@@ -27,17 +27,17 @@ interface Exception {
   resolved_at: string | null;
 }
 
-interface DayData {
+interface IDayData {
   date: Date;
   shifts: Shift[];
-  exceptions: Exception[];
+  exceptions: IException[];
   hasWork: boolean;
   hasLate: boolean;
   hasAbsence: boolean;
   workHours: number;
 }
 
-interface EmployeeCalendarViewProps {
+interface IEmployeeCalendarViewProps {
   employeeId: string;
   currentMonth: Date;
   onMonthChange: (month: Date) => void;
@@ -47,7 +47,7 @@ export function EmployeeCalendarView({
   employeeId,
   currentMonth,
   onMonthChange,
-}: EmployeeCalendarViewProps) {
+}: IEmployeeCalendarViewProps) {
   const { companyId } = useAuth();
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -73,7 +73,7 @@ export function EmployeeCalendarView({
   });
 
   // Fetch exceptions for the month
-  const { data: exceptions, isLoading: exceptionsLoading } = useQuery<Exception[]>({
+  const { data: exceptions, isLoading: exceptionsLoading } = useQuery<IException[]>({
     queryKey: ["/api/exceptions", employeeId, monthStart.toISOString(), monthEnd.toISOString()],
     queryFn: async () => {
       // Fetch exceptions for employee (need to check if endpoint exists)
@@ -97,7 +97,7 @@ export function EmployeeCalendarView({
   });
 
   // Process days data
-  const daysData = useMemo<DayData[]>(() => {
+  const daysData = useMemo<IDayData[]>(() => {
     const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
     const shiftsList = shifts || [];
     const exceptionsList = exceptions || [];

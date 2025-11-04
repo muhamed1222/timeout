@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/card";
+import { Button } from "@/ui/button";
+import { Input } from "@/ui/input";
+import { Label } from "@/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/ui/form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/table";
+import { Badge } from "@/ui/badge";
+import { Switch } from "@/ui/switch";
 import { Loader2, Building2, Globe, Clock, AlertTriangle, Plus, Edit, Trash2, LogOut } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useLocation } from "wouter";
@@ -320,7 +320,7 @@ export default function CompanySettings() {
                   <FormField
                     control={form.control}
                     name="name"
-                    render={({ field }) => (
+                    render={({ field }: any) => (
                       <FormItem>
                         <FormLabel>Название компании</FormLabel>
                         <FormControl>
@@ -334,7 +334,7 @@ export default function CompanySettings() {
                   <FormField
                     control={form.control}
                     name="tz"
-                    render={({ field }) => (
+                    render={({ field }: any) => (
                       <FormItem>
                         <FormLabel>Часовой пояс компании</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
@@ -526,7 +526,7 @@ export default function CompanySettings() {
                 <FormField
                   control={violationForm.control}
                   name="code"
-                  render={({ field }) => (
+                  render={({ field }: any) => (
                     <FormItem>
                       <FormLabel>Код нарушения</FormLabel>
                       <FormControl>
@@ -540,7 +540,7 @@ export default function CompanySettings() {
                 <FormField
                   control={violationForm.control}
                   name="name"
-                  render={({ field }) => (
+                  render={({ field }: any) => (
                     <FormItem>
                       <FormLabel>Название нарушения</FormLabel>
                       <FormControl>
@@ -554,7 +554,7 @@ export default function CompanySettings() {
                 <FormField
                   control={violationForm.control}
                   name="penalty_percent"
-                  render={({ field }) => (
+                  render={({ field }: any) => (
                     <FormItem>
                       <FormLabel>Штраф (%)</FormLabel>
                       <FormControl>
@@ -574,7 +574,7 @@ export default function CompanySettings() {
                 <FormField
                   control={violationForm.control}
                   name="auto_detectable"
-                  render={({ field }) => (
+                  render={({ field }: any) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                       <div className="space-y-0.5">
                         <FormLabel>Автоматическое определение</FormLabel>
@@ -597,7 +597,7 @@ export default function CompanySettings() {
                 <FormField
                   control={violationForm.control}
                   name="is_active"
-                  render={({ field }) => (
+                  render={({ field }: any) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                       <div className="space-y-0.5">
                         <FormLabel>Активно</FormLabel>

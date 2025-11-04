@@ -1,4 +1,4 @@
-import { db } from '../../../server/storage.js';
+import { db } from '../../../server/repositories/index.js';
 import { company, employee, violationRule, shift, ratingPeriod } from '../../../shared/schema.js';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';

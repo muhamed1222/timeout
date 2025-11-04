@@ -6,14 +6,14 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+} from "@/ui/card";
+import { Button } from "@/ui/button";
+import { Badge } from "@/ui/badge";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from "@/components/ui/avatar";
+} from "@/ui/avatar";
 import {
   Table,
   TableBody,
@@ -21,9 +21,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/ui/table";
 import { Plus, Search, Filter } from "lucide-react";
-import { Employee } from "@shared/types/entities/employee";
+import type { Employee } from "@shared/schema";
 import { getEmployeeAvatarUrl, getEmployeeInitials } from "@/lib/employeeAvatar";
 
 interface EmployeeListProps {
@@ -118,7 +118,11 @@ export function EmployeeList({
                 </TableRow>
               ) : (
                 employees.map(employee => {
-                  const avatarUrl = getEmployeeAvatarUrl(employee as any);
+                  const avatarUrl = getEmployeeAvatarUrl({
+                    photo_url: (employee.photo_url ?? null) as string | null,
+                    avatar_id: (employee.avatar_id ?? null) as number | null,
+                    full_name: employee.full_name,
+                  });
                   const initials = getEmployeeInitials(employee.full_name);
                   
                   return (
@@ -126,7 +130,7 @@ export function EmployeeList({
                       <TableCell>
                         <div className='flex items-center gap-3'>
                           <Avatar>
-                            <AvatarImage src={avatarUrl || undefined} />
+                            <AvatarImage src={avatarUrl ? avatarUrl : undefined} />
                             <AvatarFallback>
                               {initials}
                             </AvatarFallback>
@@ -143,7 +147,7 @@ export function EmployeeList({
                       </TableCell>
                       <TableCell>{employee.position}</TableCell>
                       <TableCell>
-                        <Badge className={getStatusColor(employee.status)}>
+                        <Badge className={getStatusColor(employee.status) as any}>
                           {getStatusLabel(employee.status)}
                         </Badge>
                       </TableCell>
@@ -159,9 +163,9 @@ export function EmployeeList({
                         )}
                       </TableCell>
                       <TableCell>
-                        {new Date(employee.created_at).toLocaleDateString(
-                          "ru-RU",
-                        )}
+                        {employee.created_at 
+                          ? new Date(employee.created_at).toLocaleDateString("ru-RU")
+                          : "Не указана"}
                       </TableCell>
                       <TableCell className='text-right'>
                         <div className='flex items-center justify-end gap-2'>

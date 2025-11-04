@@ -1,11 +1,11 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
+import { Badge } from "@/ui/badge";
 import { Clock, MessageSquare, LogIn, LogOut, Coffee } from "lucide-react";
 import EmployeeAvatar from "./EmployeeAvatar";
 
 export type ActivityType = "shift_start" | "shift_end" | "break_start" | "break_end" | "report_submitted";
 
-export interface ActivityItem {
+export interface IActivityItem {
   id: string;
   employeeName: string;
   employeeImage?: string;
@@ -14,8 +14,8 @@ export interface ActivityItem {
   timestamp: string;
 }
 
-interface RecentActivityProps {
-  activities: ActivityItem[];
+interface IRecentActivityProps {
+  activities: IActivityItem[];
   className?: string;
 }
 
@@ -47,7 +47,7 @@ const activityConfig = {
   },
 };
 
-export default function RecentActivity({ activities, className = "" }: RecentActivityProps) {
+export default function RecentActivity({ activities, className = "" }: IRecentActivityProps) {
   return (
     <Card className={className} data-testid="card-recent-activity">
       <CardHeader>

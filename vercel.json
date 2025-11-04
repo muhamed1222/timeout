@@ -5,9 +5,21 @@
   "devCommand": "npm run dev",
   "functions": {
     "api/index.js": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 60,
       "includeFiles": "dist/**"
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/shift-monitoring",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/reminders",
+      "schedule": "* * * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",

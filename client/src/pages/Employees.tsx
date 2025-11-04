@@ -1,51 +1,29 @@
-import { useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Loader2, QrCode, Copy, Check, Trash2, Edit, Trash } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
+/**
+ * Страница управления сотрудниками
+ * Отображает список сотрудников, приглашения и позволяет управлять ими
+ */
+
+import { useState, useRef, useCallback, useMemo } from "react";
+import { Button } from "@/ui/button";
+import { Input } from "@/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/ui/alert-dialog";
+import { Skeleton } from "@/ui/skeleton";
+import { Plus, Loader2, Copy, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, queryConfig } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { AddEmployeeModal } from "@/components/AddEmployeeModal";
 import { EmployeeProfileModal } from "@/components/EmployeeProfileModal";
 import { EmployeeListSkeleton } from "@/components/LoadingSkeletons";
+import { EmployeeCard } from "@/components/EmployeeCard";
+import { InviteCard } from "@/components/InviteCard";
 import { useSearchShortcut } from "@/hooks/useKeyboardShortcuts";
 import { useOptimisticDeleteInvite, useOptimisticDeleteEmployee } from "@/hooks/useOptimisticMutations";
-import { getEmployeeAvatarUrl, getEmployeeInitials } from "@/lib/employeeAvatar";
-
-type Employee = {
-  id: string;
-  full_name: string;
-  position: string;
-  telegram_user_id: string | null;
-  status: string;
-  tz: string;
-  avatar_id?: number | null;
-  photo_url?: string | null;
-};
-
-type EmployeeInvite = {
-  id: string;
-  code: string;
-  full_name: string;
-  position: string;
-  used_at: string | null;
-  used_by_employee_id: string | null;
-  created_at: string;
-};
-
-type InviteLink = {
-  code: string;
-  deep_link: string;
-  qr_code_url: string;
-};
-
-// Invite form is handled by AddEmployeeModal component
-// Schema and types are no longer needed here
+import { useEmployees } from "@/hooks/features/useEmployees";
+import { useEmployeeInvites } from "@/hooks/features/useEmployeeInvites";
+import { useAuth } from "@/hooks/useAuth";
+import { copyToClipboard } from "@/lib/utils/clipboard";
+import type { EmployeeDisplay, InviteLink } from "@/types";
 
 export default function Employees() {
   const [searchQuery] = useState("");
@@ -53,25 +31,69 @@ export default function Employees() {
   const [copiedCode, setCopiedCode] = useState(false);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeDisplay | null>(null);
+  const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeDisplay | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { toast } = useToast();
-  const { companyId, loading: authLoading } = useAuth();
+  const { companyId } = useAuth();
+  
+  // Хук для работы с сотрудниками
+  const {
+    employees,
+    isLoading: employeesLoading,
+    refetch: refetchEmployees,
+  } = useEmployees(companyId || "");
+
+  // Хук для работы с приглашениями
+  const {
+    activeInvites,
+    isLoading: invitesLoading,
+    refetchInvites,
+    fetchInviteLink: fetchInviteLinkFromHook,
+  } = useEmployeeInvites();
+
+  // Фильтрация сотрудников
+  const filteredEmployees = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return employees;
+    }
+    const query = searchQuery.toLowerCase();
+    return employees.filter(
+      (emp) =>
+        emp.full_name.toLowerCase().includes(query) ||
+        emp.position?.toLowerCase().includes(query)
+    );
+  }, [employees, searchQuery]);
+
+  const isLoading = employeesLoading || invitesLoading;
   
   // Keyboard shortcut: / to focus search
   const searchInputRef = useRef<HTMLInputElement>(null);
   useSearchShortcut(searchInputRef);
 
-   
-  const handleAddEmployee = (): void => {
+  // Обработчики модальных окон
+  const handleAddEmployee = useCallback(() => {
     setShowAddEmployeeModal(true);
-  };
+  }, []);
 
-  // Оптимистичная мутация для удаления приглашения
+  const handleEditEmployee = useCallback((employee: EmployeeDisplay) => {
+    setSelectedEmployee(employee);
+    setShowProfileModal(true);
+  }, []);
+
+  const handleCloseProfileModal = useCallback((open: boolean) => {
+    setShowProfileModal(open);
+    if (!open) {
+      setSelectedEmployee(null);
+    }
+  }, []);
+
+  // Оптимистичные мутации
   const deleteInviteMutation = useOptimisticDeleteInvite();
+  const deleteEmployeeMutation = useOptimisticDeleteEmployee();
 
-  const handleDeleteInvite = (inviteId: string): void => {
+  const handleDeleteInvite = useCallback(
+    (inviteId: string) => {
     deleteInviteMutation.mutate(inviteId, {
       onSuccess: () => {
         toast({
@@ -87,17 +109,16 @@ export default function Employees() {
         });
       },
     });
-  };
+    },
+    [deleteInviteMutation, toast]
+  );
 
-  // Оптимистичная мутация для удаления сотрудника
-  const deleteEmployeeMutation = useOptimisticDeleteEmployee();
-
-  const handleDeleteEmployee = (employee: Employee): void => {
+  const handleDeleteEmployee = useCallback((employee: EmployeeDisplay) => {
     setEmployeeToDelete(employee);
     setShowDeleteDialog(true);
-  };
+  }, []);
 
-  const confirmDeleteEmployee = (): void => {
+  const confirmDeleteEmployee = useCallback(() => {
     if (employeeToDelete) {
       deleteEmployeeMutation.mutate(employeeToDelete.id, {
         onSuccess: () => {
@@ -117,91 +138,96 @@ export default function Employees() {
         },
       });
     }
-  };
+  }, [employeeToDelete, deleteEmployeeMutation, toast]);
 
-  const { data: employees = [], isLoading: employeesLoading, refetch: refetchEmployees } = useQuery<Employee[]>({
-    queryKey: ["/api/companies", companyId, "employees"],
-    queryFn: async () => {
-      const response = await apiRequest("GET", `/api/companies/${companyId}/employees`);
-      return response.json();
-    },
-    enabled: !!companyId,
-    ...queryConfig.employees,
-    // Регулярно обновляем список сотрудников, чтобы отобразить тех, кто подключился через Telegram
-    refetchInterval: 5000,
-  });
-
-  const { data: invites = [], refetch: refetchInvites } = useQuery<EmployeeInvite[]>({
-    queryKey: ["/api/companies", companyId, "employee-invites"],
-    queryFn: async () => {
-      const response = await apiRequest("GET", `/api/companies/${companyId}/employee-invites`);
-      return response.json();
-    },
-    enabled: !!companyId,
-    ...queryConfig.employees,
-    // После использования инвайта через Telegram быстро подтягиваем изменения
-    refetchInterval: 5000,
-  });
-
-  // Invite creation is handled by AddEmployeeModal component
-  // No need for createInviteMutation or form here
-
-  const fetchInviteLink = async (code: string): Promise<void> => {
+  // Работа с приглашениями
+  const handleShowQR = useCallback(
+    async (code: string) => {
     try {
-      const response = await apiRequest("GET", `/api/employee-invites/${code}/link`);
-      const data = await response.json();
-      setSelectedInvite(data);
+        const inviteData = await fetchInviteLinkFromHook(code);
+        if (inviteData) {
+          setSelectedInvite(inviteData);
+        }
     } catch (error) {
-      // apiRequest throws on non-ok responses, so we handle 404 and other errors here
-      const errorMessage = error instanceof Error ? error.message : "Не удалось получить ссылку-приглашение";
-      const isNotFound = errorMessage.includes("404") || errorMessage.includes("Invite not found");
-      
+        const errorMessage =
+          error instanceof Error ? error.message : "Не удалось получить ссылку-приглашение";
       toast({
-        title: isNotFound ? "Приглашение не найдено" : "Ошибка",
-        description: isNotFound 
-          ? "Приглашение не найдено или уже использовано" 
-          : errorMessage,
+          title: "Ошибка",
+          description: errorMessage,
         variant: "destructive",
       });
-       
-      console.error("Error fetching invite link:", error);
-    }
-  };
+      }
+    },
+    [fetchInviteLinkFromHook, toast]
+  );
 
-  // Form submission is handled by AddEmployeeModal
-  // const onSubmit = (data: InviteFormValues) => {
-  //   createInviteMutation.mutate(data);
-  // };
-
-  const handleCopyCode = (code: string): void => {
-    // eslint-disable-next-line no-undef
-    void navigator.clipboard.writeText(code);
+  const handleCopyCode = useCallback(
+    async (code: string) => {
+      try {
+        await copyToClipboard(code);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
     toast({
       title: "Скопировано",
       description: "Инвайт-код скопирован в буфер обмена",
     });
-  };
+      } catch (error) {
+        toast({
+          title: "Ошибка",
+          description: "Не удалось скопировать код",
+          variant: "destructive",
+        });
+      }
+    },
+    [toast]
+  );
 
-  const handleCopyLink = (link: string): void => {
-    // eslint-disable-next-line no-undef
-    void navigator.clipboard.writeText(link);
+  const handleCopyLink = useCallback(
+    async (link: string) => {
+      try {
+        await copyToClipboard(link);
     toast({
       title: "Скопировано",
       description: "Ссылка скопирована в буфер обмена",
     });
-  };
-
-  const filteredEmployees = employees.filter(emp =>
-    emp.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    emp.position.toLowerCase().includes(searchQuery.toLowerCase()),
+      } catch (error) {
+        toast({
+          title: "Ошибка",
+          description: "Не удалось скопировать ссылку",
+          variant: "destructive",
+        });
+      }
+    },
+    [toast]
   );
 
-  const activeInvites = invites.filter(inv => !inv.used_at);
+  // Обновление данных после успешных операций
+  const handleEmployeeUpdated = useCallback(
+    (updatedEmployee: EmployeeDisplay) => {
+      setSelectedEmployee(updatedEmployee);
+      // Обновляем кеш всех запросов сотрудников
+      queryClient.setQueriesData(
+        { queryKey: ["/api/companies"] },
+        (old: EmployeeDisplay[] | unknown) => {
+          if (!old || !Array.isArray(old)) {
+            return old;
+          }
+          return old.map((emp: EmployeeDisplay) =>
+            emp.id === updatedEmployee.id ? updatedEmployee : emp
+          );
+        }
+      );
+    },
+    []
+  );
+
+  const handleModalSuccess = useCallback(() => {
+    refetchEmployees();
+    refetchInvites();
+  }, [refetchEmployees, refetchInvites]);
 
   // Loading state
-  if (authLoading || employeesLoading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -213,99 +239,26 @@ export default function Employees() {
     );
   }
 
-
-  if (!companyId) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
-        <p className="text-muted-foreground">Необходимо войти в систему</p>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-5" data-testid="page-employees">
-      <button
+      <Button
         onClick={handleAddEmployee}
-        className="bg-[#e16546] px-[17px] py-3 rounded-[40px] flex items-center gap-2 text-sm font-medium text-white hover:bg-[#d15536] transition-colors w-fit"
+        className="w-fit"
         data-testid="button-add-employee"
       >
         <Plus className="w-3 h-3" />
         Добавить сотрудника
-      </button>
+      </Button>
 
       <div className="flex flex-wrap gap-4">
-        {filteredEmployees.map((employee) => {
-          const avatarUrl = getEmployeeAvatarUrl(employee);
-          const initials = getEmployeeInitials(employee.full_name);
-
-          return (
-            <div
+        {filteredEmployees.map((employee) => (
+          <EmployeeCard
               key={employee.id}
-              className="bg-[#f8f8f8] rounded-[20px] p-4 h-[230px] w-[267px] flex flex-col justify-between"
-              data-testid={`employee-card-${employee.id}`}
-            >
-              {/* Top section: Avatar, Name, Position, Buttons */}
-              <div className="flex items-start justify-between">
-                <div className="flex flex-col gap-2">
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt={employee.full_name}
-                      className="size-[50px] rounded-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = "none";
-                        const fallback = target.parentElement?.querySelector(".avatar-fallback") as HTMLElement;
-                        if (fallback) {
-                          fallback.style.display = "flex";
-                        }
-                      }}
-                    />
-                  ) : null}
-                  <div className={`size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium avatar-fallback ${avatarUrl ? "hidden" : ""}`}>
-                    {initials}
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <div className="text-base font-semibold text-black leading-[1.2]">
-                      {employee.full_name}
-                    </div>
-                    <div className="text-sm text-[#e16546] leading-[1.2]">
-                      {employee.position || "Сотрудник"}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <button
-                    onClick={() => {
-                      setSelectedEmployee(employee);
-                      setShowProfileModal(true);
-                    }}
-                    className="bg-[#e16546] rounded-[20px] size-8 flex items-center justify-center hover:bg-[#d15536] transition-colors"
-                    aria-label="Открыть профиль сотрудника"
-                  >
-                    <Edit className="w-3.5 h-3.5 text-white" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteEmployee(employee)}
-                    className="bg-white rounded-[20px] size-8 flex items-center justify-center hover:bg-neutral-100 transition-colors"
-                    aria-label="Удалить сотрудника"
-                  >
-                    <Trash className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Bottom section: ID */}
-              <div className="flex flex-col gap-3">
-                <div className="bg-white rounded-[20px] px-[10px] py-1 inline-flex items-center justify-center w-fit">
-                  <span className="text-sm text-[#565656] leading-[1.2]">
-                    ID: {employee.id.slice(0, 8)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+            employee={employee}
+            onEdit={handleEditEmployee}
+            onDelete={handleDeleteEmployee}
+          />
+        ))}
       </div>
 
       {activeInvites.length > 0 && (
@@ -313,50 +266,13 @@ export default function Employees() {
           <h2 className="text-xl font-semibold">Активные приглашения</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {activeInvites.map((invite) => (
-              <Card key={invite.id} className="hover-elevate" data-testid={`invite-card-${invite.id}`}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{invite.full_name}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{invite.position}</p>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 px-2 py-1 bg-muted rounded text-xs font-mono">
-                      {invite.code}
-                    </code>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={(): void => {
-                        void handleCopyCode(invite.code);
-                      }}
-                      data-testid={`button-copy-invite-${invite.id}`}
-                    >
-                      <Copy className="w-3 h-3" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => handleDeleteInvite(invite.id)}
-                      data-testid={`button-delete-invite-${invite.id}`}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={(): void => {
-                      void fetchInviteLink(invite.code);
-                    }}
-                    data-testid={`button-show-qr-${invite.id}`}
-                  >
-                    <QrCode className="w-4 h-4 mr-2" />
-                    Показать QR-код
-                  </Button>
-                </CardContent>
-              </Card>
+              <InviteCard
+                key={invite.id}
+                invite={invite}
+                onShowQR={handleShowQR}
+                onCopyCode={handleCopyCode}
+                onDelete={handleDeleteInvite}
+              />
             ))}
           </div>
         </div>
@@ -372,10 +288,7 @@ export default function Employees() {
       <AddEmployeeModal 
         open={showAddEmployeeModal}
         onOpenChange={setShowAddEmployeeModal}
-        onSuccess={() => {
-          refetchEmployees();
-          refetchInvites();
-        }}
+        onSuccess={handleModalSuccess}
       />
 
       {/* QR Code Dialog */}
@@ -390,7 +303,7 @@ export default function Employees() {
             </DialogHeader>
             <div className="space-y-4">
               {/* QR Code Image */}
-              <div className="flex justify-center p-4 bg-white rounded-lg">
+              <div className="flex justify-center p-4 bg-background rounded-lg">
                 <img 
                   src={selectedInvite.qr_code_url} 
                   alt="QR код приглашения" 
@@ -457,29 +370,23 @@ export default function Employees() {
       {/* Employee Profile Modal */}
       <EmployeeProfileModal
         open={showProfileModal}
-        onOpenChange={(open) => {
-          setShowProfileModal(open);
-          if (!open) {
-            // Clear selected employee when modal closes
-            setSelectedEmployee(null);
-          }
-        }}
-        employee={selectedEmployee}
+        onOpenChange={handleCloseProfileModal}
+        employee={selectedEmployee ? {
+          id: selectedEmployee.id,
+          full_name: selectedEmployee.full_name,
+          position: selectedEmployee.position || "",
+          telegram_user_id: selectedEmployee.telegram_user_id,
+          status: selectedEmployee.status || "active",
+          tz: selectedEmployee.tz || "UTC",
+          avatar_id: selectedEmployee.avatar_id,
+          photo_url: selectedEmployee.photo_url,
+        } : null}
         onEmployeeUpdated={(updatedEmployee) => {
-          // Update selectedEmployee with fresh data
-          setSelectedEmployee(updatedEmployee);
-          // Update employee in the list
-          queryClient.setQueriesData(
-            { queryKey: ["/api/companies", companyId, "employees"] },
-            (old: Employee[] | unknown) => {
-              if (!old || !Array.isArray(old)) {
-                return old;
-              }
-              return old.map((emp: Employee) => 
-                emp.id === updatedEmployee.id ? updatedEmployee : emp,
-              );
-            },
-          );
+          handleEmployeeUpdated({
+            ...updatedEmployee,
+            company_id: selectedEmployee?.company_id || "",
+            created_at: selectedEmployee?.created_at || null,
+          });
         }}
       />
 

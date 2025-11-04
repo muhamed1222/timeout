@@ -1,9 +1,10 @@
 import { AlertTriangle, Clock, FileX, UserX, Coffee } from "lucide-react";
+import { Button } from "@/ui/button";
 import { getEmployeeAvatarUrl, getEmployeeInitials } from "@/lib/employeeAvatar";
 
 export type ExceptionType = "late" | "no_report" | "short_day" | "long_break" | "no_show";
 
-interface ExceptionCardProps {
+interface IExceptionCardProps {
   employeeName: string;
   employeeImage?: string;
   employee?: {
@@ -68,7 +69,7 @@ export default function ExceptionCard({
   severity,
   onResolve,
   onContact, 
-}: ExceptionCardProps) {
+}: IExceptionCardProps) {
   const config = exceptionConfig[type];
   const Icon = config.icon;
 
@@ -90,21 +91,21 @@ export default function ExceptionCard({
 
   return (
     <div 
-      className="bg-[#f8f8f8] rounded-[20px] p-4 flex flex-col gap-4" 
+      className="bg-muted rounded-lg p-4 flex flex-col gap-4" 
       data-testid={`card-exception-${type}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex gap-3 flex-1">
           {/* Icon */}
-          <div className="bg-white rounded-[40px] size-[50px] flex items-center justify-center flex-shrink-0">
-            <Icon className="w-6 h-6 text-[#e16546]" />
+          <div className={`${config.bgColor} rounded-full size-12 flex items-center justify-center flex-shrink-0`}>
+            <Icon className={`w-6 h-6 ${config.color}`} />
           </div>
           
           {/* Content */}
           <div className="flex flex-col gap-2 flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-black">{config.title}</h3>
-              <span className="text-xs text-[#959595]">{timestamp}</span>
+              <h3 className="text-sm font-semibold text-foreground">{config.title}</h3>
+              <span className="text-xs text-muted-foreground">{timestamp}</span>
             </div>
             
             <div className="flex items-center gap-2">
@@ -112,7 +113,7 @@ export default function ExceptionCard({
                 <img
                   src={avatarUrl}
                   alt={employeeName}
-                  className="size-6 rounded-full object-cover"
+                  className="size-8 rounded-full object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = "none";
@@ -123,33 +124,36 @@ export default function ExceptionCard({
                   }}
                 />
               ) : null}
-              <div className={`size-6 rounded-full bg-[#ff3b30] flex items-center justify-center text-white text-[10px] font-medium avatar-fallback ${avatarUrl ? "hidden" : ""}`}>
+              <div className={`size-8 rounded-full bg-destructive flex items-center justify-center text-destructive-foreground text-xs font-medium avatar-fallback ${avatarUrl ? "hidden" : ""}`}>
                 {initials}
               </div>
-              <span className="text-sm font-medium text-black">{employeeName}</span>
+              <span className="text-sm font-medium text-foreground">{employeeName}</span>
             </div>
             
-            <p className="text-sm text-[#565656]">{description}</p>
+            <p className="text-sm text-muted-foreground">{description}</p>
           </div>
         </div>
       </div>
 
       {/* Action Buttons */}
       <div className="flex gap-2">
-        <button
+        <Button
           onClick={handleResolve}
-          className="bg-[rgba(52,199,89,0.08)] px-[10px] py-2 rounded-[20px] text-xs font-medium text-[#34c759] leading-[1.2] hover:bg-[rgba(52,199,89,0.15)] transition-colors"
+          variant="outline"
+          size="sm"
+          className="bg-green-500/10 text-green-600 hover:bg-green-500/15 border-green-500/20"
           data-testid="button-resolve-exception"
         >
-            Решить
-        </button>
-        <button
+          Решить
+        </Button>
+        <Button
           onClick={handleContact}
-          className="bg-[#f8f8f8] px-[10px] py-2 rounded-[20px] text-xs font-medium text-black leading-[1.2] hover:bg-[#eeeeee] transition-colors border border-[#eeeeee]"
+          variant="outline"
+          size="sm"
           data-testid="button-contact-employee"
         >
-            Связаться
-        </button>
+          Связаться
+        </Button>
       </div>
     </div>
   );

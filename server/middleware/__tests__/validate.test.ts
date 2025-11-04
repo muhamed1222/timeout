@@ -31,39 +31,38 @@ describe('Validation Middleware', () => {
       age: z.number().min(0),
     });
 
-    it('should call next() when validation passes', () => {
+    it('should call next() when validation passes', async () => {
       mockRequest.body = { name: 'John', age: 25 };
       
       const middleware = validateBody(schema);
-      middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
       expect(mockResponse.status).not.toHaveBeenCalled();
     });
 
-    it('should return 400 when validation fails', () => {
+    it('should throw ValidationError when validation fails', async () => {
       mockRequest.body = { name: '', age: -1 };
       
       const middleware = validateBody(schema);
-      middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      
+      await expect(
+        middleware(mockRequest as Request, mockResponse as Response, mockNext)
+      ).rejects.toThrow();
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          error: expect.any(String),
-        })
-      );
     });
 
-    it('should handle missing required fields', () => {
+    it('should throw ValidationError for missing required fields', async () => {
       mockRequest.body = {};
       
       const middleware = validateBody(schema);
-      middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      
+      await expect(
+        middleware(mockRequest as Request, mockResponse as Response, mockNext)
+      ).rejects.toThrow();
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
     });
   });
 
@@ -72,24 +71,26 @@ describe('Validation Middleware', () => {
       id: z.string().uuid(),
     });
 
-    it('should call next() when validation passes', () => {
+    it('should call next() when validation passes', async () => {
       mockRequest.params = { id: '123e4567-e89b-12d3-a456-426614174000' };
       
       const middleware = validateParams(schema);
-      middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
       expect(mockResponse.status).not.toHaveBeenCalled();
     });
 
-    it('should return 400 when validation fails', () => {
+    it('should throw ValidationError when validation fails', async () => {
       mockRequest.params = { id: 'invalid-uuid' };
       
       const middleware = validateParams(schema);
-      middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      
+      await expect(
+        middleware(mockRequest as Request, mockResponse as Response, mockNext)
+      ).rejects.toThrow();
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
     });
   });
 
@@ -99,21 +100,21 @@ describe('Validation Middleware', () => {
       limit: z.string().optional(),
     });
 
-    it('should call next() when validation passes', () => {
+    it('should call next() when validation passes', async () => {
       mockRequest.query = { page: '1', limit: '10' };
       
       const middleware = validateQuery(schema);
-      middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
       expect(mockResponse.status).not.toHaveBeenCalled();
     });
 
-    it('should handle empty query', () => {
+    it('should handle empty query', async () => {
       mockRequest.query = {};
       
       const middleware = validateQuery(schema);
-      middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
     });

@@ -8,6 +8,7 @@ import {
   Moon,
   Sun,
 } from "lucide-react";
+import { Button } from "@/ui/button";
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import {
@@ -21,7 +22,7 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
-} from "@/components/ui/sidebar";
+} from "@/ui/sidebar";
 import companyLogo from "@assets/generated_images/logotype.svg";
 
 const menuItems = [
@@ -73,43 +74,43 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="[&_div[data-sidebar='sidebar']]:!bg-[#f8f8f8]">
+    <Sidebar className="[&_div[data-sidebar='sidebar']]:!bg-muted">
       <SidebarHeader className="p-2">
-        <div className="bg-white rounded-2xl px-4 py-[10px] flex flex-col gap-1">
-          <div className="flex items-center gap-[5px]">
+        <div className="bg-background rounded-xl px-4 py-3 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
             <img src={companyLogo} alt="Company Logo" className="w-6 h-6" />
             <div className="flex flex-col">
-              <h2 className="font-semibold text-base leading-6 text-black">OutTime</h2>
+              <h2 className="font-semibold text-base leading-tight text-foreground">OutTime</h2>
             </div>
           </div>
-          <p className="text-sm leading-[1.2] text-[rgba(0,0,0,0.5)]">{"ООО \"РАРААВИС ГРУП\""}</p>
+          <p className="text-sm leading-tight text-muted-foreground">{"ООО \"РАРААВИС ГРУП\""}</p>
         </div>
       </SidebarHeader>
-      <SidebarContent className="px-2 pt-[30px]">
+      <SidebarContent className="px-2 pt-8">
         <SidebarGroup>
-          <SidebarGroupLabel className="opacity-50 text-[#565656] text-sm pl-4 pb-[6px] h-6">
+          <SidebarGroupLabel className="opacity-50 text-muted-foreground text-sm pl-4 pb-2 h-6">
             Управление
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="gap-[6px]">
+            <SidebarMenu className="gap-2">
               {menuItems.map((item) => {
                 const isActive = location === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton 
                       asChild 
-                      isActive={false}
+                      isActive={isActive}
                       data-testid={`nav-${item.title.toLowerCase()}`}
                       aria-current={isActive ? "page" : undefined}
-                      className={`h-12 pl-4 pr-0 rounded-[40px] font-normal ${
+                      className={`h-12 pl-4 pr-0 rounded-full font-normal ${
                         isActive 
-                          ? "bg-white text-[#e16546] hover:bg-white" 
-                          : "bg-transparent text-[#565656] hover:bg-transparent hover:text-[#565656]"
+                          ? "bg-background text-primary hover:bg-background" 
+                          : "bg-transparent text-muted-foreground hover:bg-transparent hover:text-foreground"
                       }`}
                     >
-                      <Link href={item.url} aria-label={`Перейти к ${item.title}`} className="flex items-center gap-[10px]">
+                      <Link href={item.url} aria-label={`Перейти к ${item.title}`} className="flex items-center gap-3">
                         <item.icon className="w-5 h-5" aria-hidden="true" />
-                        <span className="text-base leading-[1.2]">{item.title}</span>
+                        <span className="text-base leading-tight">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -123,46 +124,42 @@ export function AppSidebar() {
         <div className="flex flex-col gap-2">
           <Link 
             href="/settings" 
-            className={`flex items-center gap-[10px] h-12 pl-4 pr-0 ${
+            className={`flex items-center gap-3 h-12 pl-4 pr-0 rounded-full transition-colors ${
               location === "/settings" || location === "/company"
-                ? "text-[#959595]" 
-                : "text-[#565656]"
+                ? "text-muted-foreground" 
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <Settings className="w-5 h-5" />
-            <span className="text-base leading-[1.2]">Настройки</span>
+            <span className="text-base leading-tight">Настройки</span>
           </Link>
-          <div className="bg-[#eeeeee] rounded-2xl p-1 flex gap-2">
-            <button
+          <div className="bg-muted rounded-xl p-1 flex gap-2">
+            <Button
               onClick={() => {
                 if (isDark) {
                   toggleTheme();
                 }
               }}
-              className={`flex-1 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                !isDark 
-                  ? "bg-white" 
-                  : "bg-transparent"
-              }`}
+              variant={!isDark ? "secondary" : "ghost"}
+              size="sm"
+              className="flex-1 h-10 rounded-lg"
               aria-label="Переключить на светлую тему"
             >
-              <Sun className="h-[18.67px] w-5" />
-            </button>
-            <button
+              <Sun className="w-5 h-5" />
+            </Button>
+            <Button
               onClick={() => {
                 if (!isDark) {
                   toggleTheme();
                 }
               }}
-              className={`flex-1 h-10 rounded-full flex items-center justify-center transition-colors ${
-                isDark 
-                  ? "bg-white" 
-                  : "bg-transparent"
-              }`}
+              variant={isDark ? "secondary" : "ghost"}
+              size="sm"
+              className="flex-1 h-10 rounded-lg"
               aria-label="Переключить на тёмную тему"
             >
-              <Moon className="h-[18.67px] w-5" />
-            </button>
+              <Moon className="w-5 h-5" />
+            </Button>
           </div>
         </div>
       </SidebarFooter>

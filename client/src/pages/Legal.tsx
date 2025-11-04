@@ -1,4 +1,4 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
 import { ShieldCheck, Lock, Eye, FileText, UserCheck, AlertCircle, Scale, Gavel, Shield, Handshake } from "lucide-react";
 
 export default function Legal() {

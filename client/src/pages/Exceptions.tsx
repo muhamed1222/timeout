@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/ui/input";
 import { Search, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -107,9 +107,10 @@ export default function Exceptions() {
 
   // Error state
   if (error) {
+    const errorMsg = getContextErrorMessage("violations", "fetch");
     return (
       <ErrorState
-        message={getContextErrorMessage("violations", "fetch")}
+        message={errorMsg.message}
         onRetry={() => exceptionsRetry.retry()}
       />
     );

@@ -1,185 +1,103 @@
 // Сервис для аутентификации
 
-import { apiService } from "./api.service";
-import { API_ENDPOINTS } from "../constants/api.constants";
-import { AuthUser, ApiResponse } from "../types";
-
-export interface RegisterData {
+import { supabase } from "@/lib/supabase";
+// Auth types
+interface RegisterData {
   email: string;
   password: string;
-  company_name: string;
   full_name: string;
-  [key: string]: unknown;
-}
-
-export interface AuthResponse {
-  success: boolean;
-  user: AuthUser;
-  token: string;
-  company_id?: string;
+  company_name?: string;
 }
 
 export class AuthService {
-  constructor() {
-    // Токены управляются через apiService
-  }
+  // Вход в систему
+  async login(email: string, password: string): Promise<void> {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  /**
-   * Устанавливает токен аутентификации
-   */
-  setToken(token: string): void {
-    apiService.setAuthToken(token);
-  }
-
-  /**
-   * Получает текущий токен аутентификации
-   */
-  getToken(): string | null {
-    return localStorage.getItem("auth_token");
-  }
-
-  /**
-   * Устанавливает CSRF токен
-   */
-  setCSRFToken(token: string): void {
-    apiService.setCSRFToken(token);
-  }
-
-  /**
-   * Получает текущий CSRF токен
-   */
-  getCSRFToken(): string | null {
-    return localStorage.getItem("csrf_token");
-  }
-
-  /**
-   * Очищает все токены аутентификации
-   */
-  clearTokens(): void {
-    apiService.setAuthToken(null);
-    apiService.setCSRFToken(null);
+    if (error) {
+      throw new Error(error.message);
+    }
   }
 
   // Регистрация
-  async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await apiService.post<AuthResponse>(
-      API_ENDPOINTS.AUTH.REGISTER,
-      data,
-    );
+  async register(data: RegisterData): Promise<void> {
+    const { error } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: {
+          full_name: data.full_name,
+          company_name: data.company_name,
+        },
+      },
+    });
 
-    if (!response.success) {
-      throw new Error("Ошибка регистрации");
+    if (error) {
+      throw new Error(error.message);
     }
-
-    // Сохраняем токен
-    this.setToken(response.token);
-
-    return response;
   }
 
-  // Вход
-  async login(email: string, password: string): Promise<AuthResponse> {
-    const response = await apiService.post<AuthResponse>(
-      API_ENDPOINTS.AUTH.LOGIN,
-      { email, password },
-    );
-
-    if (!response.success) {
-      throw new Error("Ошибка входа");
-    }
-
-    // Сохраняем токен
-    this.setToken(response.token);
-
-    return response;
-  }
-
-  // Выход
+  // Выход из системы
   async logout(): Promise<void> {
-    try {
-      await apiService.post(API_ENDPOINTS.AUTH.LOGOUT);
-    } finally {
-      // Очищаем токены в любом случае
-      this.clearTokens();
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      throw new Error(error.message);
     }
   }
 
-  // Проверка аутентификации
-  isAuthenticated(): boolean {
-    return this.getToken() !== null;
-  }
+  // Получить текущего пользователя
+  async getCurrentUser() {
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
-  // Получение текущего пользователя
-  async getCurrentUser(): Promise<AuthUser> {
-    if (!this.isAuthenticated()) {
-      throw new Error("Пользователь не аутентифицирован");
+    if (error) {
+      throw new Error(error.message);
     }
 
-    const response = await apiService.get<ApiResponse<AuthUser>>("/auth/me");
-
-    if (response.error) {
-      throw new Error(response.error);
-    }
-
-    return response.data!;
+    return user;
   }
 
-  // Обновление профиля
-  async updateProfile(data: Partial<AuthUser>): Promise<AuthUser> {
-    const response = await apiService.patch<ApiResponse<AuthUser>>(
-      "/auth/profile",
-      data,
-    );
+  // Обновить профиль пользователя
+  async updateProfile(updates: {
+    full_name?: string;
+    company_name?: string;
+  }): Promise<void> {
+    const { error } = await supabase.auth.updateUser({
+      data: updates,
+    });
 
-    if (response.error) {
-      throw new Error(response.error);
-    }
-
-    return response.data!;
-  }
-
-  // Смена пароля
-  async changePassword(
-    currentPassword: string,
-    newPassword: string,
-  ): Promise<void> {
-    const response = await apiService.post<ApiResponse>(
-      "/auth/change-password",
-      { currentPassword, newPassword },
-    );
-
-    if (response.error) {
-      throw new Error(response.error);
+    if (error) {
+      throw new Error(error.message);
     }
   }
 
-  // Сброс пароля
+  // Сбросить пароль
   async resetPassword(email: string): Promise<void> {
-    const response = await apiService.post<ApiResponse>(
-      "/auth/reset-password",
-      { email },
-    );
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
 
-    if (response.error) {
-      throw new Error(response.error);
+    if (error) {
+      throw new Error(error.message);
     }
   }
 
-  // Подтверждение сброса пароля
-  async confirmPasswordReset(
-    token: string,
-    newPassword: string,
-  ): Promise<void> {
-    const response = await apiService.post<ApiResponse>(
-      "/auth/confirm-password-reset",
-      { token, newPassword },
-    );
+  // Изменить пароль
+  async changePassword(newPassword: string): Promise<void> {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
 
-    if (response.error) {
-      throw new Error(response.error);
+    if (error) {
+      throw new Error(error.message);
     }
   }
 }
 
 export const authService = new AuthService();
-export default authService;

@@ -48,7 +48,7 @@ export const queryConfig = {
   // Static/reference data (companies, settings) - rarely changes
   static: {
     staleTime: 1000 * 60 * 30, // 30 minutes
-    cacheTime: 1000 * 60 * 60, // 1 hour
+    gcTime: 1000 * 60 * 60, // 1 hour (formerly cacheTime in v4)
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   },
@@ -56,7 +56,7 @@ export const queryConfig = {
   // Employee data - changes occasionally
   employees: {
     staleTime: 1000 * 60 * 5, // 5 minutes
-    cacheTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 10, // 10 minutes (formerly cacheTime in v4)
     refetchOnWindowFocus: true,
     refetchOnMount: "always" as const,
   },
@@ -64,7 +64,7 @@ export const queryConfig = {
   // Live data (shifts, stats) - changes frequently
   live: {
     staleTime: 1000 * 30, // 30 seconds
-    cacheTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 5, // 5 minutes (formerly cacheTime in v4)
     refetchInterval: 1000 * 30, // 30 seconds background refetch
     refetchOnWindowFocus: true,
   },
@@ -72,7 +72,7 @@ export const queryConfig = {
   // Dashboard stats - real-time updates needed
   dashboard: {
     staleTime: 1000 * 15, // 15 seconds
-    cacheTime: 1000 * 60 * 2, // 2 minutes
+    gcTime: 1000 * 60 * 2, // 2 minutes (formerly cacheTime in v4)
     refetchInterval: 1000 * 15, // 15 seconds for live dashboard
     refetchOnWindowFocus: true,
   },
@@ -80,14 +80,14 @@ export const queryConfig = {
   // Rating data - changes infrequently but needs to be fresh
   ratings: {
     staleTime: 1000 * 60 * 2, // 2 minutes
-    cacheTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 10, // 10 minutes (formerly cacheTime in v4)
     refetchOnWindowFocus: true,
   },
   
   // User settings - rarely changes
   settings: {
     staleTime: 1000 * 60 * 60, // 1 hour
-    cacheTime: 1000 * 60 * 60 * 24, // 24 hours
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours (formerly cacheTime in v4)
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   },
@@ -98,7 +98,7 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       staleTime: 1000 * 60 * 5, // Default: 5 minutes
-      cacheTime: 1000 * 60 * 10, // Default: 10 minutes
+      gcTime: 1000 * 60 * 10, // Default: 10 minutes (formerly cacheTime in v4)
       refetchOnWindowFocus: true,
       refetchOnMount: "always" as const,
       retry: (failureCount, error: unknown) => {
