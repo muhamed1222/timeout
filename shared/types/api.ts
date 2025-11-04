@@ -103,7 +103,7 @@ export interface ShiftResponse {
 }
 
 // Enriched shift with full employee data
-export interface ShiftWithEmployee extends ShiftResponse {
+export interface ShiftWithEmployee extends Omit<ShiftResponse, 'employee'> {
   employee: {
     id: string;
     full_name: string;
