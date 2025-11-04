@@ -44,7 +44,7 @@ export class ShiftMonitor {
     }
   }
 
-  private async checkSingleShift(shiftWithEmployee: Shift & { employee: Employee }): Promise<ShiftViolation[]> {
+  private async checkSingleShift(shiftWithEmployee: Shift & { employee: Pick<Employee, "id" | "full_name" | "position" | "photo_url" | "avatar_id"> }): Promise<ShiftViolation[]> {
     const violations: ShiftViolation[] = [];
     const { shift, employee } = this.destructureShiftWithEmployee(shiftWithEmployee);
     const now = new Date();
@@ -332,9 +332,9 @@ export class ShiftMonitor {
   }
 
   // Helper method to extract shift and employee from the joined result
-  private destructureShiftWithEmployee(shiftWithEmployee: Shift & { employee: Employee }): {
+  private destructureShiftWithEmployee(shiftWithEmployee: Shift & { employee: Pick<Employee, "id" | "full_name" | "position" | "photo_url" | "avatar_id"> }): {
     shift: Shift;
-    employee: Employee;
+    employee: Pick<Employee, "id" | "full_name" | "position" | "photo_url" | "avatar_id">;
   } {
     const { employee, ...shift } = shiftWithEmployee;
     return { shift: shift as Shift, employee };

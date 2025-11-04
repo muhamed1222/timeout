@@ -47,3 +47,17 @@ export const employeeIdInParamsSchema = z.object({
   employeeId: uuidSchema,
 });
 
+/**
+ * Telegram ID param schema (for WebApp routes)
+ */
+export const telegramIdParamSchema = z.object({
+  telegramId: z.string().min(1),
+});
+
+/**
+ * Telegram WebApp body schema
+ */
+export const telegramWebAppBodySchema = z.object({
+  telegramId: z.string().min(1),
+});
+

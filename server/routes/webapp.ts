@@ -7,7 +7,7 @@ import { getSecret, isDevelopment } from "../lib/secrets.js";
 import type { Shift, WorkInterval, BreakInterval } from "../../shared/schema.js";
 import { asyncHandler, NotFoundError, ValidationError } from "../lib/errorHandler.js";
 import { validateParams, validateBody } from "../middleware/validate.js";
-import { telegramIdParamSchema, telegramWebAppBodySchema } from "../lib/schemas/employees.schemas.js";
+import { telegramIdParamSchema, telegramWebAppBodySchema, telegramUserIdParamSchema } from "../lib/schemas/employees.schemas.js";
 
 const router = Router();
 
