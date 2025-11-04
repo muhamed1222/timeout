@@ -226,8 +226,8 @@ router.post("/companies/:companyId/recalculate", validateParams(companyIdInParam
 
   const results: Array<{ employee_id: string; rating: number }> = [];
   for (const emp of employees) {
-    const rating = await repositories.rating.updateFromViolations(emp.id, periodStart, periodEnd, repositories.violation, repositories.employee);
-    results.push({ employee_id: emp.id, rating });
+    const ratingRecord = await repositories.rating.updateFromViolations(emp.id, periodStart, periodEnd, repositories.violation, repositories.employee);
+    results.push({ employee_id: emp.id, rating: Number(ratingRecord.rating) });
   }
 
   res.json({ message: 'Пересчет завершен', count: results.length });
@@ -275,8 +275,8 @@ router.get("/employees/:employeeId", validateParams(employeeIdInParamsSchema), v
   const { employeeId } = req.params;
   const { periodStart, periodEnd } = req.query;
   
-  const startDate = new Date(periodStart);
-  const endDate = new Date(periodEnd);
+  const startDate = new Date(typeof periodStart === 'string' ? periodStart : String(periodStart));
+  const endDate = new Date(typeof periodEnd === 'string' ? periodEnd : String(periodEnd));
   
   const rating = await repositories.rating.findByEmployeeAndPeriod(employeeId, startDate, endDate);
   if (!rating) {
