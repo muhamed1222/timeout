@@ -6,7 +6,7 @@ import type { DIContainer } from "../lib/di/container.js";
 import { getContainer } from "../lib/di/container.js";
 import { invalidateCompanyStatsByShift } from "../lib/utils/cache.js";
 import { logger } from "../lib/logger.js";
-import type { InsertShift, InsertWorkInterval, InsertBreakInterval } from "../../shared/schema.js";
+import type { InsertShift, InsertWorkInterval, InsertBreakInterval } from "@outcasts/shared/schema.js";
 
 export class ShiftService {
   constructor(private readonly container: DIContainer) {}

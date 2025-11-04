@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import { repositories } from "../repositories/index.js";
-import { insertEmployeeInviteSchema } from "../../shared/schema.js";
+import { insertEmployeeInviteSchema } from "@outcasts/shared/schema.js";
 import { logger } from "../lib/logger.js";
 import { NotFoundError, ValidationError, ConflictError, asyncHandler } from "../lib/errorHandler.js";
 

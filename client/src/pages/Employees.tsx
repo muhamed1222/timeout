@@ -19,7 +19,7 @@ import { EmployeeCard } from "@/components/EmployeeCard";
 import { InviteCard } from "@/components/InviteCard";
 import { useSearchShortcut } from "@/hooks/useKeyboardShortcuts";
 import { useOptimisticDeleteInvite, useOptimisticDeleteEmployee } from "@/hooks/useOptimisticMutations";
-import { useEmployees } from "@/hooks/features/useEmployees";
+import { useEmployees } from "@/features/employees/hooks/useEmployees";
 import { useEmployeeInvites } from "@/hooks/features/useEmployeeInvites";
 import { useAuth } from "@/hooks/useAuth";
 import { copyToClipboard } from "@/lib/utils/clipboard";

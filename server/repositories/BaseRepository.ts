@@ -1,7 +1,7 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type { PgTable } from "drizzle-orm/pg-core";
 import { eq, sql, type SQL } from "drizzle-orm";
-import * as schema from "../../shared/schema.js";
+import * as schema from "@outcasts/shared/schema.js";
 import { databaseQueryDuration } from "../lib/metrics.js";
 import { logger } from "../lib/logger.js";
 

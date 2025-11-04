@@ -2,9 +2,9 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { repositories } from "../repositories/index.js";
 import { logger } from "../lib/logger.js";
 import { validateTelegramWebAppData } from "../services/telegramAuth.js";
-import type { TelegramUser } from "../../shared/types/api.js";
+import type { TelegramUser } from "@outcasts/shared/types/api.js";
 import { getSecret, isDevelopment } from "../lib/secrets.js";
-import type { Shift, WorkInterval, BreakInterval } from "../../shared/schema.js";
+import type { Shift, WorkInterval, BreakInterval } from "@outcasts/shared/schema.js";
 import { asyncHandler, NotFoundError, ValidationError } from "../lib/errorHandler.js";
 import { validateParams, validateBody } from "../middleware/validate.js";
 import { telegramIdParamSchema, telegramWebAppBodySchema, telegramUserIdParamSchema } from "../lib/schemas/employees.schemas.js";

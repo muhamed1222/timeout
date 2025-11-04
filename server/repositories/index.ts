@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import * as schema from "../../shared/schema.js";
+import * as schema from "@outcasts/shared/schema.js";
 import { CompanyRepository } from "./CompanyRepository.js";
 import { EmployeeRepository } from "./EmployeeRepository.js";
 import { RatingRepository } from "./RatingRepository.js";

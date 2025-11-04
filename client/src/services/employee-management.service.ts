@@ -1,5 +1,5 @@
 // Сервис для управления сотрудниками
-import type { Employee, EmployeeInvite } from "@shared/schema";
+import type { Employee, EmployeeInvite } from "@outcasts/shared/schema";
 import { apiService } from "./api.service";
 
 export interface EmployeeSearchCriteria {

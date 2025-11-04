@@ -1,7 +1,7 @@
 import { BaseRepository } from "./BaseRepository.js";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import * as schema from "../../shared/schema.js";
-import type { Reminder, InsertReminder, Employee } from "../../shared/schema.js";
+import * as schema from "@outcasts/shared/schema.js";
+import type { Reminder, InsertReminder, Employee } from "@outcasts/shared/schema.js";
 import { eq, and, sql } from "drizzle-orm";
 
 /**

@@ -7,7 +7,7 @@ import type { DIContainer } from "../lib/di/container.js";
 import { getContainer } from "../lib/di/container.js";
 import { invalidateCompanyStats, getOrSet } from "../lib/utils/cache.js";
 import { logger } from "../lib/logger.js";
-import type { InsertCompany } from "../../shared/schema.js";
+import type { InsertCompany } from "@outcasts/shared/schema.js";
 
 export class CompanyService {
   constructor(private readonly container: DIContainer) {}

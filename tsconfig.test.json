@@ -10,8 +10,7 @@
     "**/*.test.tsx",
     "**/*.spec.ts",
     "**/*.spec.tsx",
-    "**/__tests__/**",
-    "vitest-setup.d.ts"
+    "**/__tests__/**"
   ],
   "exclude": [
     "node_modules",

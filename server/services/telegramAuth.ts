@@ -1,6 +1,6 @@
 import { createHmac } from "crypto";
 import { logger } from "../lib/logger.js";
-import type { TelegramUser } from "../../shared/types/api.js";
+import type { TelegramUser } from "@outcasts/shared/types/api.js";
 
 // Re-export for backward compatibility
 export type { TelegramUser };

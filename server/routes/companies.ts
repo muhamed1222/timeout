@@ -8,7 +8,7 @@ import { validateBody, validateParams, validateQuery } from "../middleware/valid
 import { createCompanySchema, updateCompanySchema, companyIdParamSchema, companyIdInParamsSchema, generateShiftsSchema, exceptionIdParamSchema } from "../lib/schemas/index.js";
 import { dateRangeQuerySchema, limitQuerySchema } from "../lib/schemas/common.schemas.js";
 import { invalidateCompanyStats } from "../lib/utils/index.js";
-import type { Shift, EmployeeSchedule, InsertShift } from "../../shared/schema.js";
+import type { Shift, EmployeeSchedule, InsertShift } from "@outcasts/shared/schema.js";
 
 interface ScheduleRules {
   workdays?: number[];

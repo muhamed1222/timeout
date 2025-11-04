@@ -2,7 +2,7 @@
  * Common types for client application
  */
 
-import type { Employee, EmployeeInvite } from "@shared/schema";
+import type { Employee, EmployeeInvite } from "@outcasts/shared/schema";
 
 export interface ApiResponse<T = unknown> {
   data?: T;
@@ -39,7 +39,7 @@ export interface PaginationOptions {
 
 // Re-export shared types for convenience
 export type { Employee, EmployeeInvite };
-import type { Shift } from "@shared/schema";
+import type { Shift } from "@outcasts/shared/schema";
 export type { Shift };
 
 // Re-export all types from types/index.ts

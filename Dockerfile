@@ -21,8 +21,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files (including workspace package.json files)
 COPY package*.json ./
+COPY client/package.json ./client/
+COPY server/package.json ./server/
+COPY shared/package.json ./shared/
 
 # Install only production dependencies
 RUN npm ci --production

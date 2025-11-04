@@ -6,7 +6,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { optimisticAdd, optimisticRemove, optimisticUpdateItem, generateTempId, replaceTempId } from "@/lib/optimisticUpdates";
-import type { Employee, EmployeeInvite } from "@shared/schema";
+import type { Employee, EmployeeInvite } from "@outcasts/shared/schema";
 
 /**
  * Optimistic mutation for creating an employee invite

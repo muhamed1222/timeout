@@ -6,7 +6,7 @@ import type { DIContainer } from "../lib/di/container.js";
 import { getContainer } from "../lib/di/container.js";
 import { invalidateCompanyStatsByEmployeeId } from "../lib/utils/cache.js";
 import { logger } from "../lib/logger.js";
-import type { InsertEmployee } from "../../shared/schema.js";
+import type { InsertEmployee } from "@outcasts/shared/schema.js";
 
 export class EmployeeService {
   constructor(private readonly container: DIContainer) {}

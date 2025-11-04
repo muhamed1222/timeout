@@ -45,7 +45,7 @@ fi
 echo -e "${BLUE}📦 Creating safety backup...${NC}"
 mkdir -p "backups/${ENVIRONMENT}"
 
-./scripts/backup-database.sh "$ENVIRONMENT" > /dev/null 2>&1
+./scripts/db/backup-database.sh "$ENVIRONMENT" > /dev/null 2>&1
 
 echo -e "${GREEN}✅ Safety backup created${NC}\n"
 
@@ -195,7 +195,7 @@ echo -e "${BLUE}ℹ️  Next steps:${NC}"
 echo "1. Verify application functionality"
 echo "2. Check database schema"
 echo "3. If rollback caused issues, restore from backup:"
-echo "   ./scripts/restore-database.sh ${BACKUP_FILE} ${ENVIRONMENT}"
+echo "   ./scripts/db/restore-database.sh ${BACKUP_FILE} ${ENVIRONMENT}"
 echo ""
 echo -e "${GREEN}✅ Done!${NC}"
 

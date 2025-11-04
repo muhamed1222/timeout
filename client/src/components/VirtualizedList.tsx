@@ -10,7 +10,7 @@ import {
 } from "@/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/ui/avatar";
 import { Badge } from "@/ui/badge";
-import type { Employee } from "@shared/schema";
+import type { Employee } from "@outcasts/shared/schema";
 import { getEmployeeAvatarUrl, getEmployeeInitials } from "@/lib/employeeAvatar";
 
 interface IVirtualizedEmployeeListProps {

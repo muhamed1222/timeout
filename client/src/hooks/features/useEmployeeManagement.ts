@@ -2,7 +2,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { employeeManagementService, EmployeeDisplayData, InviteDisplayData, EmployeeStats } from "../../services/employee-management.service";
-import type { Employee, EmployeeInvite } from "@shared/schema";
+import type { Employee, EmployeeInvite } from "@outcasts/shared/schema";
 
 export interface UseEmployeeManagementOptions {
   companyId: string;

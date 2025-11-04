@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { LazyMotion, domAnimation, AnimatePresence, m } from "framer-motion";
 import { queryClient } from "./lib/queryClient";
@@ -28,7 +28,7 @@ import NotFound from "@/pages/NotFound";
 import WebAppPage from "@/pages/webapp";
 import Login from "@/pages/Login";
 
-function MainRouter() {
+function MainRouter(): React.ReactElement {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
@@ -97,7 +97,7 @@ function getPageTitle(location: string): string {
   return PAGE_TITLES[location] || "Страница";
 }
 
-function AppContent() {
+function AppContent(): React.ReactElement {
   const [location] = useLocation();
   const { user, loading } = useAuth();
 
@@ -110,20 +110,20 @@ function AppContent() {
   const pageTitle = useMemo(() => getPageTitle(location), [location]);
 
   // Мемоизируем колбэки для уведомлений
-  const handleNotificationAccept1 = useCallback(() => {
-    console.log("Принято нарушение 1");
+  const handleNotificationAccept1 = useCallback((): void => {
+    // TODO: Implement notification accept logic
   }, []);
 
-  const handleNotificationReject1 = useCallback(() => {
-    console.log("Отклонено нарушение 1");
+  const handleNotificationReject1 = useCallback((): void => {
+    // TODO: Implement notification reject logic
   }, []);
 
-  const handleNotificationAccept2 = useCallback(() => {
-    console.log("Принято нарушение 2");
+  const handleNotificationAccept2 = useCallback((): void => {
+    // TODO: Implement notification accept logic
   }, []);
 
-  const handleNotificationReject2 = useCallback(() => {
-    console.log("Отклонено нарушение 2");
+  const handleNotificationReject2 = useCallback((): void => {
+    // TODO: Implement notification reject logic
   }, []);
 
   // Мемоизируем массив уведомлений
@@ -214,7 +214,9 @@ function AppContent() {
       {/* Skip to main content link for keyboard users */}
       <a 
         href="#main-content" 
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:ring-2 focus:ring-ring"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 
+          focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground 
+          focus:rounded-md focus:ring-2 focus:ring-ring"
         aria-label="Перейти к основному контенту"
       >
         Перейти к основному контенту
@@ -261,7 +263,7 @@ function AppContent() {
   );
 }
 
-function App() {
+function App(): React.ReactElement {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

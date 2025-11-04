@@ -27,7 +27,7 @@ cd "$PROJECT_DIR"
   echo "Automated Backup - $(date)"
   echo "======================================================================="
   
-  ./scripts/backup-database.sh "$ENVIRONMENT"
+  ./scripts/db/backup-database.sh "$ENVIRONMENT"
   
   echo ""
   echo "======================================================================="

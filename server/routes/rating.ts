@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import { repositories } from "../repositories/index.js";
-import { insertCompanyViolationRulesSchema, insertViolationsSchema } from "../../shared/schema.js";
-import type { EmployeeRating, InsertEmployeeRating, InsertCompanyViolationRules } from "../../shared/schema.js";
+import { insertCompanyViolationRulesSchema, insertViolationsSchema } from "@outcasts/shared/schema.js";
+import type { EmployeeRating, InsertEmployeeRating, InsertCompanyViolationRules } from "@outcasts/shared/schema.js";
 import { logger } from "../lib/logger.js";
 import { invalidateCompanyStats, getCurrentMonthPeriod } from "../lib/utils/index.js";
 import { asyncHandler, NotFoundError, ValidationError } from "../lib/errorHandler.js";

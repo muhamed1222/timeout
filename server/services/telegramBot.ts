@@ -6,7 +6,7 @@ import type {
   TelegramWebhookInfo,
   TelegramApiResponse,
   TelegramWebhookInfoResponse,
-} from "../../shared/types/api.js";
+} from "@outcasts/shared/types/api.js";
 
 // Re-export types for backward compatibility
 export type { TelegramMessageOptions, TelegramMessage, TelegramWebhookInfo, TelegramApiResponse, TelegramWebhookInfoResponse };

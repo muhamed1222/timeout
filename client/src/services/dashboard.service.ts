@@ -1,6 +1,6 @@
 // Сервис для бизнес-логики дашборда
-import type { Shift } from "@shared/schema";
-import type { ShiftWithEmployee } from "@shared/api-types";
+import type { Shift } from "@outcasts/shared/schema";
+import type { ShiftWithEmployee } from "@outcasts/shared/api-types";
 import { apiService } from "./api.service";
 
 export interface DashboardStats {

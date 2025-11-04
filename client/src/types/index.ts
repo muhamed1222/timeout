@@ -3,7 +3,7 @@
  * Все типы должны быть определены здесь для переиспользования
  */
 
-import type { Employee, EmployeeInvite, Shift } from "@shared/schema";
+import type { Employee, EmployeeInvite, Shift } from "@outcasts/shared/schema";
 
 // ============================================================================
 // API Response Types

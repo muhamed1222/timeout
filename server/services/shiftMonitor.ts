@@ -1,5 +1,5 @@
 import { repositories } from "../repositories/index.js";
-import { type InsertException, type Shift, type Employee } from "../../shared/schema.js";
+import { type InsertException, type Shift, type Employee } from "@outcasts/shared/schema.js";
 import { logger } from "../lib/logger.js";
 import { violationsCounter, monitoringRunsCounter, monitoringDuration } from "../lib/metrics.js";
 

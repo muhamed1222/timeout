@@ -3,7 +3,7 @@ import { supabaseAdmin } from "../lib/supabase.js";
 import { repositories } from "../repositories/index.js";
 import { logger } from "../lib/logger.js";
 import { getSecret } from "../lib/secrets.js";
-import type { Employee } from "../../shared/schema.js";
+import type { Employee } from "@outcasts/shared/schema.js";
 
 // Extend Express Request to include authenticated user and employee
 declare global {

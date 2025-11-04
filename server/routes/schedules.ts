@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { repositories } from "../repositories/index.js";
-import { insertScheduleTemplateSchema } from "../../shared/schema.js";
+import { insertScheduleTemplateSchema } from "@outcasts/shared/schema.js";
 import { logger } from "../lib/logger.js";
 
 const router = Router();

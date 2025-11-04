@@ -1,0 +1,7 @@
+{
+  "name": "telegram-bot",
+  "main": "index.ts",
+  "scripts": {
+    "start": "ts-node launchBot.ts"
+  }
+}

@@ -19,7 +19,7 @@ NC='\033[0m'
 
 ENVIRONMENT=${1:-production}
 PROJECT_DIR=$(pwd)
-BACKUP_SCRIPT="${PROJECT_DIR}/scripts/backup-database.sh"
+BACKUP_SCRIPT="${PROJECT_DIR}/scripts/db/backup-database.sh"
 LOG_DIR="${PROJECT_DIR}/logs"
 LOG_FILE="${LOG_DIR}/backup.log"
 

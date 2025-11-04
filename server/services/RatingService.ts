@@ -5,7 +5,7 @@
 import type { DIContainer } from "../lib/di/container.js";
 import { getContainer } from "../lib/di/container.js";
 import { logger } from "../lib/logger.js";
-import type { InsertViolations, InsertCompanyViolationRules } from "../../shared/schema.js";
+import type { InsertViolations, InsertCompanyViolationRules } from "@outcasts/shared/schema.js";
 
 export class RatingService {
   constructor(private readonly container: DIContainer) {}

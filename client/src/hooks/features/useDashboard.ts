@@ -2,8 +2,8 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dashboardService, DashboardStats, ShiftDisplayData, IActivityItem } from "../../services/dashboard.service";
-import type { Shift } from "@shared/schema";
-import type { ShiftWithEmployee } from "@shared/api-types";
+import type { Shift } from "@outcasts/shared/schema";
+import type { ShiftWithEmployee } from "@outcasts/shared/api-types";
 
 export interface UseDashboardOptions {
   companyId: string;

@@ -1,21 +1,13 @@
 import { useState } from "react";
-import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
-import { Label } from "@/ui/label";
-import { Textarea } from "@/ui/textarea";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOptimisticCreateInvite } from "@/hooks/useOptimisticMutations";
-import { Loader2, QrCode, Copy, Check, X, ChevronDown } from "lucide-react";
+
+import { Loader2, Copy, Check, X } from "lucide-react";
 
 interface AddEmployeeModalProps {
   open: boolean;
@@ -32,7 +24,8 @@ interface EmployeeInvite {
   qr_code_url: string;
 }
 
-export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeModalProps) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: AddEmployeeModalProps) {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -68,8 +61,6 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
     }));
   };
 
-  const createInviteMutation = useOptimisticCreateInvite();
-  
   const createEmployeeMutation = useMutation({
     mutationFn: async (data: { full_name: string; position: string }) => {
       // Создаем только инвайт для сотрудника
@@ -122,7 +113,7 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     if (!formData.firstName.trim()) {
       toast({
@@ -160,7 +151,7 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
     }
   };
 
-  const handleClose = () => {
+  const handleClose = (): void => {
     setFormData({
       firstName: "",
       lastName: "",
@@ -177,7 +168,7 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={`bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0 [&>button]:hidden ${!inviteData ? "sm:max-w-[620px]" : "sm:max-w-[425px]"}`}>
         {!inviteData ? (
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">

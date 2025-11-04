@@ -6,7 +6,7 @@ import { validateBody } from "../middleware/validate.js";
 import { createViolationSchema } from "../lib/schemas/index.js";
 import { findOrThrow, validateCompanyScope, invalidateCompanyStatsByEmployeeId, getCurrentMonthPeriod } from "../lib/utils/index.js";
 import { violationsCounter } from "../lib/metrics.js";
-import type { InsertViolations } from "../../shared/schema.js";
+import type { InsertViolations } from "@outcasts/shared/schema.js";
 
 const router = Router();
 

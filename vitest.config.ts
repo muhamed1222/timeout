@@ -7,9 +7,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom', // Changed from 'node' to support React components
-    include: ['**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.tsx'],
+    include: ['tests/**/*.{test,spec}.ts'],
     exclude: ['node_modules', 'dist', 'tests/e2e/**'],
-    setupFiles: ['./tests/setup.ts'], // Setup file for test utilities
+    setupFiles: ['./tests/setup.ts', './config/vitest-setup.ts'], // Setup files for test utilities
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
@@ -52,6 +52,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, 'client/src'),
       '@shared': path.resolve(__dirname, 'shared'),
+      '@config': path.resolve(__dirname, 'config'),
     },
   },
 });

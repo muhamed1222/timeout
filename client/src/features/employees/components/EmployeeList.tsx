@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/ui/table";
 import { Plus, Search, Filter } from "lucide-react";
-import type { Employee } from "@shared/schema";
+import type { Employee } from "@outcasts/shared/schema";
 import { getEmployeeAvatarUrl, getEmployeeInitials } from "@/lib/employeeAvatar";
 
 interface EmployeeListProps {
