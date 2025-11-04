@@ -57,23 +57,16 @@ router.post("/", validateBody(createViolationSchema), asyncHandler(async (req, r
     }
     void logger.info("Creating violation with penalty", { penalty: penaltyValue, originalType: typeof rule.penalty_percent, originalValue: rule.penalty_percent });
 
-    // Prepare violation data
-    const violationData: Partial<InsertViolations> = {
+    // Prepare violation data - ensure all required fields are present
+    const violationData: InsertViolations = {
       employee_id: validatedData.employee_id,
       company_id: validatedData.company_id,
       rule_id: validatedData.rule_id,
       source: validatedData.source ?? "manual",
       penalty: penaltyValue,
+      ...(validatedData.reason?.trim() && { reason: validatedData.reason.trim() }),
+      ...(validatedData.created_by && { created_by: validatedData.created_by }),
     };
-
-    // Add optional fields only if they have values
-    if (validatedData.reason?.trim()) {
-      violationData.reason = validatedData.reason.trim();
-    }
-
-    if (validatedData.created_by) {
-      violationData.created_by = validatedData.created_by;
-    }
 
     void logger.info("Violation data prepared", { 
       hasReason: !!violationData.reason,
