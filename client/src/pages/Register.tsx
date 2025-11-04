@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { useLocation } from 'wouter';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { supabase } from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
+import { useState } from "react";
+import { useLocation } from "wouter";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 import {
   Form,
   FormControl,
@@ -12,19 +12,19 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { Link } from 'wouter';
-import { UserPlus, Loader2 } from 'lucide-react';
+} from "@/components/ui/form";
+import { Link } from "wouter";
+import { UserPlus, Loader2 } from "lucide-react";
 
 const registerSchema = z.object({
-  full_name: z.string().min(1, 'Введите полное имя'),
-  company_name: z.string().min(1, 'Введите название компании'),
-  email: z.string().email('Введите корректный email'),
-  password: z.string().min(6, 'Пароль должен содержать минимум 6 символов'),
-  password_confirm: z.string().min(6, 'Подтвердите пароль'),
+  full_name: z.string().min(1, "Введите полное имя"),
+  company_name: z.string().min(1, "Введите название компании"),
+  email: z.string().email("Введите корректный email"),
+  password: z.string().min(6, "Пароль должен содержать минимум 6 символов"),
+  password_confirm: z.string().min(6, "Подтвердите пароль"),
 }).refine((data) => data.password === data.password_confirm, {
-  message: 'Пароли не совпадают',
-  path: ['password_confirm'],
+  message: "Пароли не совпадают",
+  path: ["password_confirm"],
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -37,21 +37,21 @@ export default function Register() {
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      full_name: '',
-      company_name: '',
-      email: '',
-      password: '',
-      password_confirm: '',
+      full_name: "",
+      company_name: "",
+      email: "",
+      password: "",
+      password_confirm: "",
     },
   });
 
   async function onSubmit(values: RegisterFormValues) {
     setIsPending(true);
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email: values.email,
@@ -65,8 +65,8 @@ export default function Register() {
 
       if (data.error) {
         toast({
-          variant: 'destructive',
-          title: 'Ошибка',
+          variant: "destructive",
+          title: "Ошибка",
           description: data.error,
         });
         return;
@@ -74,9 +74,9 @@ export default function Register() {
 
       if (!response.ok) {
         toast({
-          variant: 'destructive',
-          title: 'Ошибка регистрации',
-          description: 'Произошла ошибка при регистрации',
+          variant: "destructive",
+          title: "Ошибка регистрации",
+          description: "Произошла ошибка при регистрации",
         });
         return;
       }
@@ -88,8 +88,8 @@ export default function Register() {
 
       if (authError) {
         toast({
-          variant: 'destructive',
-          title: 'Ошибка входа',
+          variant: "destructive",
+          title: "Ошибка входа",
           description: authError.message,
         });
         return;
@@ -97,16 +97,16 @@ export default function Register() {
 
       if (authData.user) {
         toast({
-          title: 'Регистрация успешна',
-          description: 'Добро пожаловать!',
+          title: "Регистрация успешна",
+          description: "Добро пожаловать!",
         });
-        setLocation('/');
+        setLocation("/");
       }
     } catch (error) {
       toast({
-        variant: 'destructive',
-        title: 'Ошибка',
-        description: 'Произошла непредвиденная ошибка',
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Произошла непредвиденная ошибка",
       });
     } finally {
       setIsPending(false);
@@ -236,14 +236,14 @@ export default function Register() {
                     Регистрация...
                   </>
                 ) : (
-                  'Зарегистрироваться'
+                  "Зарегистрироваться"
                 )}
               </button>
             </form>
           </Form>
 
           <div className="text-center text-sm text-[#565656]">
-            Уже есть аккаунт?{' '}
+            Уже есть аккаунт?{" "}
             <Link href="/login">
               <span className="text-[#e16546] hover:underline cursor-pointer" data-testid="link-login">
                 Войти

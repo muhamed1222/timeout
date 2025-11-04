@@ -3,7 +3,7 @@
  * Automatically sanitizes all user inputs to prevent XSS and SQL injection
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from "express";
 import {
   sanitizeObject,
   deepSanitize,
@@ -13,24 +13,24 @@ import {
   sanitizeEmail,
   sanitizePhone,
   sanitizeUuid,
-} from '../lib/sanitize.js';
-import { ValidationError } from '../lib/errorHandler.js';
-import { logger } from '../lib/logger.js';
+} from "../lib/sanitize.js";
+import { ValidationError } from "../lib/errorHandler.js";
+import { logger } from "../lib/logger.js";
 
 /**
  * Sanitize request body
  */
 export function sanitizeBody(req: Request, res: Response, next: NextFunction): void {
   try {
-    if (req.body && typeof req.body === 'object') {
+    if (req.body && typeof req.body === "object") {
       // Check for SQL injection patterns first
       const bodyString = JSON.stringify(req.body);
       if (containsSqlInjection(bodyString)) {
-        logger.warn('SQL injection pattern detected in request body', {
+        logger.warn("SQL injection pattern detected in request body", {
           path: req.path,
           ip: req.ip,
         });
-        throw new ValidationError('Invalid input detected');
+        throw new ValidationError("Invalid input detected");
       }
       
       // Deep sanitize the body
@@ -43,7 +43,7 @@ export function sanitizeBody(req: Request, res: Response, next: NextFunction): v
     if (error instanceof ValidationError) {
       throw error;
     }
-    logger.error('Error sanitizing request body', error);
+    logger.error("Error sanitizing request body", error);
     next(error);
   }
 }
@@ -53,16 +53,16 @@ export function sanitizeBody(req: Request, res: Response, next: NextFunction): v
  */
 export function sanitizeQuery(req: Request, res: Response, next: NextFunction): void {
   try {
-    if (req.query && typeof req.query === 'object') {
+    if (req.query && typeof req.query === "object") {
       const queryString = JSON.stringify(req.query);
       
       // Check for SQL injection patterns
       if (containsSqlInjection(queryString)) {
-        logger.warn('SQL injection pattern detected in query params', {
+        logger.warn("SQL injection pattern detected in query params", {
           path: req.path,
           ip: req.ip,
         });
-        throw new ValidationError('Invalid query parameters');
+        throw new ValidationError("Invalid query parameters");
       }
       
       // Sanitize query parameters
@@ -70,21 +70,21 @@ export function sanitizeQuery(req: Request, res: Response, next: NextFunction): 
       for (const key in req.query) {
         if (Object.prototype.hasOwnProperty.call(req.query, key)) {
           const value = req.query[key];
-          if (typeof value === 'string') {
+          if (typeof value === "string") {
             sanitized[key] = sanitizeObject({ value }).value;
           } else {
             sanitized[key] = value;
           }
         }
       }
-      req.query = sanitized as Request['query'];
+      req.query = sanitized as Request["query"];
     }
     next();
   } catch (error) {
     if (error instanceof ValidationError) {
       throw error;
     }
-    logger.error('Error sanitizing query parameters', error);
+    logger.error("Error sanitizing query parameters", error);
     next(error);
   }
 }
@@ -94,7 +94,7 @@ export function sanitizeQuery(req: Request, res: Response, next: NextFunction): 
  */
 export function sanitizeParams(req: Request, res: Response, next: NextFunction): void {
   try {
-    if (req.params && typeof req.params === 'object') {
+    if (req.params && typeof req.params === "object") {
       // Path parameters are usually UUIDs or IDs - validate them strictly
       const sanitized: Record<string, string> = {};
       for (const key in req.params) {
@@ -102,7 +102,7 @@ export function sanitizeParams(req: Request, res: Response, next: NextFunction):
           const value = req.params[key];
           
           // Special handling for common parameter types
-          if (key.includes('id') || key.includes('Id') || key.includes('ID')) {
+          if (key.includes("id") || key.includes("Id") || key.includes("ID")) {
             // Try to sanitize as UUID first
             const uuid = sanitizeUuid(value);
             if (uuid) {
@@ -125,14 +125,14 @@ export function sanitizeParams(req: Request, res: Response, next: NextFunction):
           }
         }
       }
-      req.params = sanitized as Request['params'];
+      req.params = sanitized as Request["params"];
     }
     next();
   } catch (error) {
     if (error instanceof ValidationError) {
       throw error;
     }
-    logger.error('Error sanitizing path parameters', error);
+    logger.error("Error sanitizing path parameters", error);
     next(error);
   }
 }
@@ -156,7 +156,7 @@ export function sanitizeInput(req: Request, res: Response, next: NextFunction): 
 export function sanitizeFields(fieldMappings: Record<string, (value: unknown) => unknown>) {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
-      if (req.body && typeof req.body === 'object') {
+      if (req.body && typeof req.body === "object") {
         for (const field in fieldMappings) {
           if (req.body[field] !== undefined) {
             req.body[field] = fieldMappings[field](req.body[field]);
@@ -165,7 +165,7 @@ export function sanitizeFields(fieldMappings: Record<string, (value: unknown) =>
       }
       next();
     } catch (error) {
-      logger.error('Error sanitizing specific fields', error);
+      logger.error("Error sanitizing specific fields", error);
       next(error);
     }
   };
@@ -180,3 +180,5 @@ export {
   containsSqlInjection,
   containsXss,
 };
+
+

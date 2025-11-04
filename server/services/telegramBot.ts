@@ -1,23 +1,15 @@
-import { logger } from '../lib/logger.js';
-import { getSecret, isProduction } from '../lib/secrets.js';
+import { logger } from "../lib/logger.js";
+import { getSecret, isProduction } from "../lib/secrets.js";
+import type {
+  TelegramMessageOptions,
+  TelegramMessage,
+  TelegramWebhookInfo,
+  TelegramApiResponse,
+  TelegramWebhookInfoResponse,
+} from "../../shared/types/api.js";
 
-interface TelegramMessageOptions {
-  reply_markup?: {
-    inline_keyboard?: Array<Array<{
-      text: string;
-      web_app?: { url: string };
-      callback_data?: string;
-    }>>;
-  };
-  parse_mode?: 'Markdown' | 'HTML';
-}
-
-interface TelegramApiResponse {
-  ok: boolean;
-  result?: any;
-  description?: string;
-  error_code?: number;
-}
+// Re-export types for backward compatibility
+export type { TelegramMessageOptions, TelegramMessage, TelegramWebhookInfo, TelegramApiResponse, TelegramWebhookInfoResponse };
 
 export class TelegramBotService {
   private botToken: string;
@@ -31,13 +23,13 @@ export class TelegramBotService {
   async sendMessage(
     chatId: number,
     text: string,
-    options?: TelegramMessageOptions
+    options?: TelegramMessageOptions,
   ): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseUrl}/sendMessage`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           chat_id: chatId,
@@ -49,13 +41,13 @@ export class TelegramBotService {
       const data = await response.json() as TelegramApiResponse;
 
       if (!data.ok) {
-        logger.error('Telegram API error', undefined, { description: data.description, errorCode: data.error_code });
+        logger.error("Telegram API error", undefined, { description: data.description, errorCode: data.error_code });
         return false;
       }
 
       return true;
     } catch (error) {
-      logger.error('Error sending Telegram message', error);
+      logger.error("Error sending Telegram message", error);
       return false;
     }
   }
@@ -63,9 +55,9 @@ export class TelegramBotService {
   async setWebhook(url: string): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseUrl}/setWebhook`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ url }),
       });
@@ -73,18 +65,18 @@ export class TelegramBotService {
       const data = await response.json() as TelegramApiResponse;
       return data.ok;
     } catch (error) {
-      logger.error('Error setting webhook', error);
+      logger.error("Error setting webhook", error);
       return false;
     }
   }
 
-  async getWebhookInfo(): Promise<any> {
+  async getWebhookInfo(): Promise<TelegramWebhookInfo | null> {
     try {
       const response = await fetch(`${this.baseUrl}/getWebhookInfo`);
-      const data = await response.json() as TelegramApiResponse;
-      return data.result;
+      const data = await response.json() as TelegramWebhookInfoResponse;
+      return data.result || null;
     } catch (error) {
-      logger.error('Error getting webhook info', error);
+      logger.error("Error getting webhook info", error);
       return null;
     }
   }
@@ -94,11 +86,11 @@ export class TelegramBotService {
 let botService: TelegramBotService | null = null;
 
 export function getTelegramBotService(): TelegramBotService | null {
-  const botToken = getSecret('TELEGRAM_BOT_TOKEN');
+  const botToken = getSecret("TELEGRAM_BOT_TOKEN");
   
   if (!botToken) {
     if (isProduction()) {
-      logger.error('TELEGRAM_BOT_TOKEN is not set in production!');
+      logger.error("TELEGRAM_BOT_TOKEN is not set in production!");
     }
     return null;
   }

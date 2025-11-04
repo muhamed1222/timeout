@@ -75,9 +75,10 @@ CREATE INDEX IF NOT EXISTS idx_employee_invite_code ON employee_invite(code);
 CREATE INDEX IF NOT EXISTS idx_employee_invite_used ON employee_invite(used_by_employee) WHERE used_by_employee IS NULL;
 CREATE INDEX IF NOT EXISTS idx_employee_invite_created_at ON employee_invite(created_at);
 
--- Audit log indexes (for querying by entity/action)
+-- Audit log indexes (for querying by entity/action/actor)
 CREATE INDEX IF NOT EXISTS idx_audit_log_entity ON audit_log(entity, at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action, at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_actor ON audit_log(actor, at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_log_at ON audit_log(at DESC);
 
 -- Analyze tables to update statistics for query planner

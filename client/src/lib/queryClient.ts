@@ -28,18 +28,18 @@ export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
-    });
+    async ({ queryKey }) => {
+      const res = await fetch(queryKey.join("/"), {
+        credentials: "include",
+      });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
-    }
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null;
+      }
 
-    await throwIfResNotOk(res);
-    return await res.json();
-  };
+      await throwIfResNotOk(res);
+      return await res.json();
+    };
 
 /**
  * Query configuration presets for different data types
@@ -58,7 +58,7 @@ export const queryConfig = {
     staleTime: 1000 * 60 * 5, // 5 minutes
     cacheTime: 1000 * 60 * 10, // 10 minutes
     refetchOnWindowFocus: true,
-    refetchOnMount: 'always' as const,
+    refetchOnMount: "always" as const,
   },
   
   // Live data (shifts, stats) - changes frequently
@@ -100,10 +100,10 @@ export const queryClient = new QueryClient({
       staleTime: 1000 * 60 * 5, // Default: 5 minutes
       cacheTime: 1000 * 60 * 10, // Default: 10 minutes
       refetchOnWindowFocus: true,
-      refetchOnMount: 'always' as const,
+      refetchOnMount: "always" as const,
       retry: (failureCount, error: unknown) => {
         // Don't retry on 4xx errors (client errors)
-        if (error instanceof Error && 'status' in error) {
+        if (error instanceof Error && "status" in error) {
           const status = (error as { status?: number }).status;
           if (status && status >= 400 && status < 500) {
             return false;
@@ -118,7 +118,7 @@ export const queryClient = new QueryClient({
       retry: false, // Mutations should not retry automatically
       onError: (error) => {
         // Global error handling for mutations
-        console.error('Mutation error:', error);
+        console.error("Mutation error:", error);
       },
     },
   },

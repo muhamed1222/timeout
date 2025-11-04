@@ -23,15 +23,17 @@ export function EfficiencyAnalytics({ periodStart, periodEnd }: EfficiencyAnalyt
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
   
-  const periodStartDate = periodStart || startOfMonth.toISOString().split('T')[0];
-  const periodEndDate = periodEnd || endOfMonth.toISOString().split('T')[0];
+  const periodStartDate = periodStart || startOfMonth.toISOString().split("T")[0];
+  const periodEndDate = periodEnd || endOfMonth.toISOString().split("T")[0];
 
   const { data: ratings = [], isLoading } = useQuery({
     ...queryConfig.dashboard,
-    queryKey: ['/api/companies', companyId, 'ratings', periodStartDate, periodEndDate],
+    queryKey: ["/api/companies", companyId, "ratings", periodStartDate, periodEndDate],
     queryFn: async () => {
       const res = await fetch(`/api/companies/${companyId}/ratings?periodStart=${periodStartDate}&periodEnd=${periodEndDate}`);
-      if (!res.ok) throw new Error('Failed to fetch ratings');
+      if (!res.ok) {
+        throw new Error("Failed to fetch ratings");
+      }
       return res.json();
     },
     enabled: !!companyId,
@@ -41,21 +43,29 @@ export function EfficiencyAnalytics({ periodStart, periodEnd }: EfficiencyAnalyt
     .slice(0, 4)
     .map((rating: any) => ({
       id: rating.employee_id || rating.id,
-      name: rating.employee?.full_name || 'Сотрудник',
+      name: rating.employee?.full_name || "Сотрудник",
       efficiency: Math.round(Number(rating.rating || 100)),
       change: undefined, // Можно добавить логику сравнения с предыдущим периодом
     }))
     .sort((a, b) => b.efficiency - a.efficiency);
 
   const getChangeIcon = (change?: number) => {
-    if (change === undefined) return <Minus className="w-2 h-2 text-[#606060]" />;
-    if (change > 0) return <TrendingUp className="w-2 h-2 text-[#007aff]" />;
+    if (change === undefined) {
+      return <Minus className="w-2 h-2 text-[#606060]" />;
+    }
+    if (change > 0) {
+      return <TrendingUp className="w-2 h-2 text-[#007aff]" />;
+    }
     return <TrendingDown className="w-2 h-2 text-[#ff0006]" />;
   };
 
   const getChangeColor = (change?: number) => {
-    if (change === undefined) return "text-[#606060]";
-    if (change > 0) return "text-[#3cd565]";
+    if (change === undefined) {
+      return "text-[#606060]";
+    }
+    if (change > 0) {
+      return "text-[#3cd565]";
+    }
     return "text-[#ff0006]";
   };
 

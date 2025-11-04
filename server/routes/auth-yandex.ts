@@ -130,7 +130,7 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
       logger.error("Yandex OAuth returned error", { 
         error, 
         error_description,
-        query: req.query 
+        query: req.query, 
       });
       const errorMsg = (error_description ?? error ?? "unknown_error") as string;
       return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(errorMsg)}`);
@@ -142,7 +142,7 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
       logger.warn("Invalid OAuth state", { 
         storedState, 
         receivedState: state,
-        cookies: req.cookies 
+        cookies: req.cookies, 
       });
       return res.redirect(`${frontendUrl}/login?error=invalid_state`);
     }
@@ -155,7 +155,7 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
       return res.redirect(`${frontendUrl}/login?error=missing_code`);
     }
     
-    logger.info("Processing Yandex OAuth code exchange", { code: typeof code === 'string' ? code.substring(0, 10) + "..." : code });
+    logger.info("Processing Yandex OAuth code exchange", { code: typeof code === "string" ? code.substring(0, 10) + "..." : code });
 
     const yandexClientId = getSecret("YANDEX_CLIENT_ID");
     const yandexClientSecret = getSecret("YANDEX_CLIENT_SECRET");
@@ -194,13 +194,13 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
     logger.info("Yandex OAuth callback processing", { 
       callbackUrl,
       hasClientId: !!yandexClientId,
-      hasClientSecret: !!yandexClientSecret
+      hasClientSecret: !!yandexClientSecret,
     });
 
     // Обмениваем код на токен
     logger.info("Exchanging code for token", { 
       clientId: yandexClientId?.substring(0, 10) + "...",
-      callbackUrl 
+      callbackUrl, 
     });
     
     const tokenResponse = await fetch("https://oauth.yandex.com/token", {
@@ -223,7 +223,7 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
         statusText: tokenResponse.statusText,
         error: errorText,
         clientId: yandexClientId,
-        callbackUrl
+        callbackUrl,
       });
       return res.redirect(`${frontendUrl}/login?error=token_exchange_failed`);
     }
@@ -253,7 +253,7 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
       logger.error("Failed to get user info from Yandex", { 
         status: userInfoResponse.status,
         statusText: userInfoResponse.statusText,
-        error: errorText 
+        error: errorText, 
       });
       return res.redirect(`${frontendUrl}/login?error=user_info_failed`);
     }
@@ -294,7 +294,7 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
     }
 
     const existingUser = listUsersData?.users?.find(
-      (user: { email?: string }) => user.email?.toLowerCase() === email.toLowerCase()
+      (user: { email?: string }) => user.email?.toLowerCase() === email.toLowerCase(),
     );
 
     let userId: string;
@@ -382,14 +382,14 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
         errorMessage: linkError?.message,
         hasData: !!linkData,
         linkDataType: typeof linkData,
-        linkDataStructure: linkData ? Object.keys(linkData) : []
+        linkDataStructure: linkData ? Object.keys(linkData) : [],
       });
 
       if (linkError) {
         logger.error("Failed to generate auth link", { 
           error: linkError,
           errorMessage: linkError.message,
-          errorStatus: (linkError as any).status,
+          errorStatus: (linkError).status,
         });
         return res.redirect(`${frontendUrl}/login?error=session_failed`);
       }
@@ -407,11 +407,11 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
         actionLink = linkData.properties.action_link;
       }
       // Альтернативная структура: { action_link: "..." }
-      else if ((linkData as any).action_link) {
-        actionLink = (linkData as any).action_link;
+      else if ((linkData).action_link) {
+        actionLink = (linkData).action_link;
       }
       // Если это строка напрямую
-      else if (typeof linkData === 'string') {
+      else if (typeof linkData === "string") {
         actionLink = linkData;
       }
       // Попробуем найти любую строку, похожую на URL
@@ -425,12 +425,12 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
 
       logger.info("Extracted action link", { 
         hasActionLink: !!actionLink,
-        actionLinkPreview: actionLink?.substring(0, 150)
+        actionLinkPreview: actionLink?.substring(0, 150),
       });
       
       if (!actionLink) {
         logger.error("No action_link found", { 
-          linkData: JSON.stringify(linkData, null, 2)
+          linkData: JSON.stringify(linkData, null, 2),
         });
         return res.redirect(`${frontendUrl}/login?error=session_failed`);
       }
@@ -492,7 +492,7 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
       } catch (urlError: any) {
         logger.error("Failed to parse URL", { 
           error: urlError?.message,
-          actionLink 
+          actionLink, 
         });
         return res.redirect(`${frontendUrl}/login?error=session_failed`);
       }
@@ -512,7 +512,7 @@ router.get("/yandex/callback", oauthLimiter, async (req: Request, res: Response)
       stack: error?.stack,
       name: error?.name,
       code: error?.code,
-      details: error
+      details: error,
     });
     
     const frontendUrl = getSecret("FRONTEND_URL") || process.env.VITE_FRONTEND_URL || "http://localhost:5173";

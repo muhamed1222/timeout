@@ -5,10 +5,10 @@
  * Supports both memory (development) and Redis (production)
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { createClient, RedisClientType } from 'redis';
-import { logger } from '../lib/logger.js';
-import { isProduction, getSecret } from '../lib/secrets.js';
+import { Request, Response, NextFunction } from "express";
+import { createClient, RedisClientType } from "redis";
+import { logger } from "../lib/logger.js";
+import { isProduction, getSecret } from "../lib/secrets.js";
 
 // Extend Express Request to include user/employee
 // Note: Employee type is already defined in middleware/auth.ts
@@ -90,7 +90,7 @@ class RedisStore {
   }
 
   private async connect(): Promise<void> {
-    const redisUrl = getSecret('REDIS_URL');
+    const redisUrl = getSecret("REDIS_URL");
     if (!isProduction() || !redisUrl) {
       return;
     }
@@ -98,9 +98,9 @@ class RedisStore {
     try {
       this.client = createClient({ url: redisUrl });
       await this.client.connect();
-      logger.info('Redis rate limiter connected');
+      logger.info("Redis rate limiter connected");
     } catch (error) {
-      logger.error('Redis rate limiter connection failed, using memory fallback', error);
+      logger.error("Redis rate limiter connection failed, using memory fallback", error);
     }
   }
 
@@ -137,7 +137,7 @@ class RedisStore {
       
       return { count, ttl };
     } catch (error) {
-      logger.error('Redis rate limit error, falling back to memory', error);
+      logger.error("Redis rate limit error, falling back to memory", error);
       const result = await this.fallback.increment(key);
       return { count: result.count, ttl: Math.floor(windowMs / 1000) };
     }
@@ -151,7 +151,7 @@ class RedisStore {
     try {
       await this.client.del(key);
     } catch (error) {
-      logger.error('Redis reset error', error);
+      logger.error("Redis reset error", error);
     }
   }
 }
@@ -176,7 +176,7 @@ function defaultKeyGenerator(req: Request): string {
   }
   
   // Fallback to IP
-  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const ip = req.ip || req.headers["x-forwarded-for"] || "unknown";
   return `ratelimit:ip:${ip}`;
 }
 
@@ -190,7 +190,7 @@ export function rateLimit(config: RateLimitConfig) {
     keyGenerator = defaultKeyGenerator,
     skipSuccessfulRequests = false,
     skipFailedRequests = false,
-    message = 'Too many requests, please try again later',
+    message = "Too many requests, please try again later",
     statusCode = 429,
   } = config;
 
@@ -206,14 +206,14 @@ export function rateLimit(config: RateLimitConfig) {
       const reset = Math.floor(Date.now() / 1000) + ttl;
       
       // Set rate limit headers
-      res.setHeader('X-RateLimit-Limit', limit);
-      res.setHeader('X-RateLimit-Remaining', remaining);
-      res.setHeader('X-RateLimit-Reset', reset);
+      res.setHeader("X-RateLimit-Limit", limit);
+      res.setHeader("X-RateLimit-Remaining", remaining);
+      res.setHeader("X-RateLimit-Reset", reset);
       
       if (count > limit) {
-        res.setHeader('Retry-After', ttl);
+        res.setHeader("Retry-After", ttl);
         
-        logger.warn('Rate limit exceeded', {
+        logger.warn("Rate limit exceeded", {
           key,
           count,
           limit,
@@ -222,7 +222,7 @@ export function rateLimit(config: RateLimitConfig) {
         });
         
         return res.status(statusCode).json({
-          error: 'Rate limit exceeded',
+          error: "Rate limit exceeded",
           message,
           retryAfter: ttl,
         });
@@ -248,7 +248,7 @@ export function rateLimit(config: RateLimitConfig) {
       
       next();
     } catch (error) {
-      logger.error('Rate limit middleware error', error);
+      logger.error("Rate limit middleware error", error);
       // On error, allow request through (fail open)
       next();
     }
@@ -263,7 +263,7 @@ export function rateLimit(config: RateLimitConfig) {
 export const strictRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,  // 15 minutes
   maxRequests: 10,            // 10 requests per 15 min
-  message: 'Too many requests. Please try again in 15 minutes.',
+  message: "Too many requests. Please try again in 15 minutes.",
 });
 
 // Standard API rate limit
@@ -287,10 +287,10 @@ export const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,  // 15 minutes
   maxRequests: 5,             // 5 attempts per 15 min
   keyGenerator: (req) => {
-    const email = req.body?.email || 'unknown';
+    const email = req.body?.email || "unknown";
     return `ratelimit:auth:${email}:${req.ip}`;
   },
-  message: 'Too many login attempts. Please try again in 15 minutes.',
+  message: "Too many login attempts. Please try again in 15 minutes.",
 });
 
 // Bot API endpoints
@@ -298,7 +298,7 @@ export const botRateLimit = rateLimit({
   windowMs: 1 * 60 * 1000,   // 1 minute
   maxRequests: 120,           // 120 requests per minute (2 per second)
   keyGenerator: (req) => {
-    const telegramId = req.body?.telegram_id || req.headers['x-telegram-user-id'];
+    const telegramId = req.body?.telegram_id || req.headers["x-telegram-user-id"];
     return telegramId 
       ? `ratelimit:bot:${telegramId}`
       : `ratelimit:bot:ip:${req.ip}`;

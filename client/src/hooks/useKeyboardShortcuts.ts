@@ -7,7 +7,7 @@
  * - `Esc` - Close modals/dialogs
  */
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef } from "react";
 
 export interface KeyboardShortcut {
   key: string;
@@ -43,13 +43,13 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
           // Check if we're in an input/textarea/contenteditable
           const target = event.target as HTMLElement;
           const isInputElement =
-            target.tagName === 'INPUT' ||
-            target.tagName === 'TEXTAREA' ||
+            target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA" ||
             target.isContentEditable;
 
           // Skip if shortcut key is `/` or `Ctrl+K` and we're in an input (to allow typing)
           if (
-            (shortcut.key === '/' || shortcut.key === 'Slash') &&
+            (shortcut.key === "/" || shortcut.key === "Slash") &&
             isInputElement
           ) {
             continue;
@@ -65,9 +65,9 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
 }
@@ -78,8 +78,8 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
 export function useSearchShortcut(searchInputRef: React.RefObject<HTMLInputElement>) {
   useKeyboardShortcuts([
     {
-      key: '/',
-      description: 'Focus search input',
+      key: "/",
+      description: "Focus search input",
       callback: () => {
         if (searchInputRef.current && document.activeElement !== searchInputRef.current) {
           searchInputRef.current.focus();
@@ -95,15 +95,15 @@ export function useSearchShortcut(searchInputRef: React.RefObject<HTMLInputEleme
 export function useCommandPalette(onOpen: () => void) {
   useKeyboardShortcuts([
     {
-      key: 'k',
+      key: "k",
       ctrlKey: true,
-      description: 'Open command palette',
+      description: "Open command palette",
       callback: onOpen,
     },
     {
-      key: 'k',
+      key: "k",
       metaKey: true,
-      description: 'Open command palette (Mac)',
+      description: "Open command palette (Mac)",
       callback: onOpen,
     },
   ]);
@@ -115,8 +115,8 @@ export function useCommandPalette(onOpen: () => void) {
 export function useEscapeShortcut(onClose: () => void, enabled: boolean = true) {
   useKeyboardShortcuts([
     {
-      key: 'Escape',
-      description: 'Close modal/dialog',
+      key: "Escape",
+      description: "Close modal/dialog",
       callback: onClose,
       preventDefault: enabled,
     },
@@ -128,17 +128,19 @@ export function useEscapeShortcut(onClose: () => void, enabled: boolean = true) 
  */
 export const commonShortcuts = {
   focusSearch: {
-    key: '/',
-    description: 'Focus search input',
+    key: "/",
+    description: "Focus search input",
   },
   openCommandPalette: {
-    key: 'k',
+    key: "k",
     ctrlKey: true,
-    description: 'Open command palette',
+    description: "Open command palette",
   },
   closeModal: {
-    key: 'Escape',
-    description: 'Close modal/dialog',
+    key: "Escape",
+    description: "Close modal/dialog",
   },
 } as const;
+
+
 

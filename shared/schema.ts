@@ -10,10 +10,9 @@ import {
   bigserial,
   unique,
   numeric,
-  boolean
+  boolean,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod";
 
 // Компания
 export const company = pgTable("company", {
@@ -79,7 +78,7 @@ export const employee_schedule = pgTable("employee_schedule", {
 }));
 
 // Shift status type
-export type ShiftStatus = 'planned' | 'active' | 'completed' | 'cancelled';
+export type ShiftStatus = "planned" | "active" | "completed" | "cancelled";
 
 // Смены
 export const shift = pgTable("shift", {

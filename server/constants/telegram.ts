@@ -1,7 +1,7 @@
 // Telegram bot commands
 export const TELEGRAM_COMMANDS = {
-  START: '/start',
-  STATUS: '/status',
+  START: "/start",
+  STATUS: "/status",
 } as const;
 
 // Telegram bot messages (Russian)
@@ -47,14 +47,14 @@ export const TELEGRAM_BUTTONS = {
 
 // WebApp configuration
 export const getWebAppUrl = () => 
-  process.env.WEBAPP_URL || 'https://your-domain.replit.app';
+  process.env.WEBAPP_URL || "https://your-domain.replit.app";
 
 // Inline keyboard for opening WebApp
 export const getWebAppKeyboard = () => ({
   inline_keyboard: [[
     {
       text: TELEGRAM_BUTTONS.OPEN_WEBAPP,
-      web_app: { url: `${getWebAppUrl()}/miniapp` }
-    }
-  ]]
+      web_app: { url: `${getWebAppUrl()}/miniapp` },
+    },
+  ]],
 });

@@ -8,92 +8,237 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as schema from '../../../shared/schema.js';
 import { eq } from 'drizzle-orm';
 
+// Mock dependencies
+vi.mock('../../lib/metrics.js', () => ({
+  databaseQueryDuration: {
+    labels: vi.fn().mockReturnThis(),
+    observe: vi.fn(),
+  },
+}));
+
+vi.mock('../../lib/logger.js', () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
+  },
+}));
+
 describe('EmployeeRepository', () => {
-  let mockDb: PostgresJsDatabase<typeof schema>;
   let repository: EmployeeRepository;
+  let mockDb: PostgresJsDatabase<typeof schema>;
+
+  const mockEmployee = {
+    id: 'emp-1',
+    company_id: 'comp-1',
+    full_name: 'John Doe',
+    position: 'Developer',
+    telegram_user_id: '123456',
+    status: 'active',
+    tz: 'UTC',
+    avatar_id: null,
+    photo_url: null,
+    created_at: new Date(),
+  };
 
   beforeEach(() => {
-    mockDb = {
-      select: vi.fn().mockReturnThis(),
-      insert: vi.fn().mockReturnThis(),
-      update: vi.fn().mockReturnThis(),
-      delete: vi.fn().mockReturnThis(),
-      from: vi.fn().mockReturnThis(),
+    vi.clearAllMocks();
+
+    // Mock table with _ property for BaseRepository.trackQuery
+    const mockTable = {
+      _: {
+        name: 'employee',
+      },
+    };
+
+    // Mock database with query builder chain
+    const mockQueryChain = {
       where: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([mockEmployee]),
       offset: vi.fn().mockReturnThis(),
-      set: vi.fn().mockReturnThis(),
-      values: vi.fn().mockReturnThis(),
-      returning: vi.fn(),
-      and: vi.fn(),
-      or: vi.fn(),
+      orderBy: vi.fn().mockReturnThis(),
+    };
+
+    mockDb = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue(mockQueryChain),
+      }),
+      insert: vi.fn().mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([mockEmployee]),
+        }),
+      }),
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([mockEmployee]),
+          }),
+        }),
+      }),
+      delete: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([]),
+      }),
     } as any;
 
+    // Create repository with mocked table
     repository = new EmployeeRepository(mockDb);
+    // Inject mock table into repository instance
+    (repository as any).table = mockTable;
   });
 
-  describe('findByCompanyId', () => {
-    it('should return employees for company', async () => {
-      const mockEmployees = [
-        { id: 'emp-1', company_id: 'company-1', full_name: 'Employee 1' },
-        { id: 'emp-2', company_id: 'company-1', full_name: 'Employee 2' },
-      ];
+  describe('findById', () => {
+    it('should find employee by ID', async () => {
+      const result = await repository.findById('emp-1');
 
-      const mockWhere = {
-        where: vi.fn().mockResolvedValue(mockEmployees),
-      };
-      mockDb.from = vi.fn().mockReturnValue(mockWhere);
-      mockDb.select = vi.fn().mockReturnValue(mockWhere);
-
-      const result = await repository.findByCompanyId('company-1');
-
-      expect(result).toEqual(mockEmployees);
-      expect(mockDb.where).toHaveBeenCalled();
+      expect(mockDb.select).toHaveBeenCalled();
+      expect(result).toEqual(mockEmployee);
     });
 
-    it('should return empty array if no employees', async () => {
-      const mockWhere = {
-        where: vi.fn().mockResolvedValue([]),
+    it('should return undefined if employee not found', async () => {
+      const mockQueryChain = {
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue([]),
       };
-      mockDb.from = vi.fn().mockReturnValue(mockWhere);
-      mockDb.select = vi.fn().mockReturnValue(mockWhere);
+      mockDb.select = vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue(mockQueryChain),
+      });
 
-      const result = await repository.findByCompanyId('non-existent');
+      const result = await repository.findById('non-existent');
 
-      expect(result).toEqual([]);
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle missing avatar fields gracefully', async () => {
+      const employeeWithoutAvatar = {
+        ...mockEmployee,
+        avatar_id: undefined,
+        photo_url: undefined,
+      };
+
+      const mockQueryChain = {
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue([employeeWithoutAvatar]),
+      };
+      mockDb.select = vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue(mockQueryChain),
+      });
+
+      const result = await repository.findById('emp-1');
+
+      expect(result?.avatar_id).toBeNull();
+      expect(result?.photo_url).toBeNull();
     });
   });
 
   describe('findByTelegramId', () => {
-    it('should return employee by Telegram ID', async () => {
-      const mockEmployee = {
-        id: 'emp-1',
-        telegram_user_id: '123456789',
-        full_name: 'Test Employee',
-      };
+    it('should find employee by Telegram user ID', async () => {
+      const result = await repository.findByTelegramId('123456');
 
-      const mockWhere = {
-        where: vi.fn().mockResolvedValue([mockEmployee]),
-      };
-      mockDb.from = vi.fn().mockReturnValue(mockWhere);
-      mockDb.select = vi.fn().mockReturnValue(mockWhere);
-
-      const result = await repository.findByTelegramId('123456789');
-
+      expect(mockDb.select).toHaveBeenCalled();
       expect(result).toEqual(mockEmployee);
     });
 
-    it('should return undefined if not found', async () => {
-      const mockWhere = {
-        where: vi.fn().mockResolvedValue([]),
+    it('should return undefined if employee not found', async () => {
+      const mockQueryChain = {
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue([]),
       };
-      mockDb.from = vi.fn().mockReturnValue(mockWhere);
-      mockDb.select = vi.fn().mockReturnValue(mockWhere);
+      mockDb.select = vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue(mockQueryChain),
+      });
 
       const result = await repository.findByTelegramId('non-existent');
 
       expect(result).toBeUndefined();
     });
   });
-});
 
+  describe('findByCompanyId', () => {
+    it('should find employees by company ID', async () => {
+      const mockWhereChain = {
+        where: vi.fn().mockResolvedValue([mockEmployee]),
+      };
+      const mockFromChain = {
+        from: vi.fn().mockReturnValue(mockWhereChain),
+      };
+      mockDb.select = vi.fn().mockReturnValue(mockFromChain);
+
+      const result = await repository.findByCompanyId('comp-1');
+
+      expect(mockDb.select).toHaveBeenCalled();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toEqual([mockEmployee]);
+    });
+
+    it('should return empty array if no employees found', async () => {
+      const mockWhereChain = {
+        where: vi.fn().mockResolvedValue([]),
+      };
+      const mockFromChain = {
+        from: vi.fn().mockReturnValue(mockWhereChain),
+      };
+      mockDb.select = vi.fn().mockReturnValue(mockFromChain);
+
+      const result = await repository.findByCompanyId('non-existent');
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toEqual([]);
+    });
+
+    it('should filter by status if provided', async () => {
+      const mockWhereChain = {
+        where: vi.fn().mockResolvedValue([mockEmployee]),
+      };
+      const mockFromChain = {
+        from: vi.fn().mockReturnValue(mockWhereChain),
+      };
+      mockDb.select = vi.fn().mockReturnValue(mockFromChain);
+
+      const result = await repository.findByCompanyId('comp-1', 'active');
+
+      expect(mockDb.select).toHaveBeenCalled();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toEqual([mockEmployee]);
+    });
+  });
+
+  describe('create', () => {
+    it('should create new employee', async () => {
+      const newEmployee = {
+        company_id: 'comp-1',
+        full_name: 'Jane Doe',
+        position: 'Manager',
+        telegram_user_id: null,
+        status: 'active' as const,
+        tz: null,
+      };
+
+      const result = await repository.create(newEmployee);
+
+      expect(mockDb.insert).toHaveBeenCalled();
+      expect(result).toEqual(mockEmployee);
+    });
+  });
+
+  describe('update', () => {
+    it('should update employee', async () => {
+      const updatedData = {
+        position: 'Senior Developer',
+      };
+
+      const result = await repository.update('emp-1', updatedData);
+
+      expect(mockDb.update).toHaveBeenCalled();
+      expect(result).toEqual(mockEmployee);
+    });
+  });
+
+  describe('delete', () => {
+    it('should delete employee', async () => {
+      await repository.delete('emp-1');
+
+      expect(mockDb.delete).toHaveBeenCalled();
+    });
+  });
+});

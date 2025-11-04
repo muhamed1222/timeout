@@ -1,7 +1,7 @@
 import { AlertTriangle, Clock, FileX, UserX, Coffee } from "lucide-react";
 import { getEmployeeAvatarUrl, getEmployeeInitials } from "@/lib/employeeAvatar";
 
-export type ExceptionType = 'late' | 'no_report' | 'short_day' | 'long_break' | 'no_show';
+export type ExceptionType = "late" | "no_report" | "short_day" | "long_break" | "no_show";
 
 interface ExceptionCardProps {
   employeeName: string;
@@ -22,40 +22,40 @@ interface ExceptionCardProps {
 const exceptionConfig = {
   late: {
     icon: Clock,
-    color: 'text-shift-late',
-    bgColor: 'bg-shift-late/10',
-    title: 'Опоздание'
+    color: "text-shift-late",
+    bgColor: "bg-shift-late/10",
+    title: "Опоздание",
   },
   no_report: {
     icon: FileX,
-    color: 'text-shift-missed',
-    bgColor: 'bg-shift-missed/10',
-    title: 'Нет отчета'
+    color: "text-shift-missed",
+    bgColor: "bg-shift-missed/10",
+    title: "Нет отчета",
   },
   short_day: {
     icon: AlertTriangle,
-    color: 'text-shift-break',
-    bgColor: 'bg-shift-break/10',
-    title: 'Короткий день'
+    color: "text-shift-break",
+    bgColor: "bg-shift-break/10",
+    title: "Короткий день",
   },
   long_break: {
     icon: Coffee,
-    color: 'text-shift-break',
-    bgColor: 'bg-shift-break/10',
-    title: 'Долгий перерыв'
+    color: "text-shift-break",
+    bgColor: "bg-shift-break/10",
+    title: "Долгий перерыв",
   },
   no_show: {
     icon: UserX,
-    color: 'text-shift-missed',
-    bgColor: 'bg-shift-missed/10',
-    title: 'Не явился'
-  }
+    color: "text-shift-missed",
+    bgColor: "bg-shift-missed/10",
+    title: "Не явился",
+  },
 };
 
 const severityColors = {
-  1: 'border-l-shift-break',
-  2: 'border-l-shift-late', 
-  3: 'border-l-shift-missed'
+  1: "border-l-shift-break",
+  2: "border-l-shift-late", 
+  3: "border-l-shift-missed",
 };
 
 export default function ExceptionCard({ 
@@ -67,7 +67,7 @@ export default function ExceptionCard({
   timestamp, 
   severity,
   onResolve,
-  onContact 
+  onContact, 
 }: ExceptionCardProps) {
   const config = exceptionConfig[type];
   const Icon = config.icon;
@@ -79,12 +79,12 @@ export default function ExceptionCard({
   const initials = getEmployeeInitials(employeeName);
 
   const handleResolve = () => {
-    console.log('Resolve exception for', employeeName);
+    console.log("Resolve exception for", employeeName);
     onResolve?.();
   };
 
   const handleContact = () => {
-    console.log('Contact employee', employeeName);
+    console.log("Contact employee", employeeName);
     onContact?.();
   };
 
@@ -115,13 +115,15 @@ export default function ExceptionCard({
                   className="size-6 rounded-full object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const fallback = target.parentElement?.querySelector('.avatar-fallback') as HTMLElement;
-                    if (fallback) fallback.style.display = 'flex';
+                    target.style.display = "none";
+                    const fallback = target.parentElement?.querySelector(".avatar-fallback") as HTMLElement;
+                    if (fallback) {
+                      fallback.style.display = "flex";
+                    }
                   }}
                 />
               ) : null}
-              <div className={`size-6 rounded-full bg-[#ff3b30] flex items-center justify-center text-white text-[10px] font-medium avatar-fallback ${avatarUrl ? 'hidden' : ''}`}>
+              <div className={`size-6 rounded-full bg-[#ff3b30] flex items-center justify-center text-white text-[10px] font-medium avatar-fallback ${avatarUrl ? "hidden" : ""}`}>
                 {initials}
               </div>
               <span className="text-sm font-medium text-black">{employeeName}</span>
@@ -133,7 +135,7 @@ export default function ExceptionCard({
       </div>
 
       {/* Action Buttons */}
-        <div className="flex gap-2">
+      <div className="flex gap-2">
         <button
           onClick={handleResolve}
           className="bg-[rgba(52,199,89,0.08)] px-[10px] py-2 rounded-[20px] text-xs font-medium text-[#34c759] leading-[1.2] hover:bg-[rgba(52,199,89,0.15)] transition-colors"
@@ -149,6 +151,6 @@ export default function ExceptionCard({
             Связаться
         </button>
       </div>
-        </div>
+    </div>
   );
 }

@@ -2,7 +2,7 @@
  * Shared API types for type-safe request/response handling
  */
 
-import type { ShiftStatus } from '../schema';
+import type { ShiftStatus } from "../schema";
 
 // ============================================================================
 // COMMON TYPES
@@ -63,7 +63,7 @@ export interface EmployeeResponse {
   phone_number: string | null;
   telegram_user_id: string | null;
   telegram_username: string | null;
-  status: 'active' | 'inactive' | 'on_leave';
+  status: "active" | "inactive" | "on_leave";
   hire_date: string | null;
   created_at: string;
   updated_at: string;
@@ -75,7 +75,7 @@ export interface CreateEmployeeRequest {
   email?: string;
   phone_number?: string;
   hire_date?: string;
-  status?: 'active' | 'inactive' | 'on_leave';
+  status?: "active" | "inactive" | "on_leave";
 }
 
 export interface UpdateEmployeeRequest extends Partial<CreateEmployeeRequest> {
@@ -100,6 +100,17 @@ export interface ShiftResponse {
   created_at: string;
   updated_at: string;
   employee?: Partial<EmployeeResponse>;
+}
+
+// Enriched shift with full employee data
+export interface ShiftWithEmployee extends ShiftResponse {
+  employee: {
+    id: string;
+    full_name: string;
+    position: string | null;
+    photo_url?: string | null;
+    avatar_id?: number | null;
+  };
 }
 
 export interface CreateShiftRequest {
@@ -160,11 +171,11 @@ export interface ViolationResponse {
   company_id: string;
   shift_id: string | null;
   rule_id: string | null;
-  type: 'late_start' | 'early_end' | 'long_break' | 'missed_shift' | 'unauthorized_absence' | 'other';
+  type: "late_start" | "early_end" | "long_break" | "missed_shift" | "unauthorized_absence" | "other";
   severity: number;
   description: string;
   detected_at: string;
-  source: 'auto' | 'manual';
+  source: "auto" | "manual";
   evidence: Record<string, unknown> | null;
   created_at: string;
   employee?: Partial<EmployeeResponse>;
@@ -174,11 +185,11 @@ export interface CreateViolationRequest {
   employee_id: string;
   shift_id?: string;
   rule_id?: string;
-  type: ViolationResponse['type'];
+  type: ViolationResponse["type"];
   severity: number;
   description: string;
   detected_at?: string;
-  source?: 'auto' | 'manual';
+  source?: "auto" | "manual";
   evidence?: Record<string, unknown>;
 }
 
@@ -191,7 +202,7 @@ export interface ExceptionResponse {
   employee_id: string;
   company_id: string;
   violation_id: string | null;
-  kind: 'sick_leave' | 'vacation' | 'personal' | 'technical_issue' | 'approved_late' | 'other';
+  kind: "sick_leave" | "vacation" | "personal" | "technical_issue" | "approved_late" | "other";
   description: string;
   date: string;
   approved_by: string | null;
@@ -201,10 +212,15 @@ export interface ExceptionResponse {
   employee?: Partial<EmployeeResponse>;
 }
 
+// Enriched exception with full employee data
+export interface ExceptionWithEmployee extends ExceptionResponse {
+  employee: EmployeeResponse;
+}
+
 export interface CreateExceptionRequest {
   employee_id: string;
   violation_id?: string;
-  kind: ExceptionResponse['kind'];
+  kind: ExceptionResponse["kind"];
   description: string;
   date: string;
   approved_by?: string;
@@ -229,9 +245,18 @@ export interface EmployeeRatingResponse {
   period_end: string;
   total_violations: number;
   total_exceptions_approved: number;
-  status: 'active' | 'archived';
+  status: "active" | "archived";
   created_at: string;
   updated_at: string;
+}
+
+// Enriched rating with employee data
+export interface EmployeeRatingWithEmployee extends EmployeeRatingResponse {
+  employee?: {
+    id: string;
+    full_name: string;
+    position?: string | null;
+  };
 }
 
 // ============================================================================
@@ -249,8 +274,62 @@ export interface DashboardStatsResponse {
 }
 
 // ============================================================================
-// TELEGRAM WEBHOOK TYPES
+// TELEGRAM TYPES
 // ============================================================================
+
+export interface TelegramUser {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  language_code?: string;
+}
+
+export interface TelegramMessageOptions {
+  reply_markup?: {
+    inline_keyboard?: Array<Array<{
+      text: string;
+      web_app?: { url: string };
+      callback_data?: string;
+    }>>;
+  };
+  parse_mode?: "Markdown" | "HTML";
+}
+
+export interface TelegramMessage {
+  message_id: number;
+  from?: {
+    id: number;
+    is_bot: boolean;
+    first_name: string;
+    username?: string;
+  };
+  chat: {
+    id: number;
+    type: string;
+  };
+  date: number;
+  text?: string;
+}
+
+export interface TelegramWebhookInfo {
+  url: string;
+  has_custom_certificate: boolean;
+  pending_update_count: number;
+  last_error_date?: number;
+  last_error_message?: string;
+  max_connections?: number;
+  allowed_updates?: string[];
+}
+
+export interface TelegramApiResponse<T = TelegramMessage> {
+  ok: boolean;
+  result?: T;
+  description?: string;
+  error_code?: number;
+}
+
+export interface TelegramWebhookInfoResponse extends TelegramApiResponse<TelegramWebhookInfo> {}
 
 export interface TelegramLinkRequest {
   telegram_id: string;
@@ -282,6 +361,16 @@ export interface TelegramWebhookUpdate {
   };
 }
 
+export interface TelegramMessagePayload {
+  chat: {
+    id: number;
+  };
+  text?: string;
+  from?: {
+    id: number;
+  };
+}
+
 // ============================================================================
 // ERROR TYPES
 // ============================================================================
@@ -310,12 +399,12 @@ export interface WebSocketMessage<T = unknown> {
 
 export interface ShiftUpdateMessage {
   shift: ShiftResponse;
-  action: 'started' | 'ended' | 'paused' | 'cancelled' | 'updated';
+  action: "started" | "ended" | "paused" | "cancelled" | "updated";
 }
 
 export interface ViolationUpdateMessage {
   violation: ViolationResponse;
-  action: 'created' | 'detected';
+  action: "created" | "detected";
 }
 
 export interface DashboardUpdateMessage {

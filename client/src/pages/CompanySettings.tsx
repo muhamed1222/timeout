@@ -62,14 +62,14 @@ export default function CompanySettings() {
   const [editingRule, setEditingRule] = useState<ViolationRule | null>(null);
 
   const { data: company, isLoading } = useQuery<Company>({
-    queryKey: ['/api/companies', companyId],
+    queryKey: ["/api/companies", companyId],
     enabled: !!companyId,
   });
 
   const { data: violationRules = [], isLoading: rulesLoading } = useQuery<ViolationRule[]>({
-    queryKey: ['/api/companies', companyId, 'violation-rules'],
+    queryKey: ["/api/companies", companyId, "violation-rules"],
     queryFn: async () => {
-      const response = await apiRequest('GET', `/api/companies/${companyId}/violation-rules`);
+      const response = await apiRequest("GET", `/api/companies/${companyId}/violation-rules`);
       return response.json();
     },
     enabled: !!companyId,
@@ -77,114 +77,116 @@ export default function CompanySettings() {
 
   const updateCompanyMutation = useMutation({
     mutationFn: async (data: CompanyFormValues) => {
-      const response = await apiRequest('PUT', `/api/companies/${companyId}`, data);
+      const response = await apiRequest("PUT", `/api/companies/${companyId}`, data);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId] });
       toast({
         title: "Настройки сохранены",
-        description: "Настройки компании успешно обновлены"
+        description: "Настройки компании успешно обновлены",
       });
     },
     onError: () => {
       toast({
         title: "Ошибка",
         description: "Не удалось обновить настройки",
-        variant: "destructive"
+        variant: "destructive",
       });
-    }
+    },
   });
 
   const createViolationRuleMutation = useMutation({
     mutationFn: async (data: ViolationRuleFormValues) => {
-      if (!companyId) throw new Error('Не определена компания');
-      const response = await apiRequest('POST', `/api/violation-rules`, { 
+      if (!companyId) {
+        throw new Error("Не определена компания");
+      }
+      const response = await apiRequest("POST", "/api/violation-rules", { 
         ...data, 
         penalty_percent: String(data.penalty_percent),
-        company_id: companyId 
+        company_id: companyId, 
       });
       const payload = await response.json();
       if (!response.ok) {
-        const message = payload?.error || 'Не удалось создать правило';
+        const message = payload?.error || "Не удалось создать правило";
         throw new Error(message);
       }
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'violation-rules'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "violation-rules"] });
       toast({
         title: "Правило создано",
-        description: "Новое правило нарушения успешно добавлено"
+        description: "Новое правило нарушения успешно добавлено",
       });
       setIsViolationModalOpen(false);
     },
     onError: (err: any) => {
-      const message = err?.message || 'Не удалось создать правило нарушения';
-      toast({ title: 'Ошибка', description: message, variant: 'destructive' });
-      console.error('Create rule error:', err);
-    }
+      const message = err?.message || "Не удалось создать правило нарушения";
+      toast({ title: "Ошибка", description: message, variant: "destructive" });
+      console.error("Create rule error:", err);
+    },
   });
 
   const updateViolationRuleMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: ViolationRuleFormValues }) => {
-      const response = await apiRequest('PUT', `/api/violation-rules/${id}`, {
+      const response = await apiRequest("PUT", `/api/violation-rules/${id}`, {
         ...data,
-        penalty_percent: String(data.penalty_percent)
+        penalty_percent: String(data.penalty_percent),
       });
       const payload = await response.json();
       if (!response.ok) {
-        const message = payload?.error || 'Не удалось обновить правило';
+        const message = payload?.error || "Не удалось обновить правило";
         throw new Error(message);
       }
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'violation-rules'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "violation-rules"] });
       toast({
         title: "Правило обновлено",
-        description: "Правило нарушения успешно обновлено"
+        description: "Правило нарушения успешно обновлено",
       });
       setIsViolationModalOpen(false);
       setEditingRule(null);
     },
     onError: (err: any) => {
-      const message = err?.message || 'Не удалось обновить правило нарушения';
-      toast({ title: 'Ошибка', description: message, variant: 'destructive' });
-      console.error('Update rule error:', err);
-    }
+      const message = err?.message || "Не удалось обновить правило нарушения";
+      toast({ title: "Ошибка", description: message, variant: "destructive" });
+      console.error("Update rule error:", err);
+    },
   });
 
   const deleteViolationRuleMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest('DELETE', `/api/violation-rules/${id}`);
+      const response = await apiRequest("DELETE", `/api/violation-rules/${id}`);
       const payload = await response.json();
       if (!response.ok) {
-        const message = payload?.error || 'Не удалось удалить правило';
+        const message = payload?.error || "Не удалось удалить правило";
         throw new Error(message);
       }
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'violation-rules'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "violation-rules"] });
       toast({
         title: "Правило удалено",
-        description: "Правило нарушения успешно удалено"
+        description: "Правило нарушения успешно удалено",
       });
     },
     onError: (err: any) => {
-      const message = err?.message || 'Не удалось удалить правило нарушения';
-      toast({ title: 'Ошибка', description: message, variant: 'destructive' });
-      console.error('Delete rule error:', err);
-    }
+      const message = err?.message || "Не удалось удалить правило нарушения";
+      toast({ title: "Ошибка", description: message, variant: "destructive" });
+      console.error("Delete rule error:", err);
+    },
   });
 
   const form = useForm<CompanyFormValues>({
     resolver: zodResolver(companyFormSchema),
     values: {
       name: company?.name || "",
-      tz: company?.tz || "Europe/Moscow"
-    }
+      tz: company?.tz || "Europe/Moscow",
+    },
   });
 
   const onSubmit = (data: CompanyFormValues) => {
@@ -199,19 +201,21 @@ export default function CompanySettings() {
       penalty_percent: 5,
       auto_detectable: false,
       is_active: true,
-    }
+    },
   });
 
   const onViolationSubmit = (data: ViolationRuleFormValues) => {
     // Проверка уникальности кода (без учета регистра)
     const normalized = data.code.trim().toLowerCase();
     const exists = violationRules.some((r) => {
-      if (editingRule && r.id === editingRule.id) return false;
+      if (editingRule && r.id === editingRule.id) {
+        return false;
+      }
       return r.code.trim().toLowerCase() === normalized;
     });
     if (exists) {
-      violationForm.setError('code', { type: 'manual', message: 'Код уже используется' });
-      toast({ title: 'Ошибка', description: 'Код правила должен быть уникальным', variant: 'destructive' });
+      violationForm.setError("code", { type: "manual", message: "Код уже используется" });
+      toast({ title: "Ошибка", description: "Код правила должен быть уникальным", variant: "destructive" });
       return;
     }
     if (editingRule) {
@@ -280,10 +284,10 @@ export default function CompanySettings() {
             try {
               await supabase.auth.signOut();
               queryClient.clear();
-              setLocation('/login');
-              toast({ title: 'Вы вышли из аккаунта' });
+              setLocation("/login");
+              toast({ title: "Вы вышли из аккаунта" });
             } catch (e) {
-              toast({ title: 'Ошибка', description: 'Не удалось выйти из аккаунта', variant: 'destructive' });
+              toast({ title: "Ошибка", description: "Не удалось выйти из аккаунта", variant: "destructive" });
             }
           }}
         >
@@ -454,7 +458,7 @@ export default function CompanySettings() {
                               aria-label="Переключить активность правила"
                             />
                             <span className="text-sm text-muted-foreground">
-                              {rule.is_active ? 'Включено' : 'Выключено'}
+                              {rule.is_active ? "Включено" : "Выключено"}
                             </span>
                           </div>
                         </TableCell>

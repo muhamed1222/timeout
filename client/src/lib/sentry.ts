@@ -12,7 +12,7 @@ export function initSentry(): void {
   // Only initialize in production or if DSN is explicitly set
   if (!sentryDsn) {
     if (import.meta.env.PROD) {
-      console.warn('VITE_SENTRY_DSN not set - error tracking disabled');
+      console.warn("VITE_SENTRY_DSN not set - error tracking disabled");
     }
     return;
   }
@@ -32,14 +32,14 @@ export function initSentry(): void {
       ],
       
       // Performance Monitoring
-      tracesSampleRate: environment === 'production' ? 0.1 : 1.0,
+      tracesSampleRate: environment === "production" ? 0.1 : 1.0,
       
       // Session Replay
-      replaysSessionSampleRate: environment === 'production' ? 0.1 : 1.0,
+      replaysSessionSampleRate: environment === "production" ? 0.1 : 1.0,
       replaysOnErrorSampleRate: 1.0,
       
       // Release tracking
-      release: import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || 'development',
+      release: import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || "development",
       
       // Configure what to send
       beforeSend(event: any, hint: any) {
@@ -49,8 +49,8 @@ export function initSentry(): void {
         }
         
         // Don't send errors in development
-        if (environment === 'development') {
-          console.error('Sentry captured error (not sent in dev)', hint.originalException);
+        if (environment === "development") {
+          console.error("Sentry captured error (not sent in dev)", hint.originalException);
           return null;
         }
         
@@ -59,18 +59,18 @@ export function initSentry(): void {
       
       // Ignore certain errors
       ignoreErrors: [
-        'ResizeObserver loop limit exceeded',
-        'Non-Error promise rejection',
-        'Network request failed',
-        'Failed to fetch',
-        'NetworkError',
-        'AbortError',
+        "ResizeObserver loop limit exceeded",
+        "Non-Error promise rejection",
+        "Network request failed",
+        "Failed to fetch",
+        "NetworkError",
+        "AbortError",
       ],
     });
 
-    console.log('Sentry initialized successfully');
+    console.log("Sentry initialized successfully");
   } catch (error) {
-    console.error('Failed to initialize Sentry', error);
+    console.error("Failed to initialize Sentry", error);
   }
 }
 
@@ -93,7 +93,7 @@ export function captureException(error: Error, context?: Record<string, any>): v
 /**
  * Capture a message in Sentry
  */
-export function captureMessage(message: string, level: Sentry.SeverityLevel = 'info'): void {
+export function captureMessage(message: string, level: Sentry.SeverityLevel = "info"): void {
   Sentry.captureMessage(message, level);
 }
 

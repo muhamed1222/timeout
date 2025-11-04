@@ -23,24 +23,24 @@ type ExceptionData = {
 };
 
 export default function Exceptions() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const { companyId, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const { data: exceptions = [], isLoading, error } = useQuery<ExceptionData[]>({
-    queryKey: ['/api/companies', companyId, 'exceptions'],
+    queryKey: ["/api/companies", companyId, "exceptions"],
     enabled: !!companyId,
   });
 
-  const exceptionsRetry = useRetry(['/api/companies', companyId, 'exceptions']);
+  const exceptionsRetry = useRetry(["/api/companies", companyId, "exceptions"]);
 
   const resolveExceptionMutation = useMutation({
     mutationFn: async (exceptionId: string) => {
-      const response = await apiRequest('POST', `/api/companies/${companyId}/exceptions/${exceptionId}/resolve`);
+      const response = await apiRequest("POST", `/api/companies/${companyId}/exceptions/${exceptionId}/resolve`);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'exceptions'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "exceptions"] });
       toast({
         title: "Нарушение разрешено",
         description: "Нарушение успешно помечено как решенное",
@@ -52,21 +52,21 @@ export default function Exceptions() {
         description: "Не удалось разрешить нарушение",
         variant: "destructive",
       });
-    }
+    },
   });
 
   // По запросу заказчика поиск отключен
 
   const mapExceptionType = (type: string): ExceptionType => {
     const typeMap: Record<string, ExceptionType> = {
-      'late_arrival': 'late',
-      'early_departure': 'short_day',
-      'extended_break': 'long_break',
-      'no_report': 'no_report',
-      'no_show': 'no_show',
-      'violation': 'no_report' // Violations displayed as reports
+      "late_arrival": "late",
+      "early_departure": "short_day",
+      "extended_break": "long_break",
+      "no_report": "no_report",
+      "no_show": "no_show",
+      "violation": "no_report", // Violations displayed as reports
     };
-    return typeMap[type] || 'no_show';
+    return typeMap[type] || "no_show";
   };
 
   const handleResolveException = (exceptionId: string, employeeName: string) => {
@@ -87,13 +87,13 @@ export default function Exceptions() {
     employeeName: exc.employee.full_name,
     type: mapExceptionType(exc.exception_type),
     description: exc.description,
-    timestamp: new Date(exc.detected_at).toLocaleString('ru-RU', {
-      hour: '2-digit',
-      minute: '2-digit',
-      day: '2-digit',
-      month: '2-digit'
+    timestamp: new Date(exc.detected_at).toLocaleString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+      day: "2-digit",
+      month: "2-digit",
     }),
-    severity: exc.severity
+    severity: exc.severity,
   }));
 
   const filteredExceptions = transformedExceptions; // поиск отключен
@@ -109,7 +109,7 @@ export default function Exceptions() {
   if (error) {
     return (
       <ErrorState
-        message={getContextErrorMessage('violations', 'fetch')}
+        message={getContextErrorMessage("violations", "fetch")}
         onRetry={() => exceptionsRetry.retry()}
       />
     );

@@ -48,7 +48,7 @@ type InviteLink = {
 // Schema and types are no longer needed here
 
 export default function Employees() {
-  const [searchQuery] = useState('');
+  const [searchQuery] = useState("");
   const [selectedInvite, setSelectedInvite] = useState<InviteLink | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
@@ -63,7 +63,7 @@ export default function Employees() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   useSearchShortcut(searchInputRef);
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+   
   const handleAddEmployee = (): void => {
     setShowAddEmployeeModal(true);
   };
@@ -120,9 +120,9 @@ export default function Employees() {
   };
 
   const { data: employees = [], isLoading: employeesLoading, refetch: refetchEmployees } = useQuery<Employee[]>({
-    queryKey: ['/api/companies', companyId, 'employees'],
+    queryKey: ["/api/companies", companyId, "employees"],
     queryFn: async () => {
-      const response = await apiRequest('GET', `/api/companies/${companyId}/employees`);
+      const response = await apiRequest("GET", `/api/companies/${companyId}/employees`);
       return response.json();
     },
     enabled: !!companyId,
@@ -132,9 +132,9 @@ export default function Employees() {
   });
 
   const { data: invites = [], refetch: refetchInvites } = useQuery<EmployeeInvite[]>({
-    queryKey: ['/api/companies', companyId, 'employee-invites'],
+    queryKey: ["/api/companies", companyId, "employee-invites"],
     queryFn: async () => {
-      const response = await apiRequest('GET', `/api/companies/${companyId}/employee-invites`);
+      const response = await apiRequest("GET", `/api/companies/${companyId}/employee-invites`);
       return response.json();
     },
     enabled: !!companyId,
@@ -148,23 +148,23 @@ export default function Employees() {
 
   const fetchInviteLink = async (code: string): Promise<void> => {
     try {
-      const response = await apiRequest('GET', `/api/employee-invites/${code}/link`);
+      const response = await apiRequest("GET", `/api/employee-invites/${code}/link`);
       const data = await response.json();
       setSelectedInvite(data);
     } catch (error) {
       // apiRequest throws on non-ok responses, so we handle 404 and other errors here
-      const errorMessage = error instanceof Error ? error.message : 'Не удалось получить ссылку-приглашение';
-      const isNotFound = errorMessage.includes('404') || errorMessage.includes('Invite not found');
+      const errorMessage = error instanceof Error ? error.message : "Не удалось получить ссылку-приглашение";
+      const isNotFound = errorMessage.includes("404") || errorMessage.includes("Invite not found");
       
       toast({
         title: isNotFound ? "Приглашение не найдено" : "Ошибка",
         description: isNotFound 
-          ? 'Приглашение не найдено или уже использовано' 
+          ? "Приглашение не найдено или уже использовано" 
           : errorMessage,
-        variant: "destructive"
+        variant: "destructive",
       });
-      // eslint-disable-next-line no-console
-      console.error('Error fetching invite link:', error);
+       
+      console.error("Error fetching invite link:", error);
     }
   };
 
@@ -180,7 +180,7 @@ export default function Employees() {
     setTimeout(() => setCopiedCode(false), 2000);
     toast({
       title: "Скопировано",
-      description: "Инвайт-код скопирован в буфер обмена"
+      description: "Инвайт-код скопирован в буфер обмена",
     });
   };
 
@@ -189,13 +189,13 @@ export default function Employees() {
     void navigator.clipboard.writeText(link);
     toast({
       title: "Скопировано",
-      description: "Ссылка скопирована в буфер обмена"
+      description: "Ссылка скопирована в буфер обмена",
     });
   };
 
   const filteredEmployees = employees.filter(emp =>
     emp.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    emp.position.toLowerCase().includes(searchQuery.toLowerCase())
+    emp.position.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const activeInvites = invites.filter(inv => !inv.used_at);
@@ -254,13 +254,15 @@ export default function Employees() {
                       className="size-[50px] rounded-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const fallback = target.parentElement?.querySelector('.avatar-fallback') as HTMLElement;
-                        if (fallback) fallback.style.display = 'flex';
+                        target.style.display = "none";
+                        const fallback = target.parentElement?.querySelector(".avatar-fallback") as HTMLElement;
+                        if (fallback) {
+                          fallback.style.display = "flex";
+                        }
                       }}
                     />
                   ) : null}
-                  <div className={`size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium avatar-fallback ${avatarUrl ? 'hidden' : ''}`}>
+                  <div className={`size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium avatar-fallback ${avatarUrl ? "hidden" : ""}`}>
                     {initials}
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -268,10 +270,10 @@ export default function Employees() {
                       {employee.full_name}
                     </div>
                     <div className="text-sm text-[#e16546] leading-[1.2]">
-                      {employee.position || 'Сотрудник'}
-        </div>
-      </div>
-      </div>
+                      {employee.position || "Сотрудник"}
+                    </div>
+                  </div>
+                </div>
                 <div className="flex flex-col gap-1.5">
                   <button
                     onClick={() => {
@@ -468,13 +470,15 @@ export default function Employees() {
           setSelectedEmployee(updatedEmployee);
           // Update employee in the list
           queryClient.setQueriesData(
-            { queryKey: ['/api/companies', companyId, 'employees'] },
+            { queryKey: ["/api/companies", companyId, "employees"] },
             (old: Employee[] | unknown) => {
-              if (!old || !Array.isArray(old)) return old;
+              if (!old || !Array.isArray(old)) {
+                return old;
+              }
               return old.map((emp: Employee) => 
-                emp.id === updatedEmployee.id ? updatedEmployee : emp
+                emp.id === updatedEmployee.id ? updatedEmployee : emp,
               );
-            }
+            },
           );
         }}
       />

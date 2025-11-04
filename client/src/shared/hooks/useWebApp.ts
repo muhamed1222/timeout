@@ -1,8 +1,8 @@
 // Хук для работы с Telegram WebApp
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { webAppService, EmployeeData, ShiftStatus, GeolocationData, ShiftActionData } from '../../services/webapp.service';
-import { useGeolocation } from './useGeolocation';
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { webAppService, EmployeeData, ShiftStatus, GeolocationData, ShiftActionData } from "../../services/webapp.service";
+import { useGeolocation } from "./useGeolocation";
 
 export interface UseWebAppOptions {
   telegramUserId: string;
@@ -13,7 +13,7 @@ export interface UseWebAppOptions {
 export function useWebApp({ 
   telegramUserId, 
   autoRefresh = true,
-  refreshInterval = 30000 
+  refreshInterval = 30000, 
 }: UseWebAppOptions) {
   const queryClient = useQueryClient();
   const { latitude, longitude, getCurrentPosition } = useGeolocation();
@@ -24,15 +24,17 @@ export function useWebApp({
     data: employeeData,
     isLoading: employeeLoading,
     error: employeeError,
-    refetch: refetchEmployee
+    refetch: refetchEmployee,
   } = useQuery<EmployeeData>({
-    queryKey: ['employee-data', telegramUserId],
+    queryKey: ["employee-data", telegramUserId],
     queryFn: () => webAppService.getEmployeeData(telegramUserId),
     enabled: !!telegramUserId,
     refetchInterval: autoRefresh ? refreshInterval : false,
     retry: (failureCount, error: any) => {
       // Не ретраить при 401 ошибках (неавторизован)
-      if (error?.status === 401) return false;
+      if (error?.status === 401) {
+        return false;
+      }
       return failureCount < 3;
     },
   });
@@ -42,15 +44,17 @@ export function useWebApp({
     data: currentShift,
     isLoading: shiftLoading,
     error: shiftError,
-    refetch: refetchShift
+    refetch: refetchShift,
   } = useQuery<ShiftStatus | null>({
-    queryKey: ['current-shift', employeeData?.employee.id],
+    queryKey: ["current-shift", employeeData?.employee.id],
     queryFn: () => employeeData ? webAppService.getCurrentShift(employeeData.employee.id) : null,
     enabled: !!employeeData?.employee.id,
     refetchInterval: autoRefresh ? refreshInterval : false,
     retry: (failureCount, error: any) => {
       // Не ретраить при 401 ошибках (неавторизован)
-      if (error?.status === 401) return false;
+      if (error?.status === 401) {
+        return false;
+      }
       return failureCount < 3;
     },
   });
@@ -59,8 +63,8 @@ export function useWebApp({
   const startShiftMutation = useMutation({
     mutationFn: (data: ShiftActionData) => webAppService.startShift(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['current-shift'] });
-      queryClient.invalidateQueries({ queryKey: ['employee-data'] });
+      queryClient.invalidateQueries({ queryKey: ["current-shift"] });
+      queryClient.invalidateQueries({ queryKey: ["employee-data"] });
     },
   });
 
@@ -68,8 +72,8 @@ export function useWebApp({
   const endShiftMutation = useMutation({
     mutationFn: (data: ShiftActionData) => webAppService.endShift(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['current-shift'] });
-      queryClient.invalidateQueries({ queryKey: ['employee-data'] });
+      queryClient.invalidateQueries({ queryKey: ["current-shift"] });
+      queryClient.invalidateQueries({ queryKey: ["employee-data"] });
     },
   });
 
@@ -77,7 +81,7 @@ export function useWebApp({
   const startBreakMutation = useMutation({
     mutationFn: (data: ShiftActionData) => webAppService.startBreak(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['current-shift'] });
+      queryClient.invalidateQueries({ queryKey: ["current-shift"] });
     },
   });
 
@@ -85,7 +89,7 @@ export function useWebApp({
   const endBreakMutation = useMutation({
     mutationFn: (data: ShiftActionData) => webAppService.endBreak(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['current-shift'] });
+      queryClient.invalidateQueries({ queryKey: ["current-shift"] });
     },
   });
 
@@ -99,7 +103,7 @@ export function useWebApp({
       }
       return null;
     } catch (error) {
-      console.error('Error getting location:', error);
+      console.error("Error getting location:", error);
       return null;
     } finally {
       setIsLoadingLocation(false);
@@ -109,7 +113,7 @@ export function useWebApp({
   // Выполнение действия смены
   const performShiftAction = useCallback(async (action: string, notes?: string) => {
     if (!currentShift) {
-      throw new Error('Нет активной смены');
+      throw new Error("Нет активной смены");
     }
 
     const location = await getCurrentLocation();
@@ -118,38 +122,44 @@ export function useWebApp({
       shiftId: currentShift.id,
       action: action as any,
       location: location || undefined,
-      notes
+      notes,
     };
 
     switch (action) {
-    case 'start':
-      return startShiftMutation.mutateAsync(actionData);
-    case 'end':
-      return endShiftMutation.mutateAsync(actionData);
-    case 'break':
-      return startBreakMutation.mutateAsync(actionData);
-    case 'resume':
-      return endBreakMutation.mutateAsync(actionData);
-    default:
-      throw new Error(`Неизвестное действие: ${action}`);
+      case "start":
+        return startShiftMutation.mutateAsync(actionData);
+      case "end":
+        return endShiftMutation.mutateAsync(actionData);
+      case "break":
+        return startBreakMutation.mutateAsync(actionData);
+      case "resume":
+        return endBreakMutation.mutateAsync(actionData);
+      default:
+        throw new Error(`Неизвестное действие: ${action}`);
     }
   }, [currentShift, getCurrentLocation, startShiftMutation, endShiftMutation, startBreakMutation, endBreakMutation]);
 
   // Доступные действия
   const availableActions = useMemo(() => {
-    if (!currentShift) return [];
+    if (!currentShift) {
+      return [];
+    }
     return webAppService.getAvailableActions(currentShift);
   }, [currentShift]);
 
   // Статус смены
   const shiftStatus = useMemo(() => {
-    if (!currentShift) return 'unknown';
+    if (!currentShift) {
+      return "unknown";
+    }
     return webAppService.getShiftStatus(currentShift);
   }, [currentShift]);
 
   // Форматированные данные
   const formattedData = useMemo(() => {
-    if (!currentShift) return null;
+    if (!currentShift) {
+      return null;
+    }
 
     return {
       plannedStart: webAppService.formatTime(currentShift.plannedStartAt),
@@ -158,10 +168,10 @@ export function useWebApp({
       actualEnd: currentShift.actualEndAt ? webAppService.formatTime(currentShift.actualEndAt) : null,
       duration: currentShift.actualStartAt ? webAppService.formatDuration(
         currentShift.actualStartAt, 
-        currentShift.actualEndAt
+        currentShift.actualEndAt,
       ) : null,
       statusText: webAppService.getStatusText(currentShift.status),
-      statusColor: webAppService.getStatusColor(currentShift.status)
+      statusColor: webAppService.getStatusColor(currentShift.status),
     };
   }, [currentShift]);
 
@@ -179,7 +189,7 @@ export function useWebApp({
     startShift: startShiftMutation,
     endShift: endShiftMutation,
     startBreak: startBreakMutation,
-    endBreak: endBreakMutation
+    endBreak: endBreakMutation,
   };
 
   // Проверка состояния мутаций
@@ -217,6 +227,6 @@ export function useWebApp({
     getStatusColor: webAppService.getStatusColor,
     getActionButtonText: webAppService.getActionButtonText,
     getActionIcon: webAppService.getActionIcon,
-    canPerformAction: (action: string) => currentShift ? webAppService.canPerformAction(currentShift, action) : false
+    canPerformAction: (action: string) => currentShift ? webAppService.canPerformAction(currentShift, action) : false,
   };
 }

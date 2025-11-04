@@ -84,28 +84,28 @@ export class CompanyService {
         const [employees, activeShifts, exceptions] = await Promise.all([
           this.repositories.employee.findByCompanyId(companyId),
           this.repositories.shift.findActiveByCompanyId(companyId),
-          this.repositories.exception.findByCompanyId(companyId)
+          this.repositories.exception.findByCompanyId(companyId),
         ]);
         
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toISOString().split("T")[0];
         const todayShifts = activeShifts.filter(shift => 
-          shift.planned_start_at.toISOString().split('T')[0] === today
+          shift.planned_start_at.toISOString().split("T")[0] === today,
         );
         
-        const completedShifts = todayShifts.filter(shift => shift.status === 'completed').length;
+        const completedShifts = todayShifts.filter(shift => shift.status === "completed").length;
         
         const stats = {
           totalEmployees: employees.length,
           activeShifts: activeShifts.length,
           completedShifts,
-          exceptions: exceptions.length
+          exceptions: exceptions.length,
         };
         
         logger.debug("Company stats calculated", { companyId, stats });
         
         return stats;
       },
-      120 // Cache for 2 minutes
+      120, // Cache for 2 minutes
     );
   }
 
@@ -116,7 +116,7 @@ export class CompanyService {
     companyId: string,
     startDate: string,
     endDate: string,
-    employeeIds?: string[]
+    employeeIds?: string[],
   ) {
     try {
       const templates = await this.repositories.schedule.findByCompanyId(companyId);
@@ -140,7 +140,7 @@ export class CompanyService {
         targetEmployees.map(async (employee) => {
           const shifts = await this.repositories.shift.findByEmployeeId(employee.id);
           employeeShiftsMap.set(employee.id, shifts);
-        })
+        }),
       );
 
       // Prepare shifts to be created
@@ -156,13 +156,13 @@ export class CompanyService {
         for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
           const dayOfWeek = date.getDay();
           
-          if (rules.workdays && rules.workdays.includes(dayOfWeek)) {
+          if (rules.workdays?.includes(dayOfWeek)) {
             const shiftStart = new Date(date);
-            const [startHour, startMinute] = rules.shift_start.split(':').map(Number);
+            const [startHour, startMinute] = rules.shift_start.split(":").map(Number);
             shiftStart.setHours(startHour, startMinute, 0, 0);
             
             const shiftEnd = new Date(date);
-            const [endHour, endMinute] = rules.shift_end.split(':').map(Number);
+            const [endHour, endMinute] = rules.shift_end.split(":").map(Number);
             shiftEnd.setHours(endHour, endMinute, 0, 0);
             
             const existingShift = existingShifts.find((s: any) => {
@@ -178,7 +178,7 @@ export class CompanyService {
                 employee_id: employee.id,
                 planned_start_at: shiftStart,
                 planned_end_at: shiftEnd,
-                status: 'planned' as const
+                status: "planned" as const,
               });
             }
           }
@@ -197,7 +197,7 @@ export class CompanyService {
         companyId, 
         count: createdShifts.length,
         startDate,
-        endDate 
+        endDate, 
       });
       
       return createdShifts;

@@ -1,8 +1,8 @@
 // Хук для работы с дашбордом
-import { useState, useCallback, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { dashboardService, DashboardStats, ShiftDisplayData, ActivityItem } from '../../services/dashboard.service';
-import { Shift } from '@shared/types';
+import { useState, useCallback, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { dashboardService, DashboardStats, ShiftDisplayData, ActivityItem } from "../../services/dashboard.service";
+import { Shift } from "@shared/types";
 
 export interface UseDashboardOptions {
   companyId: string;
@@ -14,10 +14,10 @@ export interface UseDashboardOptions {
 
 export function useDashboard({ 
   companyId, 
-  searchQuery = '', 
+  searchQuery = "", 
   autoRefresh = true,
   refreshInterval = 30000,
-  enabled = true
+  enabled = true,
 }: UseDashboardOptions) {
   const [isExporting, setIsExporting] = useState(false);
 
@@ -26,15 +26,17 @@ export function useDashboard({
     data: stats,
     isLoading: statsLoading,
     error: statsError,
-    refetch: refetchStats
+    refetch: refetchStats,
   } = useQuery<DashboardStats>({
-    queryKey: ['dashboard-stats', companyId],
+    queryKey: ["dashboard-stats", companyId],
     queryFn: () => dashboardService.getCompanyStats(companyId),
     enabled: enabled && !!companyId, // Используем явный флаг enabled
     refetchInterval: autoRefresh ? refreshInterval : false,
     retry: (failureCount, error: any) => {
       // Не ретраить при 401 ошибках (неавторизован)
-      if (error?.status === 401) return false;
+      if (error?.status === 401) {
+        return false;
+      }
       return failureCount < 3;
     },
   });
@@ -44,15 +46,17 @@ export function useDashboard({
     data: activeShifts = [],
     isLoading: shiftsLoading,
     error: shiftsError,
-    refetch: refetchShifts
+    refetch: refetchShifts,
   } = useQuery<Shift[]>({
-    queryKey: ['active-shifts', companyId],
+    queryKey: ["active-shifts", companyId],
     queryFn: () => dashboardService.getActiveShifts(companyId),
     enabled: enabled && !!companyId, // Используем явный флаг enabled
     refetchInterval: autoRefresh ? refreshInterval : false,
     retry: (failureCount, error: any) => {
       // Не ретраить при 401 ошибках (неавторизован)
-      if (error?.status === 401) return false;
+      if (error?.status === 401) {
+        return false;
+      }
       return failureCount < 3;
     },
   });
@@ -75,7 +79,7 @@ export function useDashboard({
   // Экспорт в CSV
   const exportToCSV = useCallback(async (filename?: string) => {
     if (filteredShifts.length === 0) {
-      throw new Error('Нет данных для экспорта');
+      throw new Error("Нет данных для экспорта");
     }
 
     setIsExporting(true);
@@ -101,7 +105,7 @@ export function useDashboard({
       totalEmployees: 0,
       activeShifts: 0,
       completedShifts: 0,
-      exceptions: 0
+      exceptions: 0,
     },
     activeShifts,
     transformedShifts,
@@ -119,6 +123,6 @@ export function useDashboard({
     
     // Методы
     refetchStats,
-    refetchShifts
+    refetchShifts,
   };
 }

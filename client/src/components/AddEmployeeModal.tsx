@@ -64,7 +64,7 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
       ...prev,
       workingDays: prev.workingDays.includes(dayValue)
         ? prev.workingDays.filter(d => d !== dayValue)
-        : [...prev.workingDays, dayValue]
+        : [...prev.workingDays, dayValue],
     }));
   };
 
@@ -72,6 +72,11 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
   
   const createEmployeeMutation = useMutation({
     mutationFn: async (data: { full_name: string; position: string }) => {
+      // Проверяем, что companyId существует
+      if (!companyId) {
+        throw new Error("Компания не найдена. Пожалуйста, войдите заново.");
+      }
+
       // Создаем только инвайт для сотрудника
       const response = await fetch("/api/employee-invites", {
         method: "POST",
@@ -84,8 +89,32 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Ошибка создания инвайта");
+        let errorMessage = "Ошибка создания инвайта";
+        try {
+          const errorData = await response.json();
+          // Структура ошибки: { error: { message, code, statusCode, details } }
+          const errorMessageFromServer = errorData.error?.message || errorData.error || errorMessage;
+          
+          // Проверяем тип ошибки и возвращаем понятное сообщение
+          if (response.status === 404) {
+            // Проверяем, если это ошибка "Company not found"
+            if (errorMessageFromServer.includes("Company") || errorData.error?.code === "NOT_FOUND") {
+              errorMessage = "Компания не найдена. Пожалуйста, обновите страницу или войдите заново.";
+            } else {
+              errorMessage = errorMessageFromServer;
+            }
+          } else if (response.status === 400) {
+            errorMessage = errorMessageFromServer || "Неверные данные. Проверьте введенную информацию.";
+          } else {
+            errorMessage = errorMessageFromServer;
+          }
+        } catch {
+          // Если не удалось распарсить JSON, используем статус
+          if (response.status === 404) {
+            errorMessage = "Компания не найдена. Пожалуйста, обновите страницу или войдите заново.";
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       return response.json();
@@ -178,7 +207,7 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className={`bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0 [&>button]:hidden ${!inviteData ? 'sm:max-w-[620px]' : 'sm:max-w-[425px]'}`}>
+      <DialogContent className={`bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0 [&>button]:hidden ${!inviteData ? "sm:max-w-[620px]" : "sm:max-w-[425px]"}`}>
         {!inviteData ? (
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="flex items-center justify-between">
@@ -208,8 +237,8 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
                       onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
                       className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                       placeholder="Иван"
-                required
-              />
+                      required
+                    />
                   </div>
                   <div className="flex flex-col gap-1 flex-1">
                     <label className="text-sm text-[#959595] leading-[1.2]">
@@ -223,7 +252,7 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
                       placeholder="Петров"
                     />
                   </div>
-            </div>
+                </div>
 
                 <div className="flex flex-col gap-1">
                   <label className="text-sm text-[#959595] leading-[1.2]">
@@ -231,8 +260,8 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
                   </label>
                   <input
                     type="text"
-                value={formData.position}
-                onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
+                    value={formData.position}
+                    onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
                     className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                     placeholder="Руководитель отдела разработки"
                   />
@@ -251,9 +280,9 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
                       onChange={(e) => setFormData(prev => ({ ...prev, schedulePeriod: e.target.value }))}
                       className="bg-[rgba(225,101,70,0.1)] px-[10px] py-1 rounded-[20px] text-sm text-[#e16546] appearance-none pr-8 focus:outline-none"
                       style={{
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg width='7' height='4' viewBox='0 0 7 4' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0L3.5 4L7 0H0Z' fill='%23e16546'/%3E%3C/svg%3E")`,
-                        backgroundRepeat: 'no-repeat',
-                        backgroundPosition: 'right 10px center',
+                        backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='7' height='4' viewBox='0 0 7 4' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0L3.5 4L7 0H0Z' fill='%23e16546'/%3E%3C/svg%3E\")",
+                        backgroundRepeat: "no-repeat",
+                        backgroundPosition: "right 10px center",
                       }}
                     >
                       <option value="two_weeks">На две недели</option>
@@ -285,7 +314,7 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
                       onChange={(e) => setFormData(prev => ({ ...prev, breakDuration: e.target.value }))}
                       className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                       placeholder="30 мин"
-              />
+                    />
                   </div>
                   <div className="flex flex-col gap-1 flex-1">
                     <label className="text-sm text-[#959595] leading-[1.2]">
@@ -313,8 +342,8 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
                           onClick={() => toggleWorkingDay(day.value)}
                           className={`px-[14px] py-[7px] rounded-lg text-sm leading-[1.2] transition-colors ${
                             formData.workingDays.includes(day.value)
-                              ? 'bg-[#e16546] text-white'
-                              : 'bg-[#f8f8f8] text-black'
+                              ? "bg-[#e16546] text-white"
+                              : "bg-[#f8f8f8] text-black"
                           }`}
                           aria-label={day.full}
                         >
@@ -339,7 +368,7 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
                     Создание...
                   </>
                 ) : (
-                  'Добавить'
+                  "Добавить"
                 )}
               </button>
               <button
@@ -385,24 +414,24 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
                   <div className="flex gap-[10px]">
                     <input
                       type="text"
-                  value={inviteData.deep_link} 
-                  readOnly 
+                      value={inviteData.deep_link} 
+                      readOnly 
                       className="flex-1 bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black leading-[1.2] truncate"
-                />
+                    />
                     <button
-                  onClick={handleCopyLink}
-                  disabled={copied}
+                      onClick={handleCopyLink}
+                      disabled={copied}
                       className="bg-[#f8f8f8] rounded-[12px] size-[41px] flex items-center justify-center hover:bg-[#eeeeee] transition-colors disabled:opacity-50"
-                  aria-label={copied ? "Ссылка скопирована" : "Копировать ссылку"}
-                >
-                  {copied ? (
+                      aria-label={copied ? "Ссылка скопирована" : "Копировать ссылку"}
+                    >
+                      {copied ? (
                         <Check className="w-[18px] h-[18px] text-[#34c759]" />
-                  ) : (
+                      ) : (
                         <Copy className="w-[18px] h-[18px]" />
-                  )}
+                      )}
                     </button>
-              </div>
-            </div>
+                  </div>
+                </div>
 
                 {/* Инструкция */}
                 <div className="bg-[#f8f8f8] rounded-[12px] p-3 flex flex-col gap-[10px]">
@@ -412,9 +441,9 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess }: AddEmployeeM
                   <ol className="list-decimal text-sm text-black leading-[1.2] space-y-[3px] ml-[21px]">
                     <li>Отсканируйте QR-код или перейдите по ссылке</li>
                     <li>Откроется Telegram с ботом</li>
-                    <li>{`Нажмите "Начать" в боте`}</li>
+                    <li>{"Нажмите \"Начать\" в боте"}</li>
                     <li>Сотрудник будет автоматически подключен к системе</li>
-              </ol>
+                  </ol>
                 </div>
               </div>
             </div>

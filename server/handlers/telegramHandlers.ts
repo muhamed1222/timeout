@@ -1,13 +1,17 @@
 import { repositories } from "../repositories/index.js";
 import { getTelegramBotService } from "../services/telegramBot.js";
+import type { TelegramMessageOptions, TelegramMessagePayload } from "../../shared/types/api.js";
 import { 
   TELEGRAM_MESSAGES, 
-  getWebAppKeyboard 
+  getWebAppKeyboard, 
 } from "../constants/telegram.js";
 import type { Employee } from "@shared/schema";
 import { logger } from "../lib/logger.js";
 
 const botService = getTelegramBotService();
+
+// Re-export for backward compatibility
+export type { TelegramMessagePayload };
 
 /**
  * Send a message to a Telegram chat
@@ -15,11 +19,11 @@ const botService = getTelegramBotService();
 export async function sendTelegramMessage(
   chatId: number, 
   text: string, 
-  options?: any
+  options?: TelegramMessageOptions,
 ): Promise<void> {
   if (!botService) {
-    logger.warn('Telegram bot service not available, skipping message send');
-    logger.info('[Mock] Would send to Telegram', { chatId, text, options });
+    logger.warn("Telegram bot service not available, skipping message send");
+    logger.info("[Mock] Would send to Telegram", { chatId, text, options });
     return;
   }
 
@@ -32,7 +36,7 @@ export async function sendTelegramMessage(
 export async function handleInviteCode(
   chatId: number,
   userId: number,
-  inviteCode: string
+  inviteCode: string,
 ): Promise<void> {
   try {
     // Check if employee with this telegram ID already exists
@@ -66,7 +70,7 @@ export async function handleInviteCode(
         // Now it's safe to link Telegram ID to the employee
         try {
           await repositories.employee.update(invite.used_by_employee, {
-            telegram_user_id: userId.toString()
+            telegram_user_id: userId.toString(),
           });
           
           employee = await repositories.employee.findById(invite.used_by_employee);
@@ -75,14 +79,14 @@ export async function handleInviteCode(
             await sendTelegramMessage(
               chatId,
               TELEGRAM_MESSAGES.WELCOME_WITH_INVITE(employee.full_name),
-              { reply_markup: getWebAppKeyboard() }
+              { reply_markup: getWebAppKeyboard() },
             );
           }
         } catch (updateError) {
           logger.error("Error updating employee telegram_user_id", updateError);
           
           // Check if telegram_user_id is already linked to another account
-          if (updateError && typeof updateError === 'object' && 'code' in updateError && updateError.code === '23505') {
+          if (updateError && typeof updateError === "object" && "code" in updateError && updateError.code === "23505") {
             await sendTelegramMessage(chatId, TELEGRAM_MESSAGES.ALREADY_LINKED);
           } else {
             await sendTelegramMessage(chatId, TELEGRAM_MESSAGES.INVITE_PROCESSING_ERROR);
@@ -106,7 +110,7 @@ export async function handleInviteCode(
         full_name: invite.full_name || "Новый сотрудник",
         position: invite.position || undefined,
         telegram_user_id: userId.toString(),
-        status: "active"
+        status: "active",
       });
       
       // Atomically mark invite as used
@@ -120,7 +124,7 @@ export async function handleInviteCode(
         // related data, so we mark it as inactive instead
         await repositories.employee.update(employee.id, {
           status: "inactive",
-          telegram_user_id: null
+          telegram_user_id: null,
         });
         
         await sendTelegramMessage(chatId, TELEGRAM_MESSAGES.INVALID_INVITE);
@@ -131,13 +135,13 @@ export async function handleInviteCode(
       await sendTelegramMessage(
         chatId,
         TELEGRAM_MESSAGES.WELCOME_WITH_INVITE(employee.full_name),
-        { reply_markup: getWebAppKeyboard() }
+        { reply_markup: getWebAppKeyboard() },
       );
     } catch (creationError) {
       logger.error("Error creating employee", creationError);
       
       // Check if telegram_user_id constraint was violated
-      if (creationError && typeof creationError === 'object' && 'code' in creationError && creationError.code === '23505') {
+      if (creationError && typeof creationError === "object" && "code" in creationError && creationError.code === "23505") {
         await sendTelegramMessage(chatId, TELEGRAM_MESSAGES.ALREADY_LINKED);
       } else {
         await sendTelegramMessage(chatId, TELEGRAM_MESSAGES.INVITE_PROCESSING_ERROR);
@@ -156,7 +160,7 @@ export async function handleStartCommand(chatId: number): Promise<void> {
   await sendTelegramMessage(
     chatId,
     TELEGRAM_MESSAGES.WELCOME_DEFAULT,
-    { reply_markup: getWebAppKeyboard() }
+    { reply_markup: getWebAppKeyboard() },
   );
 }
 
@@ -165,7 +169,7 @@ export async function handleStartCommand(chatId: number): Promise<void> {
  */
 export async function handleStatusCommand(
   chatId: number,
-  userId: number
+  userId: number,
 ): Promise<void> {
   const employee = await repositories.employee.findByTelegramId(userId.toString());
   
@@ -175,21 +179,21 @@ export async function handleStatusCommand(
   }
   
   const shifts = await repositories.shift.findByEmployeeId(employee.id);
-  const activeShift = shifts.find(s => s.status === 'active');
+  const activeShift = shifts.find(s => s.status === "active");
   
   if (activeShift) {
-    const startTime = new Date(activeShift.planned_start_at).toLocaleTimeString('ru-RU', {
-      hour: '2-digit',
-      minute: '2-digit'
+    const startTime = new Date(activeShift.planned_start_at).toLocaleTimeString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
-    const endTime = new Date(activeShift.planned_end_at).toLocaleTimeString('ru-RU', {
-      hour: '2-digit',
-      minute: '2-digit'
+    const endTime = new Date(activeShift.planned_end_at).toLocaleTimeString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
     
     await sendTelegramMessage(
       chatId, 
-      TELEGRAM_MESSAGES.STATUS_WORKING(startTime, endTime)
+      TELEGRAM_MESSAGES.STATUS_WORKING(startTime, endTime),
     );
   } else {
     await sendTelegramMessage(chatId, TELEGRAM_MESSAGES.STATUS_OFF_WORK);
@@ -199,20 +203,25 @@ export async function handleStatusCommand(
 /**
  * Main message handler - dispatches to specific handlers
  */
-export async function handleTelegramMessage(message: any): Promise<void> {
+export async function handleTelegramMessage(message: TelegramMessagePayload): Promise<void> {
   const chatId = message.chat.id;
   const text = message.text;
-  const userId = message.from.id;
+  const userId = message.from?.id;
   
-  logger.info('Received Telegram message', { userId, text });
+  if (!userId) {
+    logger.warn("Received message without user ID", { chatId, text });
+    return;
+  }
+  
+  logger.info("Received Telegram message", { userId, text });
   
   if (!text) {
     return;
   }
   
   // Handle /start command
-  if (text.startsWith('/start')) {
-    const parts = text.split(' ');
+  if (text.startsWith("/start")) {
+    const parts = text.split(" ");
     const inviteCode = parts[1];
     
     if (inviteCode) {
@@ -224,7 +233,7 @@ export async function handleTelegramMessage(message: any): Promise<void> {
   }
   
   // Handle /status command
-  if (text === '/status') {
+  if (text === "/status") {
     await handleStatusCommand(chatId, userId);
     return;
   }

@@ -1,8 +1,8 @@
 // Сервис для аутентификации
 
-import { apiService } from './api.service';
-import { API_ENDPOINTS } from '../constants/api.constants';
-import { AuthUser, ApiResponse } from '../types';
+import { apiService } from "./api.service";
+import { API_ENDPOINTS } from "../constants/api.constants";
+import { AuthUser, ApiResponse } from "../types";
 
 export interface RegisterData {
   email: string;
@@ -35,7 +35,7 @@ export class AuthService {
    * Получает текущий токен аутентификации
    */
   getToken(): string | null {
-    return localStorage.getItem('auth_token');
+    return localStorage.getItem("auth_token");
   }
 
   /**
@@ -49,7 +49,7 @@ export class AuthService {
    * Получает текущий CSRF токен
    */
   getCSRFToken(): string | null {
-    return localStorage.getItem('csrf_token');
+    return localStorage.getItem("csrf_token");
   }
 
   /**
@@ -64,11 +64,11 @@ export class AuthService {
   async register(data: RegisterData): Promise<AuthResponse> {
     const response = await apiService.post<AuthResponse>(
       API_ENDPOINTS.AUTH.REGISTER,
-      data
+      data,
     );
 
     if (!response.success) {
-      throw new Error('Ошибка регистрации');
+      throw new Error("Ошибка регистрации");
     }
 
     // Сохраняем токен
@@ -81,11 +81,11 @@ export class AuthService {
   async login(email: string, password: string): Promise<AuthResponse> {
     const response = await apiService.post<AuthResponse>(
       API_ENDPOINTS.AUTH.LOGIN,
-      { email, password }
+      { email, password },
     );
 
     if (!response.success) {
-      throw new Error('Ошибка входа');
+      throw new Error("Ошибка входа");
     }
 
     // Сохраняем токен
@@ -112,10 +112,10 @@ export class AuthService {
   // Получение текущего пользователя
   async getCurrentUser(): Promise<AuthUser> {
     if (!this.isAuthenticated()) {
-      throw new Error('Пользователь не аутентифицирован');
+      throw new Error("Пользователь не аутентифицирован");
     }
 
-    const response = await apiService.get<ApiResponse<AuthUser>>('/auth/me');
+    const response = await apiService.get<ApiResponse<AuthUser>>("/auth/me");
 
     if (response.error) {
       throw new Error(response.error);
@@ -127,8 +127,8 @@ export class AuthService {
   // Обновление профиля
   async updateProfile(data: Partial<AuthUser>): Promise<AuthUser> {
     const response = await apiService.patch<ApiResponse<AuthUser>>(
-      '/auth/profile',
-      data
+      "/auth/profile",
+      data,
     );
 
     if (response.error) {
@@ -141,11 +141,11 @@ export class AuthService {
   // Смена пароля
   async changePassword(
     currentPassword: string,
-    newPassword: string
+    newPassword: string,
   ): Promise<void> {
     const response = await apiService.post<ApiResponse>(
-      '/auth/change-password',
-      { currentPassword, newPassword }
+      "/auth/change-password",
+      { currentPassword, newPassword },
     );
 
     if (response.error) {
@@ -156,8 +156,8 @@ export class AuthService {
   // Сброс пароля
   async resetPassword(email: string): Promise<void> {
     const response = await apiService.post<ApiResponse>(
-      '/auth/reset-password',
-      { email }
+      "/auth/reset-password",
+      { email },
     );
 
     if (response.error) {
@@ -168,11 +168,11 @@ export class AuthService {
   // Подтверждение сброса пароля
   async confirmPasswordReset(
     token: string,
-    newPassword: string
+    newPassword: string,
   ): Promise<void> {
     const response = await apiService.post<ApiResponse>(
-      '/auth/confirm-password-reset',
-      { token, newPassword }
+      "/auth/confirm-password-reset",
+      { token, newPassword },
     );
 
     if (response.error) {

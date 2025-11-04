@@ -27,7 +27,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   try {
     const authHeader = req.headers.authorization;
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return res.status(401).json({ error: "Missing or invalid authorization header" });
     }
 
@@ -43,7 +43,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
     // Extract user metadata
     const companyId = user.user_metadata?.company_id;
-    const role = user.user_metadata?.role || 'admin';
+    const role = user.user_metadata?.role || "admin";
 
     if (!companyId) {
       logger.error("User missing company_id in metadata", undefined, { userId: user.id });
@@ -55,7 +55,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       id: user.id,
       email: user.email!,
       companyId,
-      role
+      role,
     };
 
     next();
@@ -73,7 +73,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ error: "Authentication required" });
   }
 
-  if (req.user.role !== 'admin' && req.user.role !== 'owner') {
+  if (req.user.role !== "admin" && req.user.role !== "owner") {
     return res.status(403).json({ error: "Admin access required" });
   }
 
@@ -133,24 +133,24 @@ export async function requireTelegramEmployee(req: Request, res: Response, next:
  */
 export function requireBotAuth(req: Request, res: Response, next: NextFunction) {
   // In development mode without bot secret, allow all requests
-  const botApiSecret = getSecret('BOT_API_SECRET');
-  const isDev = getSecret('NODE_ENV') === 'development';
+  const botApiSecret = getSecret("BOT_API_SECRET");
+  const isDev = getSecret("NODE_ENV") === "development";
   
   if (!botApiSecret && isDev) {
-    logger.warn('BOT_API_SECRET not set - skipping bot auth validation (development mode)');
+    logger.warn("BOT_API_SECRET not set - skipping bot auth validation (development mode)");
     return next();
   }
 
-  const botSecret = req.headers['x-bot-secret'];
+  const botSecret = req.headers["x-bot-secret"];
   const expectedSecret = botApiSecret;
 
   if (!expectedSecret) {
-    logger.error('BOT_API_SECRET not configured');
+    logger.error("BOT_API_SECRET not configured");
     return res.status(500).json({ error: "Bot authentication not configured" });
   }
 
   if (!botSecret || botSecret !== expectedSecret) {
-    logger.warn('Invalid bot secret received');
+    logger.warn("Invalid bot secret received");
     return res.status(401).json({ error: "Unauthorized bot request" });
   }
 

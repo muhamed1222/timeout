@@ -1,8 +1,8 @@
 // Middleware безопасности
 
-import { Request, Response, NextFunction } from 'express';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+import { Request, Response, NextFunction } from "express";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 /**
  * Настройки безопасности с помощью Helmet
@@ -10,14 +10,14 @@ import rateLimit from 'express-rate-limit';
 export const securityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ['\'self\''],
-      scriptSrc: ['\'self\'', '\'unsafe-inline\'', '\'unsafe-eval\''], // Разрешаем для разработки
-      styleSrc: ['\'self\'', '\'unsafe-inline\'', 'https://fonts.googleapis.com'],
-      fontSrc: ['\'self\'', 'https://fonts.gstatic.com'],
-      imgSrc: ['\'self\'', 'data:', 'https:'],
-      connectSrc: ['\'self\'', 'https://api.telegram.org'],
-      frameSrc: ['\'self\''],
-      objectSrc: ['\'none\''],
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Разрешаем для разработки
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://api.telegram.org"],
+      frameSrc: ["'self'"],
+      objectSrc: ["'none'"],
       upgradeInsecureRequests: [],
     },
   },
@@ -36,14 +36,14 @@ export const apiRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 минут
   max: 10000, // максимум 10000 запросов за 15 минут (увеличено для разработки)
   message: {
-    error: 'Too many requests',
-    message: 'Слишком много запросов. Попробуйте позже.',
+    error: "Too many requests",
+    message: "Слишком много запросов. Попробуйте позже.",
   },
   standardHeaders: true,
   legacyHeaders: false,
   skip: req => {
     // Пропускаем health check endpoints
-    return req.path === '/health' || req.path === '/api/health';
+    return req.path === "/health" || req.path === "/api/health";
   },
 });
 
@@ -54,8 +54,8 @@ export const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 минут
   max: 5, // максимум 5 попыток входа за 15 минут
   message: {
-    error: 'Too many authentication attempts',
-    message: 'Слишком много попыток входа. Попробуйте позже.',
+    error: "Too many authentication attempts",
+    message: "Слишком много попыток входа. Попробуйте позже.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -69,8 +69,8 @@ export const registrationRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 час
   max: 3, // максимум 3 регистрации в час
   message: {
-    error: 'Too many registration attempts',
-    message: 'Слишком много попыток регистрации. Попробуйте позже.',
+    error: "Too many registration attempts",
+    message: "Слишком много попыток регистрации. Попробуйте позже.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -81,12 +81,12 @@ export const registrationRateLimit = rateLimit({
  */
 export const requestSizeLimit = (maxSize: number = 1024 * 1024) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const contentLength = parseInt(req.headers['content-length'] || '0');
+    const contentLength = parseInt(req.headers["content-length"] || "0");
 
     if (contentLength > maxSize) {
       return res.status(413).json({
-        error: 'Payload too large',
-        message: 'Размер запроса превышает допустимый лимит',
+        error: "Payload too large",
+        message: "Размер запроса превышает допустимый лимит",
       });
     }
 
@@ -102,10 +102,10 @@ export const ipWhitelist = (allowedIPs: string[]) => {
     const clientIP =
       req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
 
-    if (allowedIPs.length > 0 && !allowedIPs.includes(clientIP || '')) {
+    if (allowedIPs.length > 0 && !allowedIPs.includes(clientIP || "")) {
       return res.status(403).json({
-        error: 'Access denied',
-        message: 'Доступ запрещен с данного IP адреса',
+        error: "Access denied",
+        message: "Доступ запрещен с данного IP адреса",
       });
     }
 
@@ -119,7 +119,7 @@ export const ipWhitelist = (allowedIPs: string[]) => {
 export const securityLogger = (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const suspiciousPatterns = [
     /script/i,
@@ -137,11 +137,11 @@ export const securityLogger = (
   ];
 
   const checkSuspicious = (data: unknown): boolean => {
-    if (typeof data === 'string') {
+    if (typeof data === "string") {
       return suspiciousPatterns.some(pattern => pattern.test(data));
     }
 
-    if (typeof data === 'object' && data !== null) {
+    if (typeof data === "object" && data !== null) {
       const obj = data as Record<string, unknown>;
       return Object.values(obj).some(checkSuspicious);
     }
@@ -155,9 +155,9 @@ export const securityLogger = (
     checkSuspicious(req.query) ||
     checkSuspicious(req.params)
   ) {
-    console.warn('Suspicious activity detected:', {
+    console.warn("Suspicious activity detected:", {
       ip: req.ip,
-      userAgent: req.get('User-Agent'),
+      userAgent: req.get("User-Agent"),
       url: req.url,
       method: req.method,
       timestamp: new Date().toISOString(),

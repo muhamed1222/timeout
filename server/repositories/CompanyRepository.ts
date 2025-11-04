@@ -1,8 +1,8 @@
-import { BaseRepository } from './BaseRepository.js';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import * as schema from '../../shared/schema.js';
-import type { Company, InsertCompany } from '../../shared/schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { BaseRepository } from "./BaseRepository.js";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import * as schema from "../../shared/schema.js";
+import type { Company, InsertCompany } from "../../shared/schema.js";
+import { eq, sql } from "drizzle-orm";
 
 /**
  * Repository for Company entity
@@ -19,18 +19,20 @@ export class CompanyRepository extends BaseRepository<Company, InsertCompany> {
     const result = await this.db
       .select({
         company: this.table,
-        employeeCount: sql<number>`count(${schema.employee.id})`.as('employee_count'),
+        employeeCount: sql<number>`count(${schema.employee.id})`.as("employee_count"),
       })
       .from(this.table)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .leftJoin(schema.employee, eq(schema.employee.company_id, (this.table as any).id))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .where(eq((this.table as any).id, id))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .groupBy((this.table as any).id)
       .limit(1);
 
-    if (result.length === 0) return undefined;
+    if (result.length === 0) {
+      return undefined;
+    }
 
     return {
       ...result[0].company,
@@ -73,8 +75,8 @@ export class CompanyRepository extends BaseRepository<Company, InsertCompany> {
     const results = await this.db
       .select()
       .from(this.table)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-      .where(sql`${(this.table as any).name} ILIKE ${`%${query.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`}`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .where(sql`${(this.table as any).name} ILIKE ${`%${query.replace(/%/g, "\\%").replace(/_/g, "\\_")}%`}`);
 
     return results as Company[];
   }

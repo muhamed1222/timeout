@@ -8,7 +8,7 @@ export default function PrivacyPolicy() {
           <ShieldCheck className="w-5 h-5 text-[#e16546]" />
           <div>
             <h3 className="text-base font-semibold text-black leading-[1.2]">Политика конфиденциальности</h3>
-            <p className="text-sm text-[#959595] leading-[1.2]">Последнее обновление: {new Date().toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p className="text-sm text-[#959595] leading-[1.2]">Последнее обновление: {new Date().toLocaleDateString("ru-RU", { year: "numeric", month: "long", day: "numeric" })}</p>
           </div>
         </div>
 

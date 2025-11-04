@@ -37,6 +37,6 @@ export function getPeriodForYearMonth(year: number, month: number): { start: Dat
  * Format date to YYYY-MM-DD string
  */
 export function formatDateForPeriod(date: Date): string {
-  return date.toISOString().split('T')[0];
+  return date.toISOString().split("T")[0];
 }
 

@@ -7,7 +7,7 @@
 import { cn } from "@/lib/utils";
 
 interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'text' | 'circular' | 'rectangular' | 'rounded';
+  variant?: "text" | "circular" | "rectangular" | "rounded";
   width?: string | number;
   height?: string | number;
   count?: number;
@@ -15,7 +15,7 @@ interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function Skeleton({
   className,
-  variant = 'rectangular',
+  variant = "rectangular",
   width,
   height,
   count = 1,
@@ -23,21 +23,21 @@ export function Skeleton({
 }: SkeletonProps) {
   const getVariantClasses = () => {
     switch (variant) {
-      case 'text':
-        return 'h-4 rounded';
-      case 'circular':
-        return 'rounded-full aspect-square';
-      case 'rounded':
-        return 'rounded-lg';
-      case 'rectangular':
+      case "text":
+        return "h-4 rounded";
+      case "circular":
+        return "rounded-full aspect-square";
+      case "rounded":
+        return "rounded-lg";
+      case "rectangular":
       default:
-        return 'rounded-md';
+        return "rounded-md";
     }
   };
 
   const style = {
-    width: width ? (typeof width === 'number' ? `${width}px` : width) : undefined,
-    height: height ? (typeof height === 'number' ? `${height}px` : height) : undefined,
+    width: width ? (typeof width === "number" ? `${width}px` : width) : undefined,
+    height: height ? (typeof height === "number" ? `${height}px` : height) : undefined,
   };
 
   return (
@@ -46,9 +46,9 @@ export function Skeleton({
         <div
           key={index}
           className={cn(
-            'animate-pulse bg-muted',
+            "animate-pulse bg-muted",
             getVariantClasses(),
-            className
+            className,
           )}
           style={style}
           {...props}
@@ -63,7 +63,7 @@ export function Skeleton({
  */
 export function CardSkeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('p-6 space-y-4 border rounded-lg', className)} {...props}>
+    <div className={cn("p-6 space-y-4 border rounded-lg", className)} {...props}>
       <div className="flex items-start gap-4">
         <Skeleton variant="circular" width={48} height={48} />
         <div className="flex-1 space-y-2">
@@ -93,7 +93,7 @@ export function TableSkeleton({
   columns?: number;
 } & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('space-y-3', className)} {...props}>
+    <div className={cn("space-y-3", className)} {...props}>
       {/* Header */}
       <div className="flex gap-4">
         {Array.from({ length: columns }).map((_, i) => (
@@ -127,7 +127,7 @@ export function ListSkeleton({
   count?: number;
 } & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('space-y-4', className)} {...props}>
+    <div className={cn("space-y-4", className)} {...props}>
       {Array.from({ length: count }).map((_, index) => (
         <div key={index} className="flex items-center gap-4">
           <Skeleton variant="circular" width={40} height={40} />
@@ -146,7 +146,7 @@ export function ListSkeleton({
  */
 export function StatsSkeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6', className)} {...props}>
+    <div className={cn("grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6", className)} {...props}>
       {Array.from({ length: 4 }).map((_, index) => (
         <div key={index} className="p-6 border rounded-lg space-y-3">
           <Skeleton variant="text" className="w-1/2 h-4" />
@@ -163,7 +163,7 @@ export function StatsSkeleton({ className, ...props }: React.HTMLAttributes<HTML
  */
 export function EmployeeCardSkeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('p-4 border rounded-lg', className)} {...props}>
+    <div className={cn("p-4 border rounded-lg", className)} {...props}>
       <div className="flex items-start gap-4">
         <Skeleton variant="circular" width={56} height={56} />
         <div className="flex-1 space-y-2">
@@ -184,7 +184,7 @@ export function EmployeeCardSkeleton({ className, ...props }: React.HTMLAttribut
  */
 export function RatingCardSkeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('p-6 border rounded-lg space-y-4', className)} {...props}>
+    <div className={cn("p-6 border rounded-lg space-y-4", className)} {...props}>
       <div className="flex items-start gap-3">
         <Skeleton variant="circular" width={40} height={40} />
         <div className="flex-1 space-y-2">
@@ -210,7 +210,7 @@ export function RatingCardSkeleton({ className, ...props }: React.HTMLAttributes
  */
 export function PageHeaderSkeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('space-y-2', className)} {...props}>
+    <div className={cn("space-y-2", className)} {...props}>
       <Skeleton variant="text" className="w-1/3 h-8" />
       <Skeleton variant="text" className="w-1/2 h-4" />
     </div>

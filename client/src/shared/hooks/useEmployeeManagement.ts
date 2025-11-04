@@ -1,23 +1,23 @@
 // Хук для управления сотрудниками
-import { useState, useCallback, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { employeeManagementService, EmployeeDisplayData, InviteDisplayData, EmployeeStats } from '../../services/employee-management.service';
-import { Employee, EmployeeInvite } from '@shared/types';
+import { useState, useCallback, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { employeeManagementService, EmployeeDisplayData, InviteDisplayData, EmployeeStats } from "../../services/employee-management.service";
+import { Employee, EmployeeInvite } from "@shared/types";
 
 export interface UseEmployeeManagementOptions {
   companyId: string;
   searchQuery?: string;
-  statusFilter?: 'active' | 'inactive' | 'terminated' | null;
+  statusFilter?: "active" | "inactive" | "terminated" | null;
   autoRefresh?: boolean;
   refreshInterval?: number;
 }
 
 export function useEmployeeManagement({ 
   companyId, 
-  searchQuery = '', 
+  searchQuery = "", 
   statusFilter = null,
   autoRefresh = true,
-  refreshInterval = 30000 
+  refreshInterval = 30000, 
 }: UseEmployeeManagementOptions) {
   const queryClient = useQueryClient();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -27,15 +27,17 @@ export function useEmployeeManagement({
     data: employees = [],
     isLoading: employeesLoading,
     error: employeesError,
-    refetch: refetchEmployees
+    refetch: refetchEmployees,
   } = useQuery<Employee[]>({
-    queryKey: ['employees', companyId],
+    queryKey: ["employees", companyId],
     queryFn: () => employeeManagementService.getEmployees(companyId),
     enabled: !!companyId,
     refetchInterval: autoRefresh ? refreshInterval : false,
     retry: (failureCount, error: any) => {
       // Не ретраить при 401 ошибках (неавторизован)
-      if (error?.status === 401) return false;
+      if (error?.status === 401) {
+        return false;
+      }
       return failureCount < 3;
     },
   });
@@ -45,15 +47,17 @@ export function useEmployeeManagement({
     data: invites = [],
     isLoading: invitesLoading,
     error: invitesError,
-    refetch: refetchInvites
+    refetch: refetchInvites,
   } = useQuery<EmployeeInvite[]>({
-    queryKey: ['invites', companyId],
+    queryKey: ["invites", companyId],
     queryFn: () => employeeManagementService.getInvites(companyId),
     enabled: !!companyId,
     refetchInterval: autoRefresh ? refreshInterval : false,
     retry: (failureCount, error: any) => {
       // Не ретраить при 401 ошибках (неавторизован)
-      if (error?.status === 401) return false;
+      if (error?.status === 401) {
+        return false;
+      }
       return failureCount < 3;
     },
   });
@@ -71,7 +75,7 @@ export function useEmployeeManagement({
   const filteredEmployees = useMemo(() => {
     return employeeManagementService.filterEmployees(transformedEmployees, {
       status: statusFilter || undefined,
-      searchQuery
+      searchQuery,
     });
   }, [transformedEmployees, statusFilter, searchQuery]);
 
@@ -90,7 +94,7 @@ export function useEmployeeManagement({
     mutationFn: (data: { fullName: string; position: string; timezone: string }) =>
       employeeManagementService.createEmployee(companyId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees', companyId] });
+      queryClient.invalidateQueries({ queryKey: ["employees", companyId] });
     },
   });
 
@@ -99,7 +103,7 @@ export function useEmployeeManagement({
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       employeeManagementService.updateEmployee(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees', companyId] });
+      queryClient.invalidateQueries({ queryKey: ["employees", companyId] });
     },
   });
 
@@ -107,7 +111,7 @@ export function useEmployeeManagement({
   const deleteEmployeeMutation = useMutation({
     mutationFn: (id: string) => employeeManagementService.deleteEmployee(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees', companyId] });
+      queryClient.invalidateQueries({ queryKey: ["employees", companyId] });
     },
   });
 
@@ -116,7 +120,7 @@ export function useEmployeeManagement({
     mutationFn: (data: { fullName: string; position: string; timezone: string }) =>
       employeeManagementService.createInvite(companyId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invites', companyId] });
+      queryClient.invalidateQueries({ queryKey: ["invites", companyId] });
     },
   });
 
@@ -124,7 +128,7 @@ export function useEmployeeManagement({
   const cancelInviteMutation = useMutation({
     mutationFn: (inviteId: string) => employeeManagementService.cancelInvite(companyId, inviteId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invites', companyId] });
+      queryClient.invalidateQueries({ queryKey: ["invites", companyId] });
     },
   });
 
@@ -135,7 +139,7 @@ export function useEmployeeManagement({
       setCopiedCode(code);
       setTimeout(() => setCopiedCode(null), 2000);
     } catch (error) {
-      throw new Error('Не удалось скопировать код приглашения');
+      throw new Error("Не удалось скопировать код приглашения");
     }
   }, []);
 
@@ -144,7 +148,7 @@ export function useEmployeeManagement({
     try {
       return await employeeManagementService.getInviteLink(inviteCode);
     } catch (error) {
-      throw new Error('Не удалось получить ссылку-приглашение');
+      throw new Error("Не удалось получить ссылку-приглашение");
     }
   }, []);
 
@@ -186,6 +190,6 @@ export function useEmployeeManagement({
     
     // Методы
     refetchEmployees,
-    refetchInvites
+    refetchInvites,
   };
 }

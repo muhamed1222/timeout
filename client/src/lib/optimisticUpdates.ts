@@ -4,8 +4,8 @@
  * Provides helpers for implementing optimistic UI updates with automatic rollback on errors
  */
 
-import { QueryClient } from '@tanstack/react-query';
-import { queryClient } from './queryClient';
+import { QueryClient } from "@tanstack/react-query";
+import { queryClient } from "./queryClient";
 
 /**
  * Generic optimistic update helper
@@ -18,7 +18,7 @@ import { queryClient } from './queryClient';
 export function optimisticUpdate<T>(
   queryClient: QueryClient,
   queryKey: unknown[],
-  updater: (oldData: T | undefined) => T
+  updater: (oldData: T | undefined) => T,
 ): () => void {
   // Cancel outgoing refetches
   queryClient.cancelQueries({ queryKey });
@@ -43,7 +43,7 @@ export function optimisticUpdate<T>(
 export function optimisticAdd<T extends { id: string }>(
   queryClient: QueryClient,
   queryKey: unknown[],
-  newItem: T
+  newItem: T,
 ): () => void {
   return optimisticUpdate<T[]>(queryClient, queryKey, (oldData = []) => {
     return [...oldData, newItem];
@@ -57,11 +57,11 @@ export function optimisticUpdateItem<T extends { id: string }>(
   queryClient: QueryClient,
   queryKey: unknown[],
   itemId: string,
-  updater: (item: T) => T
+  updater: (item: T) => T,
 ): () => void {
   return optimisticUpdate<T[]>(queryClient, queryKey, (oldData = []) => {
     return oldData.map((item) => 
-      item.id === itemId ? updater(item) : item
+      item.id === itemId ? updater(item) : item,
     );
   });
 }
@@ -72,7 +72,7 @@ export function optimisticUpdateItem<T extends { id: string }>(
 export function optimisticRemove<T extends { id: string }>(
   queryClient: QueryClient,
   queryKey: unknown[],
-  itemId: string
+  itemId: string,
 ): () => void {
   return optimisticUpdate<T[]>(queryClient, queryKey, (oldData = []) => {
     return oldData.filter((item) => item.id !== itemId);
@@ -85,7 +85,7 @@ export function optimisticRemove<T extends { id: string }>(
 export function optimisticUpdateEntity<T>(
   queryClient: QueryClient,
   queryKey: unknown[],
-  updater: (entity: T | undefined) => T
+  updater: (entity: T | undefined) => T,
 ): () => void {
   return optimisticUpdate<T>(queryClient, queryKey, updater);
 }
@@ -97,7 +97,7 @@ export function optimisticToggle<T extends { id: string }>(
   queryClient: QueryClient,
   queryKey: unknown[],
   itemId: string,
-  property: keyof T
+  property: keyof T,
 ): () => void {
   return optimisticUpdateItem<T>(queryClient, queryKey, itemId, (item) => ({
     ...item,
@@ -130,7 +130,7 @@ export function createOptimisticMutation<TData, TVariables>({
       // Optimistic update returns rollback function
       const rollback = onOptimisticUpdate(
         queryClient,
-        variables
+        variables,
       );
       
       return { rollback };
@@ -164,7 +164,7 @@ export function generateTempId(): string {
  * Check if an ID is temporary
  */
 export function isTempId(id: string): boolean {
-  return id.startsWith('temp_');
+  return id.startsWith("temp_");
 }
 
 /**
@@ -175,7 +175,7 @@ export function replaceTempId<T extends { id: string }>(
   queryKey: unknown[],
   tempId: string,
   realId: string,
-  updater?: (item: T) => T
+  updater?: (item: T) => T,
 ): void {
   queryClient.setQueryData<T[]>(queryKey, (oldData = []) => {
     return oldData.map((item) => {

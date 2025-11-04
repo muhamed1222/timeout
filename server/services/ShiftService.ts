@@ -30,7 +30,7 @@ export class ShiftService {
       logger.info("Shift created", { 
         shiftId: shift.id, 
         employeeId: data.employee_id,
-        status: shift.status 
+        status: shift.status, 
       });
       
       return shift;
@@ -65,8 +65,8 @@ export class ShiftService {
   async startShift(shiftId: string) {
     try {
       const shift = await this.repositories.shift.update(shiftId, {
-        status: 'active',
-        actual_start_at: new Date()
+        status: "active",
+        actual_start_at: new Date(),
       });
       
       if (!shift) {
@@ -82,7 +82,7 @@ export class ShiftService {
       logger.info("Shift started", { 
         shiftId, 
         employeeId: shift.employee_id,
-        actualStartAt: shift.actual_start_at 
+        actualStartAt: shift.actual_start_at, 
       });
       
       return shift;
@@ -98,8 +98,8 @@ export class ShiftService {
   async endShift(shiftId: string) {
     try {
       const shift = await this.repositories.shift.update(shiftId, {
-        status: 'completed',
-        actual_end_at: new Date()
+        status: "completed",
+        actual_end_at: new Date(),
       });
       
       if (!shift) {
@@ -115,7 +115,7 @@ export class ShiftService {
       logger.info("Shift ended", { 
         shiftId, 
         employeeId: shift.employee_id,
-        actualEndAt: shift.actual_end_at 
+        actualEndAt: shift.actual_end_at, 
       });
       
       return shift;
@@ -132,14 +132,14 @@ export class ShiftService {
     try {
       const workInterval: InsertWorkInterval = {
         shift_id: shiftId,
-        start_at: new Date()
+        start_at: new Date(),
       };
 
       const interval = await this.repositories.shift.createWorkInterval(workInterval);
       
       logger.info("Work interval started", { 
         shiftId, 
-        intervalId: interval.id
+        intervalId: interval.id,
       });
       
       return interval;
@@ -155,7 +155,7 @@ export class ShiftService {
   async endWorkInterval(intervalId: string) {
     try {
       const interval = await this.repositories.shift.updateWorkInterval(intervalId, {
-        end_at: new Date()
+        end_at: new Date(),
       });
       
       logger.info("Work interval ended", { intervalId });
@@ -170,12 +170,12 @@ export class ShiftService {
   /**
    * Start a break
    */
-  async startBreak(shiftId: string, breakType: 'lunch' | 'short' = 'short') {
+  async startBreak(shiftId: string, breakType: "lunch" | "short" = "short") {
     try {
       const breakInterval: any = {
         shift_id: shiftId,
         start_at: new Date(),
-        type: breakType
+        type: breakType,
       };
 
       const interval = await this.repositories.shift.createBreakInterval(breakInterval);
@@ -183,7 +183,7 @@ export class ShiftService {
       logger.info("Break started", { 
         shiftId, 
         intervalId: interval.id,
-        breakType 
+        breakType, 
       });
       
       return interval;
@@ -199,7 +199,7 @@ export class ShiftService {
   async endBreak(intervalId: string) {
     try {
       const interval = await this.repositories.shift.updateBreakInterval(intervalId, {
-        end_at: new Date()
+        end_at: new Date(),
       });
       
       logger.info("Break ended", { intervalId });
@@ -266,7 +266,7 @@ export class ShiftService {
     try {
       const [workIntervals, breakIntervals] = await Promise.all([
         this.getWorkIntervals(shiftId),
-        this.getBreakIntervals(shiftId)
+        this.getBreakIntervals(shiftId),
       ]);
 
       // Calculate total work time in minutes
@@ -293,7 +293,7 @@ export class ShiftService {
         shiftId, 
         totalWorkMinutes, 
         totalBreakMinutes, 
-        netWorkMinutes 
+        netWorkMinutes, 
       });
       
       return Math.max(0, netWorkMinutes);

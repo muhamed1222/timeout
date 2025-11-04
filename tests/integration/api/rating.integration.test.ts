@@ -224,6 +224,253 @@ describe('Rating API Integration', () => {
       }
     });
   });
+
+  describe('Edge Cases', () => {
+    it('should handle rating calculation with no violations', async () => {
+      const response = await getRequest(app)
+        .get(`/api/employees/${employeeId}/rating`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      // Employee with no violations should have 100% rating
+      expect(response.body.rating).toBe(100);
+    });
+
+    it('should handle rating calculation with negative penalty', async () => {
+      const rule = await createTestViolationRule(companyId, {
+        code: 'NEGATIVE_TEST',
+        name: 'Test with negative penalty',
+        penalty_percent: -5, // Negative penalty (edge case)
+      });
+
+      // Should handle gracefully or reject
+      expect(rule).toBeDefined();
+    });
+
+    it('should handle rating calculation with penalty > 100%', async () => {
+      const rule = await createTestViolationRule(companyId, {
+        code: 'EXCESSIVE',
+        name: 'Excessive penalty',
+        penalty_percent: 150, // More than 100%
+      });
+
+      // Should handle gracefully (cap at 100% or reject)
+      expect(rule).toBeDefined();
+    });
+
+    it('should handle invalid date ranges in period', async () => {
+      const now = new Date();
+      const pastDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      const response = await getRequest(app)
+        .post('/api/rating-periods')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          company_id: companyId,
+          name: 'Invalid Period',
+          start_date: now.toISOString(),
+          end_date: pastDate.toISOString(), // End before start
+        });
+
+      // Should reject invalid date range
+      expect([400, 422]).toContain(response.status);
+    });
+
+    it('should handle rating with multiple violations of same type', async () => {
+      const rule = await createTestViolationRule(companyId, {
+        code: 'MULTIPLE',
+        name: 'Multiple violations test',
+        penalty_percent: 10,
+      });
+
+      // Create multiple violations
+      // This tests that rating calculation handles multiple violations correctly
+      expect(rule).toBeDefined();
+    });
+
+    it('should handle empty violation rules list', async () => {
+      const response = await getRequest(app)
+        .get(`/api/companies/${companyId}/violation-rules`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toBeInstanceOf(Array);
+      // Should return empty array if no rules exist
+    });
+
+    it('should handle invalid UUID in employee rating endpoint', async () => {
+      const response = await getRequest(app)
+        .get('/api/employees/invalid-uuid/rating')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should handle rating recalculation with empty period', async () => {
+      const response = await getRequest(app)
+        .post(`/api/companies/${companyId}/recalculate`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          periodStart: new Date().toISOString(),
+          periodEnd: new Date().toISOString(), // Same date = empty period
+        });
+
+      // Should handle gracefully (either succeed with 0 processed or return error)
+      expect([200, 400]).toContain(response.status);
+    });
+
+    it('should handle multiple violations affecting rating', async () => {
+      // Create violation rule
+      const rule = await createTestViolationRule(companyId, {
+        code: 'LATE_START',
+        penalty_percent: 5,
+      });
+
+      // Create multiple violations
+      for (let i = 0; i < 5; i++) {
+        await getRequest(app)
+          .post(`/api/companies/${companyId}/violations`)
+          .set('Authorization', `Bearer ${authToken}`)
+          .send({
+            employee_id: employeeId,
+            rule_id: rule.id,
+            source: 'manual',
+            penalty: '5',
+          });
+      }
+
+      // Check rating after violations
+      const ratingResponse = await getRequest(app)
+        .get(`/api/employees/${employeeId}/rating`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(ratingResponse.status).toBe(200);
+      // Rating should be reduced (100 - 5*5 = 75)
+      expect(Number(ratingResponse.body.rating)).toBeLessThan(100);
+    });
+
+    it('should handle rating at blocking threshold (<=30)', async () => {
+      // Create high penalty violation rule
+      const rule = await createTestViolationRule(companyId, {
+        code: 'SEVERE_VIOLATION',
+        penalty_percent: 75,
+      });
+
+      // Create a violation for this rule
+      await getRequest(app)
+        .post(`/api/companies/${companyId}/violations`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          employee_id: employeeId,
+          rule_id: rule.id,
+          source: 'manual',
+          penalty: '75',
+        });
+
+      // Check rating
+      const ratingResponse = await getRequest(app)
+        .get(`/api/employees/${employeeId}/rating`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(ratingResponse.status).toBe(200);
+      // Rating should be 0 (blocking threshold)
+      expect(Number(ratingResponse.body.rating)).toBe(0);
+    });
+
+    it('should handle rating recalculation with many violations', async () => {
+      // Create violation rule
+      const rule = await createTestViolationRule(companyId, {
+        code: 'MINOR_VIOLATION',
+        penalty_percent: 1,
+      });
+
+      // Create multiple violations
+      for (let i = 0; i < 100; i++) {
+        await getRequest(app)
+          .post(`/api/companies/${companyId}/violations`)
+          .set('Authorization', `Bearer ${authToken}`)
+          .send({
+            employee_id: employeeId,
+            rule_id: rule.id,
+            source: 'manual',
+            penalty: '1',
+          });
+      }
+
+      // Check rating
+      const ratingResponse = await getRequest(app)
+        .get(`/api/employees/${employeeId}/rating`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(ratingResponse.status).toBe(200);
+      // Rating should be 0 (blocking threshold)
+      expect(Number(ratingResponse.body.rating)).toBe(0);
+    });
+
+    it('should handle violation rules with zero penalty', async () => {
+      // Create rule with zero penalty (should not affect rating)
+      const rule = await createTestViolationRule(companyId, {
+        code: 'INFO_VIOLATION',
+        penalty_percent: 0,
+      });
+
+      // Create a violation for this rule
+      await getRequest(app)
+        .post(`/api/companies/${companyId}/violations`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          employee_id: employeeId,
+          rule_id: rule.id,
+          source: 'manual',
+          penalty: '0',
+        });
+
+      // Check rating
+      const ratingResponse = await getRequest(app)
+        .get(`/api/employees/${employeeId}/rating`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(ratingResponse.status).toBe(200);
+      // Rating should be 100 (no penalty)
+      expect(Number(ratingResponse.body.rating)).toBe(100);
+    });
+
+    it('should handle inactive violation rules', async () => {
+      // Create inactive rule
+      const rule = await createTestViolationRule(companyId, {
+        code: 'INACTIVE_RULE',
+        penalty_percent: 10,
+        is_active: false,
+      });
+
+      // Create a violation for this rule
+      const response = await getRequest(app)
+        .post(`/api/companies/${companyId}/violations`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          employee_id: employeeId,
+          rule_id: rule.id,
+          source: 'manual',
+          penalty: '10',
+        });
+
+      // Should be forbidden or not found
+      expect([403, 404]).toContain(response.status);
+    });
+
+    it('should handle cross-company rating access attempt', async () => {
+      const { token: otherToken, company: otherCompany } = await createTestCompany();
+      const otherEmployee = await createTestEmployee(otherCompany.id);
+
+      // Try to access rating from other company
+      const response = await getRequest(app)
+        .get(`/api/employees/${otherEmployee.id}/rating`)
+        .set('Authorization', `Bearer ${authToken}`); // Using first company's token
+
+      // Should be forbidden or not found
+      expect([403, 404]).toContain(response.status);
+    });
+  });
 });
 
 

@@ -3,7 +3,7 @@
  * Common operations for working with entities
  */
 
-import { NotFoundError, ForbiddenError } from '../errorHandler.js';
+import { NotFoundError, ForbiddenError } from "../errorHandler.js";
 
 /**
  * Find entity or throw NotFoundError
@@ -11,7 +11,7 @@ import { NotFoundError, ForbiddenError } from '../errorHandler.js';
  */
 export async function findOrThrow<T>(
   findFn: () => Promise<T | null | undefined>,
-  entityName: string
+  entityName: string,
 ): Promise<T> {
   const entity = await findFn();
   if (!entity) {
@@ -27,7 +27,7 @@ export async function findOrThrow<T>(
 export function validateCompanyScope(
   entity1CompanyId: string,
   entity2CompanyId: string,
-  message: string = 'Company scope mismatch'
+  message: string = "Company scope mismatch",
 ): void {
   if (entity1CompanyId !== entity2CompanyId) {
     throw new ForbiddenError(message);

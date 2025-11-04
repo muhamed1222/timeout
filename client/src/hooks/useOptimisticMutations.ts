@@ -4,9 +4,9 @@
  * Provides ready-to-use mutations with optimistic updates
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { optimisticAdd, optimisticRemove, optimisticUpdateItem, generateTempId, replaceTempId } from '@/lib/optimisticUpdates';
-import type { Employee, EmployeeInvite } from '@shared/types';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { optimisticAdd, optimisticRemove, optimisticUpdateItem, generateTempId, replaceTempId } from "@/lib/optimisticUpdates";
+import type { Employee, EmployeeInvite } from "@shared/types";
 
 /**
  * Optimistic mutation for creating an employee invite
@@ -65,7 +65,7 @@ export function useOptimisticCreateInvite() {
       if (context?.previousInvites !== undefined && context?.companyId) {
         queryClient.setQueryData(
           ["/api/companies", context.companyId, "employee-invites"],
-          context.previousInvites
+          context.previousInvites,
         );
       }
     },
@@ -76,7 +76,7 @@ export function useOptimisticCreateInvite() {
           queryClient,
           ["/api/companies", context.companyId, "employee-invites"],
           context.tempId,
-          data.id
+          data.id,
         );
       }
     },
@@ -203,4 +203,6 @@ export function useOptimisticDeleteEmployee() {
     },
   });
 }
+
+
 

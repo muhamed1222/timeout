@@ -1,7 +1,7 @@
 // Сервис для работы с сотрудниками
 
-import { apiService } from './api.service';
-import { API_ENDPOINTS } from '../constants/api.constants';
+import { apiService } from "./api.service";
+import { API_ENDPOINTS } from "../constants/api.constants";
 import {
   Employee,
   EmployeeInvite,
@@ -9,7 +9,7 @@ import {
   FilterOptions,
   SortOptions,
   PaginationOptions,
-} from '../types';
+} from "../types";
 
 export interface CreateEmployeeData {
   full_name: string;
@@ -40,7 +40,7 @@ export class EmployeeService {
     companyId: string,
     filters?: FilterOptions,
     sort?: SortOptions,
-    pagination?: PaginationOptions
+    pagination?: PaginationOptions,
   ): Promise<Employee[]> {
     const params = {
       ...filters,
@@ -50,7 +50,7 @@ export class EmployeeService {
 
     const response = await apiService.get<Employee[]>(
       API_ENDPOINTS.COMPANIES.EMPLOYEES(companyId),
-      params
+      params,
     );
 
     return response;
@@ -59,7 +59,7 @@ export class EmployeeService {
   // Получение сотрудника по ID
   async getEmployee(companyId: string, employeeId: string): Promise<Employee> {
     const response = await apiService.get<Employee>(
-      API_ENDPOINTS.COMPANIES.EMPLOYEE_BY_ID(companyId, employeeId)
+      API_ENDPOINTS.COMPANIES.EMPLOYEE_BY_ID(companyId, employeeId),
     );
 
     return response;
@@ -68,11 +68,11 @@ export class EmployeeService {
   // Создание сотрудника
   async createEmployee(
     companyId: string,
-    data: CreateEmployeeData
+    data: CreateEmployeeData,
   ): Promise<Employee> {
     const response = await apiService.post<ApiResponse<Employee>>(
       API_ENDPOINTS.COMPANIES.EMPLOYEES(companyId),
-      data
+      data,
     );
 
     if (response.error) {
@@ -86,11 +86,11 @@ export class EmployeeService {
   async updateEmployee(
     companyId: string,
     employeeId: string,
-    data: UpdateEmployeeData
+    data: UpdateEmployeeData,
   ): Promise<Employee> {
     const response = await apiService.patch<ApiResponse<Employee>>(
       API_ENDPOINTS.COMPANIES.EMPLOYEE_BY_ID(companyId, employeeId),
-      data
+      data,
     );
 
     if (response.error) {
@@ -103,7 +103,7 @@ export class EmployeeService {
   // Удаление сотрудника
   async deleteEmployee(companyId: string, employeeId: string): Promise<void> {
     const response = await apiService.delete<ApiResponse>(
-      API_ENDPOINTS.COMPANIES.EMPLOYEE_BY_ID(companyId, employeeId)
+      API_ENDPOINTS.COMPANIES.EMPLOYEE_BY_ID(companyId, employeeId),
     );
 
     if (response.error) {
@@ -114,7 +114,7 @@ export class EmployeeService {
   // Получение всех приглашений компании
   async getInvites(companyId: string): Promise<EmployeeInvite[]> {
     const response = await apiService.get<EmployeeInvite[]>(
-      API_ENDPOINTS.COMPANIES.INVITES(companyId)
+      API_ENDPOINTS.COMPANIES.INVITES(companyId),
     );
 
     return response;
@@ -123,10 +123,10 @@ export class EmployeeService {
   // Получение приглашения по ID
   async getInvite(
     companyId: string,
-    inviteId: string
+    inviteId: string,
   ): Promise<EmployeeInvite> {
     const response = await apiService.get<EmployeeInvite>(
-      API_ENDPOINTS.COMPANIES.INVITE_BY_ID(companyId, inviteId)
+      API_ENDPOINTS.COMPANIES.INVITE_BY_ID(companyId, inviteId),
     );
 
     return response;
@@ -135,11 +135,11 @@ export class EmployeeService {
   // Создание приглашения
   async createInvite(
     companyId: string,
-    data: CreateInviteData
+    data: CreateInviteData,
   ): Promise<EmployeeInvite> {
     const response = await apiService.post<ApiResponse<EmployeeInvite>>(
       API_ENDPOINTS.COMPANIES.INVITES(companyId),
-      data
+      data,
     );
 
     if (response.error) {
@@ -152,7 +152,7 @@ export class EmployeeService {
   // Отмена приглашения
   async cancelInvite(companyId: string, inviteId: string): Promise<void> {
     const response = await apiService.delete<ApiResponse>(
-      API_ENDPOINTS.COMPANIES.INVITE_BY_ID(companyId, inviteId)
+      API_ENDPOINTS.COMPANIES.INVITE_BY_ID(companyId, inviteId),
     );
 
     if (response.error) {
@@ -163,10 +163,10 @@ export class EmployeeService {
   // Повторная отправка приглашения
   async resendInvite(
     companyId: string,
-    inviteId: string
+    inviteId: string,
   ): Promise<EmployeeInvite> {
     const response = await apiService.post<ApiResponse<EmployeeInvite>>(
-      `${API_ENDPOINTS.COMPANIES.INVITE_BY_ID(companyId, inviteId)}/resend`
+      `${API_ENDPOINTS.COMPANIES.INVITE_BY_ID(companyId, inviteId)}/resend`,
     );
 
     if (response.error) {
@@ -180,7 +180,7 @@ export class EmployeeService {
   async searchEmployees(companyId: string, query: string): Promise<Employee[]> {
     const response = await apiService.get<Employee[]>(
       `${API_ENDPOINTS.COMPANIES.EMPLOYEES(companyId)}/search`,
-      { q: query }
+      { q: query },
     );
 
     return response;
@@ -189,7 +189,7 @@ export class EmployeeService {
   // Получение статистики сотрудника
   async getEmployeeStats(companyId: string, employeeId: string): Promise<any> {
     const response = await apiService.get<any>(
-      `${API_ENDPOINTS.COMPANIES.EMPLOYEE_BY_ID(companyId, employeeId)}/stats`
+      `${API_ENDPOINTS.COMPANIES.EMPLOYEE_BY_ID(companyId, employeeId)}/stats`,
     );
 
     return response;
@@ -199,11 +199,11 @@ export class EmployeeService {
   async bulkUpdateStatus(
     companyId: string,
     employeeIds: string[],
-    status: string
+    status: string,
   ): Promise<void> {
     const response = await apiService.patch<ApiResponse>(
       `${API_ENDPOINTS.COMPANIES.EMPLOYEES(companyId)}/bulk-status`,
-      { employeeIds, status }
+      { employeeIds, status },
     );
 
     if (response.error) {
@@ -214,18 +214,18 @@ export class EmployeeService {
   // Экспорт списка сотрудников
   async exportEmployees(
     companyId: string,
-    format: 'csv' | 'xlsx' = 'csv'
+    format: "csv" | "xlsx" = "csv",
   ): Promise<void> {
     await apiService.downloadFile(
       `${API_ENDPOINTS.COMPANIES.EMPLOYEES(companyId)}/export?format=${format}`,
-      `employees.${format}`
+      `employees.${format}`,
     );
   }
 
   // Импорт сотрудников
   async importEmployees(
     companyId: string,
-    file: File
+    file: File,
   ): Promise<{ success: number; errors: string[] }> {
     const response = await apiService.uploadFile<
       ApiResponse<{ success: number; errors: string[] }>

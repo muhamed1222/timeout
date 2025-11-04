@@ -1,8 +1,8 @@
-import { BaseRepository } from './BaseRepository.js';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import * as schema from '../../shared/schema.js';
-import type { AuditLog, InsertAuditLog } from '../../shared/schema.js';
-import { eq, desc } from 'drizzle-orm';
+import { BaseRepository } from "./BaseRepository.js";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import * as schema from "../../shared/schema.js";
+import type { AuditLog, InsertAuditLog } from "../../shared/schema.js";
+import { eq, desc } from "drizzle-orm";
 
 /**
  * Repository for Audit Logs
@@ -19,7 +19,7 @@ export class AuditRepository extends BaseRepository<AuditLog, InsertAuditLog> {
     actor: string,
     action: string,
     entity: string,
-    payload?: Record<string, unknown>
+    payload?: Record<string, unknown>,
   ): Promise<AuditLog> {
     const results = await this.db
       .insert(this.table)
@@ -27,7 +27,7 @@ export class AuditRepository extends BaseRepository<AuditLog, InsertAuditLog> {
         actor,
         action,
         entity,
-        payload: payload || null
+        payload: payload || null,
       } as any)
       .returning();
 
@@ -41,9 +41,9 @@ export class AuditRepository extends BaseRepository<AuditLog, InsertAuditLog> {
     const results = await this.db
       .select()
       .from(this.table)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .where(eq((this.table as any).actor, actor))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .orderBy(desc((this.table as any).at))
       .limit(limit);
 
@@ -57,9 +57,9 @@ export class AuditRepository extends BaseRepository<AuditLog, InsertAuditLog> {
     const results = await this.db
       .select()
       .from(this.table)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .where(eq((this.table as any).entity, entity))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .orderBy(desc((this.table as any).at))
       .limit(limit);
 
@@ -73,9 +73,9 @@ export class AuditRepository extends BaseRepository<AuditLog, InsertAuditLog> {
     const results = await this.db
       .select()
       .from(this.table)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .where(eq((this.table as any).action, action))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .orderBy(desc((this.table as any).at))
       .limit(limit);
 

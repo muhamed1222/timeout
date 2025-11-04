@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { EditEmployeeModal } from "./EditEmployeeModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { normalizeAvatarId } from "@/lib/employeeAvatar";
+import { EmployeeCalendarView } from "./EmployeeCalendarView";
 
 // Template avatars - same as in EditEmployeeModal
 const TEMPLATE_AVATARS = [
@@ -49,6 +50,7 @@ interface EmployeeProfileModalProps {
 export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeUpdated }: EmployeeProfileModalProps) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
   const { companyId } = useAuth();
   const queryClient = useQueryClient();
   
@@ -56,9 +58,13 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
   const { data: freshEmployee } = useQuery<Employee>({
     queryKey: ["/api/employees", employee?.id],
     queryFn: async () => {
-      if (!employee?.id) return null;
+      if (!employee?.id) {
+        return null;
+      }
       const response = await fetch(`/api/employees/${employee.id}`);
-      if (!response.ok) throw new Error("Failed to fetch employee");
+      if (!response.ok) {
+        throw new Error("Failed to fetch employee");
+      }
       return response.json();
     },
     enabled: !!employee?.id && open,
@@ -74,17 +80,25 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
     queryKey: ["/api/employees", displayEmployee?.id, "stats"],
     queryFn: async () => {
       const response = await fetch(`/api/employees/${displayEmployee?.id}/stats`);
-      if (!response.ok) throw new Error("Failed to fetch stats");
+      if (!response.ok) {
+        throw new Error("Failed to fetch stats");
+      }
       return response.json();
     },
     enabled: !!displayEmployee?.id && open,
   });
 
-  if (!displayEmployee) return null;
+  if (!displayEmployee) {
+    return null;
+  }
 
   const getEfficiencyStatus = (efficiency: number) => {
-    if (efficiency >= 80) return { icon: "🟢", text: "Отлично", color: "text-green-600" };
-    if (efficiency >= 60) return { icon: "🟡", text: "Средне", color: "text-yellow-600" };
+    if (efficiency >= 80) {
+      return { icon: "🟢", text: "Отлично", color: "text-green-600" };
+    }
+    if (efficiency >= 60) {
+      return { icon: "🟡", text: "Средне", color: "text-yellow-600" };
+    }
     return { icon: "🔴", text: "Низкий уровень", color: "text-red-600" };
   };
 
@@ -161,17 +175,19 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
                               onError={(e) => {
                                 // Fallback to initials if image fails
                                 const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const fallback = target.parentElement?.querySelector('.avatar-fallback') as HTMLElement;
-                                if (fallback) fallback.style.display = 'flex';
+                                target.style.display = "none";
+                                const fallback = target.parentElement?.querySelector(".avatar-fallback") as HTMLElement;
+                                if (fallback) {
+                                  fallback.style.display = "flex";
+                                }
                               }}
                             />
                             <div className="avatar-fallback size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-base hidden">
                               {displayEmployee.full_name
-                                .split(' ')
+                                .split(" ")
                                 .map(n => n[0])
                                 .slice(0, 2)
-                                .join('')
+                                .join("")
                                 .toUpperCase()}
                             </div>
                           </div>
@@ -182,10 +198,10 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
                     return (
                       <div className="size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-base">
                         {displayEmployee.full_name
-                          .split(' ')
+                          .split(" ")
                           .map(n => n[0])
                           .slice(0, 2)
-                          .join('')
+                          .join("")
                           .toUpperCase()}
                       </div>
                     );
@@ -250,8 +266,8 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
                     efficiencyIndex >= 80
                       ? "bg-[rgba(52,199,89,0.08)]"
                       : efficiencyIndex >= 60
-                      ? "bg-[rgba(255,204,0,0.08)]"
-                      : "bg-[rgba(255,0,0,0.08)]"
+                        ? "bg-[rgba(255,204,0,0.08)]"
+                        : "bg-[rgba(255,0,0,0.08)]"
                   }`}>
                     <div className="flex items-center justify-between">
                       <div>
@@ -262,8 +278,8 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
                           efficiencyIndex >= 80
                             ? "text-[#34c759]"
                             : efficiencyIndex >= 60
-                            ? "text-[#ffcc00]"
-                            : "text-[#ff0006]"
+                              ? "text-[#ffcc00]"
+                              : "text-[#ff0006]"
                         }`}>
                           {efficiencyIndex.toFixed(1)}%
                         </p>
@@ -273,8 +289,8 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
                           efficiencyIndex >= 80
                             ? "text-[#34c759]"
                             : efficiencyIndex >= 60
-                            ? "text-[#ffcc00]"
-                            : "text-[#ff0006]"
+                              ? "text-[#ffcc00]"
+                              : "text-[#ff0006]"
                         }`}>
                           {efficiencyStatus.icon} {efficiencyStatus.text}
                         </p>
@@ -288,8 +304,8 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
                           efficiencyIndex >= 80
                             ? "bg-[#34c759]"
                             : efficiencyIndex >= 60
-                            ? "bg-[#ffcc00]"
-                            : "bg-[#ff0006]"
+                              ? "bg-[#ffcc00]"
+                              : "bg-[#ff0006]"
                         }`}
                         style={{ width: `${Math.min(efficiencyIndex, 100)}%` }}
                       />
@@ -394,16 +410,16 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
                   onEmployeeUpdated(updatedEmployee);
                 }
               } catch (error) {
-                console.error('Failed to fetch updated employee:', error);
+                console.error("Failed to fetch updated employee:", error);
               }
             }
           }, 600);
         }}
       />
 
-      {/* History Modal - TODO: Implement detailed calendar view */}
+      {/* History Modal - Detailed calendar view */}
       <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0">
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
               <Calendar className="w-5 h-5 text-[#1a1a1a]" />
@@ -411,51 +427,18 @@ export function EmployeeProfileModal({ open, onOpenChange, employee, onEmployeeU
             </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4 mt-4">
-            {/* Info Card */}
-            <div className="bg-[#f8f8f8] rounded-[20px] p-4">
-              <div className="flex items-start gap-3">
-                <div className="bg-white rounded-full size-10 flex items-center justify-center flex-shrink-0">
-                  <AlertCircle className="w-5 h-5 text-[#e16546]" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-semibold text-[#1a1a1a] mb-1 leading-[1.2]">
-                    Функция в разработке
-                  </h4>
-                  <p className="text-sm text-[#959595] leading-[1.2]">
-                    Календарь с детальной историей работы будет реализован в следующей версии.
-                    Здесь будет отображаться календарь по месяцам с отмеченными рабочими днями,
-                    пропусками, опозданиями и выходными.
-                  </p>
-                </div>
+          <div className="mt-4">
+            {displayEmployee?.id ? (
+              <EmployeeCalendarView
+                employeeId={displayEmployee.id}
+                currentMonth={calendarMonth}
+                onMonthChange={setCalendarMonth}
+              />
+            ) : (
+              <div className="text-center text-[#959595] py-8">
+                Не удалось загрузить данные сотрудника
               </div>
-            </div>
-
-            {/* Legend Preview */}
-            <div className="bg-[#f8f8f8] rounded-[20px] p-4">
-              <h4 className="text-sm font-semibold text-[#1a1a1a] mb-3 leading-[1.2]">
-                Легенда календаря
-              </h4>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="size-6 rounded-full bg-[rgba(52,199,89,0.08)] border-2 border-[#34c759]"></div>
-                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">Рабочий день</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="size-6 rounded-full bg-[rgba(255,204,0,0.08)] border-2 border-[#ffcc00]"></div>
-                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">Опоздание</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="size-6 rounded-full bg-[rgba(255,0,0,0.08)] border-2 border-[#ff0006]"></div>
-                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">Пропуск</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="size-6 rounded-full bg-white border-2 border-[#eeeeee]"></div>
-                  <span className="text-xs text-[#1a1a1a] leading-[1.2]">Выходной</span>
-                </div>
-              </div>
-
-            </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

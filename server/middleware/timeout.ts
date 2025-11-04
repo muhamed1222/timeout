@@ -3,8 +3,8 @@
  * Automatically cancels requests that take too long
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { logger } from '../lib/logger.js';
+import { Request, Response, NextFunction } from "express";
+import { logger } from "../lib/logger.js";
 
 const DEFAULT_TIMEOUT = 5000; // 5 seconds
 
@@ -16,15 +16,15 @@ export function requestTimeout(timeoutMs: number = DEFAULT_TIMEOUT) {
     const timeoutId: ReturnType<typeof setTimeout> = setTimeout(() => {
       if (!isFinished && !res.headersSent) {
         isFinished = true;
-        logger.warn('Request timeout', {
+        logger.warn("Request timeout", {
           method: req.method,
           path: req.path,
           timeout: timeoutMs,
         });
         
         res.status(503).json({
-          error: 'Request timeout',
-          message: 'Request took too long. Please try again.',
+          error: "Request timeout",
+          message: "Request took too long. Please try again.",
           timeout: timeoutMs,
         });
       }
@@ -50,7 +50,7 @@ export function requestTimeout(timeoutMs: number = DEFAULT_TIMEOUT) {
     res.end = clearTimeoutWrapper(originalEnd);
 
     // Also clear on finish event
-    res.on('finish', () => {
+    res.on("finish", () => {
       if (!isFinished) {
         isFinished = true;
         clearTimeout(timeoutId);

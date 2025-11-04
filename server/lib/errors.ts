@@ -14,7 +14,7 @@ export class AppError extends Error {
     public readonly statusCode: number = 500,
     public readonly code?: string,
     public readonly details?: Record<string, any>,
-    public readonly isOperational: boolean = true
+    public readonly isOperational: boolean = true,
   ) {
     super(message);
     this.name = this.constructor.name;
@@ -30,8 +30,8 @@ export class AppError extends Error {
         message: this.message,
         code: this.code || this.name,
         statusCode: this.statusCode,
-        ...(this.details && { details: this.details })
-      }
+        ...(this.details && { details: this.details }),
+      },
     };
   }
 }
@@ -42,7 +42,7 @@ export class AppError extends Error {
 export class ValidationError extends AppError {
   constructor(
     message: string = "Validation failed",
-    details?: Record<string, any>
+    details?: Record<string, any>,
   ) {
     super(message, 400, "VALIDATION_ERROR", details);
   }
@@ -90,7 +90,7 @@ export class ConflictError extends AppError {
 export class BusinessLogicError extends AppError {
   constructor(
     message: string,
-    details?: Record<string, any>
+    details?: Record<string, any>,
   ) {
     super(message, 422, "BUSINESS_LOGIC_ERROR", details);
   }
@@ -111,7 +111,7 @@ export class RateLimitError extends AppError {
 export class InternalServerError extends AppError {
   constructor(
     message: string = "Internal server error",
-    details?: Record<string, any>
+    details?: Record<string, any>,
   ) {
     super(message, 500, "INTERNAL_SERVER_ERROR", details, false);
   }
@@ -133,7 +133,7 @@ export class DatabaseError extends AppError {
   constructor(
     message: string = "Database operation failed",
     originalError?: Error,
-    details?: Record<string, any>
+    details?: Record<string, any>,
   ) {
     super(
       message,
@@ -141,9 +141,9 @@ export class DatabaseError extends AppError {
       "DATABASE_ERROR",
       {
         ...details,
-        ...(originalError && { originalError: originalError.message })
+        ...(originalError && { originalError: originalError.message }),
       },
-      false
+      false,
     );
   }
 }
@@ -165,15 +165,15 @@ export function normalizeError(error: unknown): AppError {
 
   if (error instanceof Error) {
     // Database errors
-    if (error.message.includes('duplicate key') || error.message.includes('unique constraint')) {
+    if (error.message.includes("duplicate key") || error.message.includes("unique constraint")) {
       return new ConflictError("Resource already exists", { originalError: error.message });
     }
 
-    if (error.message.includes('foreign key') || error.message.includes('violates foreign key')) {
+    if (error.message.includes("foreign key") || error.message.includes("violates foreign key")) {
       return new ValidationError("Invalid reference", { originalError: error.message });
     }
 
-    if (error.message.includes('not found') || error.message.includes('does not exist')) {
+    if (error.message.includes("not found") || error.message.includes("does not exist")) {
       return new NotFoundError();
     }
 
@@ -184,4 +184,6 @@ export function normalizeError(error: unknown): AppError {
   // Unknown error type
   return new InternalServerError("An unexpected error occurred");
 }
+
+
 

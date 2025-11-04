@@ -25,7 +25,7 @@ export interface Shift {
   planned_end_at: Date;
   actual_start_at?: Date;
   actual_end_at?: Date;
-  status: 'planned' | 'active' | 'completed' | 'cancelled';
+  status: "planned" | "active" | "completed" | "cancelled";
   created_at: Date;
 }
 

@@ -7,7 +7,7 @@
 /**
  * Generate unique ID for aria-labelledby
  */
-export function generateA11yId(prefix: string = 'a11y'): string {
+export function generateA11yId(prefix: string = "a11y"): string {
   return `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
@@ -15,16 +15,16 @@ export function generateA11yId(prefix: string = 'a11y'): string {
  * Keyboard navigation helpers
  */
 export const Keys = {
-  ENTER: 'Enter',
-  SPACE: ' ',
-  ESCAPE: 'Escape',
-  ARROW_UP: 'ArrowUp',
-  ARROW_DOWN: 'ArrowDown',
-  ARROW_LEFT: 'ArrowLeft',
-  ARROW_RIGHT: 'ArrowRight',
-  TAB: 'Tab',
-  HOME: 'Home',
-  END: 'End',
+  ENTER: "Enter",
+  SPACE: " ",
+  ESCAPE: "Escape",
+  ARROW_UP: "ArrowUp",
+  ARROW_DOWN: "ArrowDown",
+  ARROW_LEFT: "ArrowLeft",
+  ARROW_RIGHT: "ArrowRight",
+  TAB: "Tab",
+  HOME: "Home",
+  END: "End",
 } as const;
 
 /**
@@ -46,7 +46,7 @@ export function isActionKey(event: React.KeyboardEvent): boolean {
  */
 export function handleKeyboardActivation(
   event: React.KeyboardEvent,
-  callback: () => void
+  callback: () => void,
 ): void {
   if (isActionKey(event)) {
     event.preventDefault();
@@ -71,16 +71,16 @@ export class FocusTrap {
 
   private updateFocusableElements(): void {
     const focusableSelectors = [
-      'a[href]',
-      'button:not([disabled])',
-      'textarea:not([disabled])',
-      'input:not([disabled])',
-      'select:not([disabled])',
+      "a[href]",
+      "button:not([disabled])",
+      "textarea:not([disabled])",
+      "input:not([disabled])",
+      "select:not([disabled])",
       '[tabindex]:not([tabindex="-1"])',
-    ].join(', ');
+    ].join(", ");
 
     this.focusableElements = Array.from(
-      this.element.querySelectorAll<HTMLElement>(focusableSelectors)
+      this.element.querySelectorAll<HTMLElement>(focusableSelectors),
     );
 
     this.firstFocusable = this.focusableElements[0] || null;
@@ -91,16 +91,18 @@ export class FocusTrap {
   public activate(): void {
     this.previouslyFocused = document.activeElement as HTMLElement;
     this.firstFocusable?.focus();
-    document.addEventListener('keydown', this.handleKeyDown);
+    document.addEventListener("keydown", this.handleKeyDown);
   }
 
   public deactivate(): void {
-    document.removeEventListener('keydown', this.handleKeyDown);
+    document.removeEventListener("keydown", this.handleKeyDown);
     this.previouslyFocused?.focus();
   }
 
   private handleKeyDown = (event: KeyboardEvent): void => {
-    if (event.key !== Keys.TAB) return;
+    if (event.key !== Keys.TAB) {
+      return;
+    }
 
     if (event.shiftKey) {
       // Shift + Tab
@@ -123,13 +125,13 @@ export class FocusTrap {
  */
 export function announceToScreenReader(
   message: string,
-  priority: 'polite' | 'assertive' = 'polite'
+  priority: "polite" | "assertive" = "polite",
 ): void {
-  const announcement = document.createElement('div');
-  announcement.setAttribute('role', 'status');
-  announcement.setAttribute('aria-live', priority);
-  announcement.setAttribute('aria-atomic', 'true');
-  announcement.className = 'sr-only';
+  const announcement = document.createElement("div");
+  announcement.setAttribute("role", "status");
+  announcement.setAttribute("aria-live", priority);
+  announcement.setAttribute("aria-atomic", "true");
+  announcement.className = "sr-only";
   announcement.textContent = message;
 
   document.body.appendChild(announcement);
@@ -145,24 +147,30 @@ export function announceToScreenReader(
  */
 export function getAccessibleName(element: HTMLElement): string {
   // Check aria-label
-  const ariaLabel = element.getAttribute('aria-label');
-  if (ariaLabel) return ariaLabel;
+  const ariaLabel = element.getAttribute("aria-label");
+  if (ariaLabel) {
+    return ariaLabel;
+  }
 
   // Check aria-labelledby
-  const labelledby = element.getAttribute('aria-labelledby');
+  const labelledby = element.getAttribute("aria-labelledby");
   if (labelledby) {
     const labelElement = document.getElementById(labelledby);
-    if (labelElement) return labelElement.textContent || '';
+    if (labelElement) {
+      return labelElement.textContent || "";
+    }
   }
 
   // Check label element (for inputs)
   if (element instanceof HTMLInputElement) {
     const label = document.querySelector(`label[for="${element.id}"]`);
-    if (label) return label.textContent || '';
+    if (label) {
+      return label.textContent || "";
+    }
   }
 
   // Fallback to text content
-  return element.textContent || '';
+  return element.textContent || "";
 }
 
 /**
@@ -170,13 +178,15 @@ export function getAccessibleName(element: HTMLElement): string {
  */
 export function isVisibleToScreenReader(element: HTMLElement): boolean {
   // Check aria-hidden
-  if (element.getAttribute('aria-hidden') === 'true') return false;
+  if (element.getAttribute("aria-hidden") === "true") {
+    return false;
+  }
 
   // Check if element or ancestors have display: none or visibility: hidden
   let current: HTMLElement | null = element;
   while (current) {
     const style = window.getComputedStyle(current);
-    if (style.display === 'none' || style.visibility === 'hidden') {
+    if (style.display === "none" || style.visibility === "hidden") {
       return false;
     }
     current = current.parentElement;
@@ -189,11 +199,11 @@ export function isVisibleToScreenReader(element: HTMLElement): boolean {
  * Skip links helper
  */
 export function createSkipLink(targetId: string, label: string): HTMLAnchorElement {
-  const skipLink = document.createElement('a');
+  const skipLink = document.createElement("a");
   skipLink.href = `#${targetId}`;
-  skipLink.className = 'skip-link';
+  skipLink.className = "skip-link";
   skipLink.textContent = label;
-  skipLink.addEventListener('click', (e) => {
+  skipLink.addEventListener("click", (e) => {
     e.preventDefault();
     const target = document.getElementById(targetId);
     if (target) {
@@ -218,7 +228,7 @@ export class RovingTabIndex {
 
   private updateTabIndex(): void {
     this.items.forEach((item, index) => {
-      item.setAttribute('tabindex', index === this.currentIndex ? '0' : '-1');
+      item.setAttribute("tabindex", index === this.currentIndex ? "0" : "-1");
     });
   }
 
@@ -273,14 +283,16 @@ export class RovingTabIndex {
 /**
  * React hook for focus trap
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
 export function useFocusTrap(isActive: boolean) {
   const elementRef = useRef<HTMLElement | null>(null);
   const trapRef = useRef<FocusTrap | null>(null);
 
   useEffect(() => {
-    if (!elementRef.current) return;
+    if (!elementRef.current) {
+      return;
+    }
 
     if (isActive) {
       trapRef.current = new FocusTrap(elementRef.current);
@@ -299,7 +311,7 @@ export function useFocusTrap(isActive: boolean) {
  * React hook for announcements
  */
 export function useAnnouncement() {
-  return (message: string, priority: 'polite' | 'assertive' = 'polite') => {
+  return (message: string, priority: "polite" | "assertive" = "polite") => {
     announceToScreenReader(message, priority);
   };
 }
@@ -333,11 +345,11 @@ export function useRovingTabIndex(itemsCount: number) {
  */
 export function getAccessibleButtonProps(
   label: string,
-  onClick: () => void
+  onClick: () => void,
 ): React.ButtonHTMLAttributes<HTMLButtonElement> {
   return {
-    type: 'button',
-    'aria-label': label,
+    type: "button",
+    "aria-label": label,
     onClick,
   };
 }
@@ -347,14 +359,16 @@ export function getAccessibleButtonProps(
  */
 export function getAccessibleLinkProps(
   label: string,
-  href: string
+  href: string,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
   return {
     href,
-    'aria-label': label,
-    rel: href.startsWith('http') ? 'noopener noreferrer' : undefined,
+    "aria-label": label,
+    rel: href.startsWith("http") ? "noopener noreferrer" : undefined,
   };
 }
+
+
 
 
 

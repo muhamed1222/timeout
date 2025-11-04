@@ -4,7 +4,6 @@
  */
 
 import type {
-  Company,
   Employee,
   Shift,
   WorkInterval,
@@ -15,7 +14,7 @@ import type {
   ScheduleTemplate,
   CompanyViolationRules,
   Violations,
-  EmployeeRating
+  EmployeeRating,
 } from "./schema";
 
 // ===== Auth API =====
@@ -67,8 +66,11 @@ export type EmployeeInviteListResponse = EmployeeInvite[];
 // ===== Shift API =====
 export interface ShiftWithEmployee extends Shift {
   employee: {
+    id: string;
     full_name: string;
-    position: string;
+    position: string | null;
+    photo_url?: string | null;
+    avatar_id?: number | null;
   };
 }
 
@@ -93,7 +95,7 @@ export interface CreateViolationRequest {
   employee_id: string;
   company_id: string;
   rule_id: string;
-  source: 'manual' | 'auto';
+  source: "manual" | "auto";
   reason?: string;
   created_by?: string;
 }
@@ -168,7 +170,7 @@ export interface TelegramEmployeeStatus {
   activeShift?: Shift;
   workIntervals: WorkInterval[];
   breakIntervals: BreakInterval[];
-  status: 'off_work' | 'working' | 'on_break' | 'unknown';
+  status: "off_work" | "working" | "on_break" | "unknown";
 }
 
 // ===== Error Response =====

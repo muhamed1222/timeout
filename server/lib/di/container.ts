@@ -5,16 +5,16 @@
  * Provides constructor injection for services and repositories.
  */
 
-import type { CompanyRepository } from '../../repositories/CompanyRepository.js';
-import type { EmployeeRepository } from '../../repositories/EmployeeRepository.js';
-import type { RatingRepository } from '../../repositories/RatingRepository.js';
-import type { ViolationRepository } from '../../repositories/ViolationRepository.js';
-import type { ShiftRepository } from '../../repositories/ShiftRepository.js';
-import type { ExceptionRepository } from '../../repositories/ExceptionRepository.js';
-import type { ScheduleRepository } from '../../repositories/ScheduleRepository.js';
-import type { InviteRepository } from '../../repositories/InviteRepository.js';
-import type { ReminderRepository } from '../../repositories/ReminderRepository.js';
-import type { AuditRepository } from '../../repositories/AuditRepository.js';
+import type { CompanyRepository } from "../../repositories/CompanyRepository.js";
+import type { EmployeeRepository } from "../../repositories/EmployeeRepository.js";
+import type { RatingRepository } from "../../repositories/RatingRepository.js";
+import type { ViolationRepository } from "../../repositories/ViolationRepository.js";
+import type { ShiftRepository } from "../../repositories/ShiftRepository.js";
+import type { ExceptionRepository } from "../../repositories/ExceptionRepository.js";
+import type { ScheduleRepository } from "../../repositories/ScheduleRepository.js";
+import type { InviteRepository } from "../../repositories/InviteRepository.js";
+import type { ReminderRepository } from "../../repositories/ReminderRepository.js";
+import type { AuditRepository } from "../../repositories/AuditRepository.js";
 
 /**
  * Container for all dependencies
@@ -54,7 +54,7 @@ export function createContainer(dependencies: DIContainer): DIContainer {
  */
 export function getContainer(): DIContainer {
   if (!container) {
-    throw new Error('DI Container not initialized. Call createContainer() first.');
+    throw new Error("DI Container not initialized. Call createContainer() first.");
   }
   return container;
 }
@@ -65,4 +65,6 @@ export function getContainer(): DIContainer {
 export function resetContainer(): void {
   container = null;
 }
+
+
 

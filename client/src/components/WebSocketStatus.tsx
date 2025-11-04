@@ -2,8 +2,8 @@
  * WebSocket connection status indicator
  */
 
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { Wifi, WifiOff } from 'lucide-react';
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { Wifi, WifiOff } from "lucide-react";
 
 interface WebSocketStatusProps {
   userId?: string;
@@ -34,6 +34,8 @@ export function WebSocketStatus({ userId, companyId, employeeId }: WebSocketStat
     </div>
   );
 }
+
+
 
 
 

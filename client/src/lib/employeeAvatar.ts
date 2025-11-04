@@ -58,9 +58,9 @@ export function getEmployeeAvatarUrl(employee: EmployeeWithAvatar): string | nul
  */
 export function getEmployeeInitials(fullName: string): string {
   return fullName
-    .split(' ')
+    .split(" ")
     .map(n => n[0])
     .slice(0, 2)
-    .join('')
+    .join("")
     .toUpperCase();
 }

@@ -1,6 +1,6 @@
 // Утилиты для debounce и оптимизации производительности
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 /**
  * Хук для debounce значения
@@ -34,7 +34,7 @@ export function useDebounce<T>(value: T, delay: number): T {
 export function useDebouncedCallback<T extends (...args: any[]) => any>(
   callback: T,
   delay: number,
-  deps: React.DependencyList = []
+  deps: React.DependencyList = [],
 ): T {
   return useCallback(debounce(callback, delay) as T, deps);
 }
@@ -47,7 +47,7 @@ export function useDebouncedCallback<T extends (...args: any[]) => any>(
  */
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
-  wait: number
+  wait: number,
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout;
 
@@ -65,7 +65,7 @@ export function debounce<T extends (...args: any[]) => any>(
  */
 export function useMemoizedCallback<T extends (...args: any[]) => any>(
   callback: T,
-  deps: React.DependencyList
+  deps: React.DependencyList,
 ): T {
   return useCallback(callback, deps);
 }
@@ -78,7 +78,7 @@ export function useMemoizedCallback<T extends (...args: any[]) => any>(
  */
 export function useMemoizedSelector<T>(
   selector: () => T,
-  deps: React.DependencyList
+  deps: React.DependencyList,
 ): T {
   return useMemo(selector, deps);
 }
@@ -95,12 +95,14 @@ export function useFilteredList<T>(
   items: T[],
   filterFn: (item: T, query: string) => boolean,
   searchQuery: string,
-  delay: number = 300
+  delay: number = 300,
 ): T[] {
   const debouncedQuery = useDebounce(searchQuery, delay);
 
   return useMemo(() => {
-    if (!debouncedQuery.trim()) return items;
+    if (!debouncedQuery.trim()) {
+      return items;
+    }
 
     const query = debouncedQuery.toLowerCase();
     return items.filter(item => filterFn(item, query));
@@ -117,7 +119,7 @@ export function useFilteredList<T>(
 export function useSortedList<T>(
   items: T[],
   sortFn: (a: T, b: T) => number,
-  deps: React.DependencyList = []
+  deps: React.DependencyList = [],
 ): T[] {
   return useMemo(() => {
     return [...items].sort(sortFn);
@@ -134,7 +136,7 @@ export function useSortedList<T>(
 export function usePaginatedList<T>(
   items: T[],
   page: number,
-  pageSize: number
+  pageSize: number,
 ) {
   return useMemo(() => {
     const startIndex = (page - 1) * pageSize;

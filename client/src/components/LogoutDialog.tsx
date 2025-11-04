@@ -21,17 +21,17 @@ export function LogoutDialog({ open, onOpenChange }: LogoutDialogProps) {
     try {
       await supabase.auth.signOut();
       queryClient.clear();
-      setLocation('/login');
+      setLocation("/login");
       toast({ 
-        title: 'Вы вышли из аккаунта',
-        description: 'Сеанс завершен'
+        title: "Вы вышли из аккаунта",
+        description: "Сеанс завершен",
       });
       onOpenChange(false);
     } catch (error) {
       toast({
-        title: 'Ошибка',
-        description: 'Не удалось выйти из аккаунта',
-        variant: 'destructive',
+        title: "Ошибка",
+        description: "Не удалось выйти из аккаунта",
+        variant: "destructive",
       });
     } finally {
       setIsLoggingOut(false);
@@ -76,7 +76,7 @@ export function LogoutDialog({ open, onOpenChange }: LogoutDialogProps) {
                   Выход...
                 </>
               ) : (
-                'Выйти'
+                "Выйти"
               )}
             </button>
           </div>

@@ -1,17 +1,17 @@
 // Компонент для виртуализации больших списков
 
-import React, { memo } from 'react';
-import { List } from 'react-window';
+import React, { memo } from "react";
+import { List } from "react-window";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Employee } from '@shared/types';
-import { getEmployeeAvatarUrl, getEmployeeInitials } from '@/lib/employeeAvatar';
+} from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Employee } from "@shared/types";
+import { getEmployeeAvatarUrl, getEmployeeInitials } from "@/lib/employeeAvatar";
 
 interface VirtualizedEmployeeListProps {
   employees: Employee[];
@@ -51,9 +51,9 @@ const EmployeeRow = memo<EmployeeRowProps>(({ index, style, data }) => {
               </p>
             </div>
             <Badge
-              variant={employee.status === 'active' ? 'default' : 'secondary'}
+              variant={employee.status === "active" ? "default" : "secondary"}
             >
-              {employee.status === 'active' ? 'Активен' : 'Неактивен'}
+              {employee.status === "active" ? "Активен" : "Неактивен"}
             </Badge>
           </div>
         </CardHeader>
@@ -78,7 +78,7 @@ const EmployeeRow = memo<EmployeeRowProps>(({ index, style, data }) => {
   );
 });
 
-EmployeeRow.displayName = 'EmployeeRow';
+EmployeeRow.displayName = "EmployeeRow";
 
 export const VirtualizedEmployeeList: React.FC<
   VirtualizedEmployeeListProps
@@ -131,9 +131,9 @@ const ShiftRow = memo<ShiftRowProps>(({ index, style, data }) => {
               </p>
             </div>
             <Badge
-              variant={shift.status === 'active' ? 'default' : 'secondary'}
+              variant={shift.status === "active" ? "default" : "secondary"}
             >
-              {shift.status === 'active' ? 'Активна' : 'Завершена'}
+              {shift.status === "active" ? "Активна" : "Завершена"}
             </Badge>
           </div>
         </CardHeader>
@@ -160,7 +160,7 @@ const ShiftRow = memo<ShiftRowProps>(({ index, style, data }) => {
   );
 });
 
-ShiftRow.displayName = 'ShiftRow';
+ShiftRow.displayName = "ShiftRow";
 
 export const VirtualizedShiftList: React.FC<{
   shifts: any[];

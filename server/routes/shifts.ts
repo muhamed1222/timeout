@@ -12,7 +12,7 @@ import {
   updateBreakIntervalSchema,
   createDailyReportSchema,
   shiftIdParamSchema,
-  uuidParamSchema
+  uuidParamSchema,
 } from "../lib/schemas/index.js";
 import { invalidateCompanyStatsByShift } from "../lib/utils/index.js";
 import { shiftsCounter } from "../lib/metrics.js";
@@ -21,10 +21,10 @@ const router = Router();
 
 // ===== SHIFTS API =====
 router.post("/", validateBody(createShiftSchema), asyncHandler(async (req, res) => {
-  const shift = await repositories.shift.create(req.body as any);
+  const shift = await repositories.shift.create(req.body);
   
   // Track shift creation in Prometheus metrics
-  shiftsCounter.labels(shift.status || 'scheduled', shift.employee_id || 'unknown').inc();
+  shiftsCounter.labels(shift.status || "scheduled", shift.employee_id || "unknown").inc();
   
   await invalidateCompanyStatsByShift(shift);
   res.json(shift);
@@ -39,14 +39,14 @@ router.get("/:id", validateParams(shiftIdParamSchema), asyncHandler(async (req, 
 }));
 
 router.put("/:id", validateParams(shiftIdParamSchema), validateBody(updateShiftSchema), asyncHandler(async (req, res) => {
-  const shift = await repositories.shift.update(req.params.id, req.body as any);
+  const shift = await repositories.shift.update(req.params.id, req.body);
   if (!shift) {
     throw new NotFoundError("Shift");
   }
   
   // Track shift status update in Prometheus metrics
   if (req.body.status) {
-    shiftsCounter.labels(req.body.status, shift.employee_id || 'unknown').inc();
+    shiftsCounter.labels(req.body.status, shift.employee_id || "unknown").inc();
   }
   
   res.json(shift);
@@ -60,10 +60,10 @@ router.post("/:id/start", validateParams(shiftIdParamSchema), asyncHandler(async
   }
   
   await repositories.shift.createWorkInterval({
-      shift_id: id,
-      start_at: new Date(),
-      source: "bot"
-    } as any);
+    shift_id: id,
+    start_at: new Date(),
+    source: "bot",
+  } as any);
   
   await invalidateCompanyStatsByShift(shift);
   
@@ -99,12 +99,12 @@ router.post("/:id/break/start", async (req, res) => {
       await repositories.shift.updateWorkInterval(activeInterval.id, { end_at: new Date() } as any);
     }
     
-      const breakInterval = await repositories.shift.createBreakInterval({
-        shift_id: id,
-        start_at: new Date(),
-        type,
-        source: "bot"
-      } as any);
+    const breakInterval = await repositories.shift.createBreakInterval({
+      shift_id: id,
+      start_at: new Date(),
+      type,
+      source: "bot",
+    } as any);
     
     res.json({ message: "Break started successfully", breakInterval });
   } catch (error) {
@@ -125,11 +125,11 @@ router.post("/:id/break/end", async (req, res) => {
     
     await repositories.shift.updateBreakInterval(activeBreak.id, { end_at: new Date() } as any);
     
-      const workInterval = await repositories.shift.createWorkInterval({
-        shift_id: id,
-        start_at: new Date(),
-        source: "bot"
-      } as any);
+    const workInterval = await repositories.shift.createWorkInterval({
+      shift_id: id,
+      start_at: new Date(),
+      source: "bot",
+    } as any);
     
     res.json({ message: "Break ended successfully", workInterval });
   } catch (error) {
@@ -140,7 +140,7 @@ router.post("/:id/break/end", async (req, res) => {
 
 // ===== WORK INTERVALS API =====
 router.post("/work-intervals", validateBody(createWorkIntervalSchema), asyncHandler(async (req, res) => {
-  const interval = await repositories.shift.createWorkInterval(req.body as any);
+  const interval = await repositories.shift.createWorkInterval(req.body);
   res.json(interval);
 }));
 
@@ -156,7 +156,7 @@ router.get("/:shiftId/work-intervals", async (req, res) => {
 });
 
 router.put("/work-intervals/:id", validateParams(uuidParamSchema), validateBody(updateWorkIntervalSchema), asyncHandler(async (req, res) => {
-  const interval = await repositories.shift.updateWorkInterval(req.params.id, req.body as any);
+  const interval = await repositories.shift.updateWorkInterval(req.params.id, req.body);
   if (!interval) {
     throw new NotFoundError("Work interval");
   }
@@ -165,7 +165,7 @@ router.put("/work-intervals/:id", validateParams(uuidParamSchema), validateBody(
 
 // ===== BREAK INTERVALS API =====
 router.post("/break-intervals", validateBody(createBreakIntervalSchema), asyncHandler(async (req, res) => {
-  const interval = await repositories.shift.createBreakInterval(req.body as any);
+  const interval = await repositories.shift.createBreakInterval(req.body);
   res.json(interval);
 }));
 

@@ -1,6 +1,6 @@
 // Оптимизированный хук для определения мобильного устройства
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -17,7 +17,7 @@ export function useIsMobile() {
     checkIsMobile();
 
     // Используем ResizeObserver для более эффективного отслеживания
-    if (typeof ResizeObserver !== 'undefined') {
+    if (typeof ResizeObserver !== "undefined") {
       resizeObserverRef.current = new ResizeObserver(entries => {
         for (const entry of entries) {
           const width = entry.contentRect.width;
@@ -32,10 +32,10 @@ export function useIsMobile() {
         setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
       };
 
-      window.addEventListener('resize', handleResize);
+      window.addEventListener("resize", handleResize);
 
       return () => {
-        window.removeEventListener('resize', handleResize);
+        window.removeEventListener("resize", handleResize);
       };
     }
 

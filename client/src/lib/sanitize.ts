@@ -9,15 +9,17 @@
  * Use this for plain text that will be displayed in HTML
  */
 export function sanitizeText(text: string): string {
-  if (typeof text !== 'string') return '';
+  if (typeof text !== "string") {
+    return "";
+  }
   
   return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;")
+    .replace(/\//g, "&#x2F;");
 }
 
 /**
@@ -25,23 +27,25 @@ export function sanitizeText(text: string): string {
  * Use this when you need to allow some HTML formatting
  */
 export function sanitizeHtml(html: string): string {
-  if (typeof html !== 'string') return '';
+  if (typeof html !== "string") {
+    return "";
+  }
   
   // Remove script tags and their content
-  let sanitized = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  let sanitized = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
   
   // Remove event handlers (onclick, onerror, etc.)
-  sanitized = sanitized.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
-  sanitized = sanitized.replace(/on\w+\s*=\s*[^\s>]*/gi, '');
+  sanitized = sanitized.replace(/on\w+\s*=\s*["'][^"']*["']/gi, "");
+  sanitized = sanitized.replace(/on\w+\s*=\s*[^\s>]*/gi, "");
   
   // Remove javascript: protocol
-  sanitized = sanitized.replace(/javascript:/gi, '');
+  sanitized = sanitized.replace(/javascript:/gi, "");
   
   // Remove data: protocol (can be used for XSS)
-  sanitized = sanitized.replace(/data:/gi, '');
+  sanitized = sanitized.replace(/data:/gi, "");
   
   // Remove vbscript: protocol
-  sanitized = sanitized.replace(/vbscript:/gi, '');
+  sanitized = sanitized.replace(/vbscript:/gi, "");
   
   return sanitized;
 }
@@ -50,18 +54,20 @@ export function sanitizeHtml(html: string): string {
  * Sanitize URL to prevent javascript: and data: schemes
  */
 export function sanitizeUrl(url: string): string {
-  if (typeof url !== 'string') return '';
+  if (typeof url !== "string") {
+    return "";
+  }
   
   const trimmed = url.trim().toLowerCase();
   
   // Block dangerous protocols
   if (
-    trimmed.startsWith('javascript:') ||
-    trimmed.startsWith('data:') ||
-    trimmed.startsWith('vbscript:') ||
-    trimmed.startsWith('file:')
+    trimmed.startsWith("javascript:") ||
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("vbscript:") ||
+    trimmed.startsWith("file:")
   ) {
-    return '';
+    return "";
   }
   
   return url;
@@ -72,7 +78,9 @@ export function sanitizeUrl(url: string): string {
  * Removes leading/trailing whitespace and escapes HTML
  */
 export function sanitizeFormInput(input: string): string {
-  if (typeof input !== 'string') return '';
+  if (typeof input !== "string") {
+    return "";
+  }
   
   return sanitizeText(input.trim());
 }
@@ -87,13 +95,13 @@ export function sanitizeObject<T extends Record<string, any>>(obj: T): T {
   for (const key in obj) {
     const value = obj[key];
     
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       sanitized[key] = sanitizeFormInput(value) as T[typeof key];
     } else if (Array.isArray(value)) {
       sanitized[key] = value.map((item: unknown) =>
-        typeof item === 'string' ? sanitizeFormInput(item) : item
+        typeof item === "string" ? sanitizeFormInput(item) : item,
       ) as T[typeof key];
-    } else if (value && typeof value === 'object') {
+    } else if (value && typeof value === "object") {
       sanitized[key] = sanitizeObject(value);
     } else {
       sanitized[key] = value;
@@ -108,16 +116,20 @@ export function sanitizeObject<T extends Record<string, any>>(obj: T): T {
  * Use this when you want only plain text
  */
 export function stripHtmlTags(html: string): string {
-  if (typeof html !== 'string') return '';
+  if (typeof html !== "string") {
+    return "";
+  }
   
-  return html.replace(/<[^>]*>/g, '');
+  return html.replace(/<[^>]*>/g, "");
 }
 
 /**
  * Validate and sanitize email
  */
 export function sanitizeEmail(email: string): string {
-  if (typeof email !== 'string') return '';
+  if (typeof email !== "string") {
+    return "";
+  }
   
   const sanitized = email.trim().toLowerCase();
   
@@ -125,7 +137,7 @@ export function sanitizeEmail(email: string): string {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   
   if (!emailRegex.test(sanitized)) {
-    return '';
+    return "";
   }
   
   return sanitized;
@@ -135,12 +147,14 @@ export function sanitizeEmail(email: string): string {
  * Sanitize filename to prevent directory traversal
  */
 export function sanitizeFilename(filename: string): string {
-  if (typeof filename !== 'string') return '';
+  if (typeof filename !== "string") {
+    return "";
+  }
   
   return filename
-    .replace(/[\/\\]/g, '') // Remove path separators
-    .replace(/\.\./g, '')   // Remove parent directory references
-    .replace(/[<>:"|?*]/g, '') // Remove invalid filename characters
+    .replace(/[\/\\]/g, "") // Remove path separators
+    .replace(/\.\./g, "")   // Remove parent directory references
+    .replace(/[<>:"|?*]/g, "") // Remove invalid filename characters
     .trim();
 }
 
@@ -149,13 +163,15 @@ export function sanitizeFilename(filename: string): string {
  * Note: This is NOT a replacement for parameterized queries!
  */
 export function sanitizeSqlInput(input: string): string {
-  if (typeof input !== 'string') return '';
+  if (typeof input !== "string") {
+    return "";
+  }
   
   return input
-    .replace(/['";]/g, '') // Remove quotes and semicolons
-    .replace(/--/g, '')    // Remove SQL comments
-    .replace(/\/\*/g, '')  // Remove multi-line comment start
-    .replace(/\*\//g, '')  // Remove multi-line comment end
+    .replace(/['";]/g, "") // Remove quotes and semicolons
+    .replace(/--/g, "")    // Remove SQL comments
+    .replace(/\/\*/g, "")  // Remove multi-line comment start
+    .replace(/\*\//g, "")  // Remove multi-line comment end
     .trim();
 }
 
@@ -171,7 +187,9 @@ export function createSafeText(text: string): string {
  * Check if a string contains potential XSS patterns
  */
 export function containsXss(input: string): boolean {
-  if (typeof input !== 'string') return false;
+  if (typeof input !== "string") {
+    return false;
+  }
   
   const xssPatterns = [
     /<script/i,

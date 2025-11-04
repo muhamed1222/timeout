@@ -1,6 +1,6 @@
-import { register, Counter, Histogram, Gauge, collectDefaultMetrics } from 'prom-client';
-import type { Request, Response, NextFunction } from 'express';
-import { logger } from './logger.js';
+import { register, Counter, Histogram, Gauge, collectDefaultMetrics } from "prom-client";
+import type { Request, Response, NextFunction } from "express";
+import { logger } from "./logger.js";
 
 // Re-export for use in other modules
 export { Counter, Histogram, Gauge };
@@ -11,119 +11,119 @@ export { Counter, Histogram, Gauge };
 
 // Collect default metrics (CPU, memory, etc.)
 collectDefaultMetrics({
-  prefix: 'shiftmanager_',
+  prefix: "shiftmanager_",
   gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5],
 });
 
 // HTTP Metrics
 export const httpRequestDuration = new Histogram({
-  name: 'shiftmanager_http_request_duration_seconds',
-  help: 'Duration of HTTP requests in seconds',
-  labelNames: ['method', 'route', 'status_code'],
+  name: "shiftmanager_http_request_duration_seconds",
+  help: "Duration of HTTP requests in seconds",
+  labelNames: ["method", "route", "status_code"],
   buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
 });
 
 export const httpRequestTotal = new Counter({
-  name: 'shiftmanager_http_requests_total',
-  help: 'Total number of HTTP requests',
-  labelNames: ['method', 'route', 'status_code'],
+  name: "shiftmanager_http_requests_total",
+  help: "Total number of HTTP requests",
+  labelNames: ["method", "route", "status_code"],
 });
 
 export const httpRequestSize = new Histogram({
-  name: 'shiftmanager_http_request_size_bytes',
-  help: 'Size of HTTP requests in bytes',
-  labelNames: ['method', 'route'],
+  name: "shiftmanager_http_request_size_bytes",
+  help: "Size of HTTP requests in bytes",
+  labelNames: ["method", "route"],
   buckets: [100, 1000, 5000, 10000, 50000, 100000, 500000],
 });
 
 export const httpResponseSize = new Histogram({
-  name: 'shiftmanager_http_response_size_bytes',
-  help: 'Size of HTTP responses in bytes',
-  labelNames: ['method', 'route'],
+  name: "shiftmanager_http_response_size_bytes",
+  help: "Size of HTTP responses in bytes",
+  labelNames: ["method", "route"],
   buckets: [100, 1000, 5000, 10000, 50000, 100000, 500000],
 });
 
 // Business Metrics
 export const activeShiftsGauge = new Gauge({
-  name: 'shiftmanager_active_shifts_total',
-  help: 'Number of currently active shifts',
-  labelNames: ['company_id'],
+  name: "shiftmanager_active_shifts_total",
+  help: "Number of currently active shifts",
+  labelNames: ["company_id"],
 });
 
 export const employeesGauge = new Gauge({
-  name: 'shiftmanager_employees_total',
-  help: 'Total number of employees',
-  labelNames: ['company_id', 'status'],
+  name: "shiftmanager_employees_total",
+  help: "Total number of employees",
+  labelNames: ["company_id", "status"],
 });
 
 export const violationsCounter = new Counter({
-  name: 'shiftmanager_violations_detected_total',
-  help: 'Total number of violations detected',
-  labelNames: ['type', 'severity', 'source'],
+  name: "shiftmanager_violations_detected_total",
+  help: "Total number of violations detected",
+  labelNames: ["type", "severity", "source"],
 });
 
 export const shiftsCounter = new Counter({
-  name: 'shiftmanager_shifts_total',
-  help: 'Total number of shifts',
-  labelNames: ['status', 'company_id'],
+  name: "shiftmanager_shifts_total",
+  help: "Total number of shifts",
+  labelNames: ["status", "company_id"],
 });
 
 export const monitoringRunsCounter = new Counter({
-  name: 'shiftmanager_monitoring_runs_total',
-  help: 'Total number of monitoring runs',
-  labelNames: ['status'],
+  name: "shiftmanager_monitoring_runs_total",
+  help: "Total number of monitoring runs",
+  labelNames: ["status"],
 });
 
 export const monitoringDuration = new Histogram({
-  name: 'shiftmanager_monitoring_duration_seconds',
-  help: 'Duration of monitoring runs in seconds',
+  name: "shiftmanager_monitoring_duration_seconds",
+  help: "Duration of monitoring runs in seconds",
   buckets: [1, 5, 10, 30, 60, 120],
 });
 
 // Cache Metrics
 export const cacheHits = new Counter({
-  name: 'shiftmanager_cache_hits_total',
-  help: 'Total number of cache hits',
-  labelNames: ['key_prefix'],
+  name: "shiftmanager_cache_hits_total",
+  help: "Total number of cache hits",
+  labelNames: ["key_prefix"],
 });
 
 export const cacheMisses = new Counter({
-  name: 'shiftmanager_cache_misses_total',
-  help: 'Total number of cache misses',
-  labelNames: ['key_prefix'],
+  name: "shiftmanager_cache_misses_total",
+  help: "Total number of cache misses",
+  labelNames: ["key_prefix"],
 });
 
 export const cacheSize = new Gauge({
-  name: 'shiftmanager_cache_size_bytes',
-  help: 'Size of cache in bytes',
+  name: "shiftmanager_cache_size_bytes",
+  help: "Size of cache in bytes",
 });
 
 // Database Metrics
 export const databaseQueryDuration = new Histogram({
-  name: 'shiftmanager_database_query_duration_seconds',
-  help: 'Duration of database queries in seconds',
-  labelNames: ['operation', 'table'],
+  name: "shiftmanager_database_query_duration_seconds",
+  help: "Duration of database queries in seconds",
+  labelNames: ["operation", "table"],
   buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5],
 });
 
 export const databaseConnections = new Gauge({
-  name: 'shiftmanager_database_connections',
-  help: 'Number of active database connections',
-  labelNames: ['state'],
+  name: "shiftmanager_database_connections",
+  help: "Number of active database connections",
+  labelNames: ["state"],
 });
 
 // Background Jobs Metrics
 export const backgroundJobsDuration = new Histogram({
-  name: 'shiftmanager_background_jobs_duration_seconds',
-  help: 'Duration of background jobs in seconds',
-  labelNames: ['job_name'],
+  name: "shiftmanager_background_jobs_duration_seconds",
+  help: "Duration of background jobs in seconds",
+  labelNames: ["job_name"],
   buckets: [1, 5, 10, 30, 60, 300, 600],
 });
 
 export const backgroundJobsTotal = new Counter({
-  name: 'shiftmanager_background_jobs_total',
-  help: 'Total number of background jobs executed',
-  labelNames: ['job_name', 'status'],
+  name: "shiftmanager_background_jobs_total",
+  help: "Total number of background jobs executed",
+  labelNames: ["job_name", "status"],
 });
 
 /**
@@ -134,13 +134,13 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
   const route = req.route?.path || req.path;
   
   // Track request size
-  const requestSize = parseInt(req.get('content-length') || '0', 10);
+  const requestSize = parseInt(req.get("content-length") || "0", 10);
   if (requestSize > 0) {
     httpRequestSize.labels(req.method, route).observe(requestSize);
   }
   
   // Track response
-  res.on('finish', () => {
+  res.on("finish", () => {
     const duration = (Date.now() - start) / 1000;
     const statusCode = res.statusCode.toString();
     
@@ -149,7 +149,7 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
     httpRequestTotal.labels(req.method, route, statusCode).inc();
     
     // Track response size
-    const responseSize = parseInt(res.get('content-length') || '0', 10);
+    const responseSize = parseInt(res.get("content-length") || "0", 10);
     if (responseSize > 0) {
       httpResponseSize.labels(req.method, route).observe(responseSize);
     }
@@ -164,7 +164,7 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
 export async function updateBusinessMetrics(): Promise<void> {
   try {
     // Import repositories dynamically to avoid circular dependencies
-    const { repositories } = await import('../repositories/index.js');
+    const { repositories } = await import("../repositories/index.js");
     
     // Get all companies
     const companies = await repositories.company.findAll();
@@ -192,9 +192,9 @@ export async function updateBusinessMetrics(): Promise<void> {
       }
     }
     
-    logger.debug('Business metrics updated successfully');
+    logger.debug("Business metrics updated successfully");
   } catch (error) {
-    logger.error('Error updating business metrics', error);
+    logger.error("Error updating business metrics", error);
   }
 }
 

@@ -9,13 +9,13 @@ const router = Router();
 
 // Create violation rule
 router.post("/", validateBody(createViolationRuleSchema), asyncHandler(async (req, res) => {
-  const created = await repositories.violation.create(req.body as any);
+  const created = await repositories.violation.create(req.body);
   res.json(created);
 }));
 
 // Update violation rule
 router.put("/:id", validateParams(violationRuleIdParamSchema), validateBody(updateViolationRuleSchema), asyncHandler(async (req, res) => {
-  const updated = await repositories.violation.update(req.params.id, req.body as any);
+  const updated = await repositories.violation.update(req.params.id, req.body);
   if (!updated) {
     throw new NotFoundError("Violation rule");
   }

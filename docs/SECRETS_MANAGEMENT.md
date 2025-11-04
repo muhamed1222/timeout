@@ -158,3 +158,5 @@ INFO: Secrets loaded and validated successfully { source: 'AWS Secrets Manager' 
 - [AWS Secrets Manager Guide](https://docs.aws.amazon.com/secretsmanager/)
 - [SECRETS_MANAGEMENT_GUIDE.md](../SECRETS_MANAGEMENT_GUIDE.md) - Полный гайд
 
+
+

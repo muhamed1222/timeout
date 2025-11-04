@@ -5,6 +5,7 @@
 import { shiftMonitor } from "./shiftMonitor.js";
 import { repositories } from "../repositories/index.js";
 import { logger } from "../lib/logger.js";
+import { getTelegramBotService } from "./telegramBot.js";
 
 class Scheduler {
   private monitoringInterval: NodeJS.Timeout | null = null;
@@ -105,21 +106,90 @@ class Scheduler {
 
       logger.info(`Sending ${reminders.length} pending reminders...`);
 
+      const botService = getTelegramBotService();
+      if (!botService) {
+        logger.warn("Telegram bot service not available, skipping reminder sending");
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
       for (const reminder of reminders) {
         try {
-          // TODO: Implement actual reminder sending via Telegram
-          // For now just mark as sent
-          await repositories.reminder.markAsSent(reminder.id);
-          logger.info(`Reminder sent: ${reminder.type} to employee ${reminder.employee_id}`);
+          // Проверяем наличие telegram_user_id у сотрудника
+          if (!reminder.employee?.telegram_user_id) {
+            logger.debug(`Employee ${reminder.employee_id} has no telegram_user_id, skipping reminder`, {
+              reminderId: reminder.id,
+              employeeId: reminder.employee_id,
+            });
+            // Пропускаем напоминание, но не помечаем как отправленное
+            continue;
+          }
+
+          // Преобразуем telegram_user_id в number (chat_id)
+          const chatId = parseInt(reminder.employee.telegram_user_id, 10);
+          if (isNaN(chatId)) {
+            logger.warn(`Invalid telegram_user_id format for employee ${reminder.employee_id}`, {
+              reminderId: reminder.id,
+              telegramUserId: reminder.employee.telegram_user_id,
+            });
+            errorCount++;
+            continue;
+          }
+
+          // Формируем сообщение на основе типа напоминания
+          const message = this.formatReminderMessage(reminder.type, reminder.employee.full_name);
+
+          // Отправляем сообщение через Telegram
+          const sent = await botService.sendMessage(chatId, message);
+          
+          if (sent) {
+            // Помечаем как отправленное только если отправка успешна
+            await repositories.reminder.markAsSent(reminder.id);
+            successCount++;
+            logger.info(`Reminder sent successfully: ${reminder.type} to employee ${reminder.employee.full_name} (${reminder.employee_id})`, {
+              reminderId: reminder.id,
+              chatId,
+              type: reminder.type,
+            });
+          } else {
+            errorCount++;
+            logger.error(`Failed to send reminder ${reminder.id} via Telegram`, {
+              reminderId: reminder.id,
+              employeeId: reminder.employee_id,
+              chatId,
+              type: reminder.type,
+            });
+          }
         } catch (error) {
-          logger.error(`Failed to send reminder ${reminder.id}`, error);
+          errorCount++;
+          logger.error(`Error sending reminder ${reminder.id}`, error, {
+            reminderId: reminder.id,
+            employeeId: reminder.employee_id,
+            type: reminder.type,
+          });
         }
       }
 
-      logger.info(`Sent ${reminders.length} reminders`);
+      logger.info(`Reminders sending completed: ${successCount} sent, ${errorCount} failed out of ${reminders.length} total`);
     } catch (error) {
       logger.error("Error sending pending reminders", error);
     }
+  }
+
+  /**
+   * Форматирует сообщение напоминания на основе типа
+   */
+  private formatReminderMessage(type: string, employeeName: string): string {
+    const messages: Record<string, string> = {
+      "shift_start": `🔔 Напоминание: ${employeeName}, пора начинать смену!`,
+      "break_end": `🔔 Напоминание: ${employeeName}, пора заканчивать перерыв!`,
+      "shift_end": `🔔 Напоминание: ${employeeName}, пора завершать смену!`,
+      "custom": `🔔 Напоминание для ${employeeName}`,
+    };
+
+    return messages[type] || messages["custom"];
   }
 
   /**

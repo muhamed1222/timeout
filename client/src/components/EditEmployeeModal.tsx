@@ -54,9 +54,9 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
   // Update form when employee changes
   useEffect(() => {
     if (employee) {
-      const nameParts = employee.full_name.split(' ');
+      const nameParts = employee.full_name.split(" ");
       setFirstName(nameParts[0] || "");
-      setLastName(nameParts.slice(1).join(' ') || "");
+      setLastName(nameParts.slice(1).join(" ") || "");
       setPosition(employee.position);
       
       // Restore saved avatar or photo
@@ -80,10 +80,42 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
 
   const updateEmployeeMutation = useMutation({
     mutationFn: async (data: { full_name: string; position: string; photo?: File; avatarId?: number | null; clearPhoto?: boolean }) => {
-      if (!employee) return;
+      if (!employee) {
+        return;
+      }
       
-      // TODO: Implement photo upload endpoint
-      // For now, only send JSON data (photo upload will be implemented separately)
+      // If photo is provided, upload it first
+      let photoUrl: string | null = null;
+      if (data.photo) {
+        // Convert file to base64
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(data.photo!);
+        });
+
+        // Upload photo
+        const photoResponse = await fetch(`/api/employees/${employee.id}/photo`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ image: base64 }),
+        });
+
+        if (!photoResponse.ok) {
+          const errorData = await photoResponse.json();
+          throw new Error(errorData.error?.message || "Failed to upload photo");
+        }
+
+        const photoData = await photoResponse.json();
+        photoUrl = photoData.photo_url;
+      }
+
+      // Update employee data
       const body: { full_name: string; position: string; avatar_id?: number | null; photo_url?: string | null } = {
         full_name: data.full_name,
         position: data.position,
@@ -92,31 +124,29 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
       // Always include avatar_id - null if not selected, number if selected
       body.avatar_id = data.avatarId ?? null;
 
-      // Explicitly clear photo URL when requested (e.g., removing uploaded photo or switching to template avatar)
-      if (data.clearPhoto || data.avatarId === null) {
+      // Set photo_url if uploaded or clear it if requested
+      if (photoUrl) {
+        body.photo_url = photoUrl;
+      } else if (data.clearPhoto || data.avatarId === null) {
         body.photo_url = null;
       }
-      
-      console.log('Sending update request:', body);
       
       const response = await fetch(`/api/employees/${employee.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(body),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Update failed:', errorData);
         throw new Error(errorData.error || "Ошибка обновления сотрудника");
       }
 
       const result = await response.json();
-      console.log('Update response:', result);
       return result;
     },
     onSuccess: (data) => {
-      console.log('Update successful, received data:', data);
       
       // Ensure data has correct avatar fields
       const updatedData = {
@@ -130,13 +160,15 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
         queryClient.setQueriesData(
           { queryKey: ["/api/companies", companyId, "employees"] },
           (old: any) => {
-            if (!old || !Array.isArray(old)) return old;
+            if (!old || !Array.isArray(old)) {
+              return old;
+            }
             return old.map((emp: any) => 
               emp.id === employee.id 
                 ? { ...emp, ...updatedData }
-                : emp
+                : emp,
             );
-          }
+          },
         );
         
         // Also update individual employee cache
@@ -184,7 +216,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
         return;
       }
       
-      if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith("image/")) {
         toast({
           title: "Ошибка",
           description: "Выберите изображение",
@@ -207,7 +239,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
     setPhotoFile(null);
     setSelectedAvatarId(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -216,19 +248,19 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
     setPhoto(null);
     setPhotoFile(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
   const getCurrentAvatar = () => {
     if (photo) {
-      return { type: 'photo' as const, src: photo };
+      return { type: "photo" as const, src: photo };
     }
     if (selectedAvatarId) {
       const avatar = TEMPLATE_AVATARS.find(a => a.id === selectedAvatarId);
-      return { type: 'template' as const, avatar };
+      return { type: "template" as const, avatar };
     }
-    return { type: 'initials' as const };
+    return { type: "initials" as const };
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -289,7 +321,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
             <div className="relative">
               {(() => {
                 const currentAvatar = getCurrentAvatar();
-                if (currentAvatar.type === 'photo') {
+                if (currentAvatar.type === "photo") {
                   return (
                     <div className="relative">
                       <img
@@ -307,7 +339,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
                     </div>
                   );
                 }
-                if (currentAvatar.type === 'template') {
+                if (currentAvatar.type === "template") {
                   return (
                     <div className="relative">
                       <img
@@ -317,19 +349,21 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
                         onError={(e) => {
                           // Fallback to initials if image fails to load
                           const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const fallback = target.parentElement?.querySelector('.avatar-fallback') as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
+                          target.style.display = "none";
+                          const fallback = target.parentElement?.querySelector(".avatar-fallback") as HTMLElement;
+                          if (fallback) {
+                            fallback.style.display = "flex";
+                          }
                         }}
                       />
                       <div
                         className="avatar-fallback size-[80px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-2xl hidden"
                       >
                         {employee && employee.full_name
-                          .split(' ')
+                          .split(" ")
                           .map(n => n[0])
                           .slice(0, 2)
-                          .join('')
+                          .join("")
                           .toUpperCase()}
                       </div>
                       <button
@@ -347,10 +381,10 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
                     {employee && (
                       <>
                         {employee.full_name
-                          .split(' ')
+                          .split(" ")
                           .map(n => n[0])
                           .slice(0, 2)
-                          .join('')
+                          .join("")
                           .toUpperCase()}
                         <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <Upload className="w-6 h-6 text-white" />
@@ -392,8 +426,8 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
                       onClick={() => handleSelectAvatar(avatar.id)}
                       className={`size-14 rounded-full overflow-hidden transition-all relative ${
                         selectedAvatarId === avatar.id
-                          ? 'ring-2 ring-[#e16546] ring-offset-2 ring-offset-white scale-105'
-                          : 'hover:scale-105 hover:ring-2 hover:ring-[#eeeeee]'
+                          ? "ring-2 ring-[#e16546] ring-offset-2 ring-offset-white scale-105"
+                          : "hover:scale-105 hover:ring-2 hover:ring-[#eeeeee]"
                       }`}
                     >
                       <img
@@ -403,10 +437,10 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
                         onError={(e) => {
                           // Show placeholder if image fails to load
                           const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
+                          target.style.display = "none";
                           const parent = target.parentElement;
                           if (parent) {
-                            parent.classList.add('bg-[#f8f8f8]');
+                            parent.classList.add("bg-[#f8f8f8]");
                             parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-xs text-[#959595]">?</div>';
                           }
                         }}

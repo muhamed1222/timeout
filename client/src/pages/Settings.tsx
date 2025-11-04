@@ -108,7 +108,7 @@ const weekDays = [
 ];
 
 // LocalStorage helpers
-const SETTINGS_KEY = 'user-settings';
+const SETTINGS_KEY = "user-settings";
 
 function getStoredSettings(): UserSettings {
   try {
@@ -117,11 +117,11 @@ function getStoredSettings(): UserSettings {
       return JSON.parse(stored);
     }
   } catch (error) {
-    console.error('Error loading settings:', error);
+    console.error("Error loading settings:", error);
   }
   return {
     notifications: true,
-    language: 'ru',
+    language: "ru",
     emailNotifications: true,
     desktopNotifications: false,
   };
@@ -131,7 +131,7 @@ function saveSettings(settings: UserSettings) {
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   } catch (error) {
-    console.error('Error saving settings:', error);
+    console.error("Error saving settings:", error);
   }
 }
 
@@ -169,15 +169,15 @@ export default function Settings() {
 
   // Fetch company data
   const { data: company, isLoading: companyLoading } = useQuery<Company>({
-    queryKey: ['/api/companies', companyId],
+    queryKey: ["/api/companies", companyId],
     enabled: !!companyId,
   });
 
   // Fetch violation rules
   const { data: violationRules = [], isLoading: rulesLoading } = useQuery<ViolationRule[]>({
-    queryKey: ['/api/companies', companyId, 'violation-rules'],
+    queryKey: ["/api/companies", companyId, "violation-rules"],
     queryFn: async () => {
-      const response = await apiRequest('GET', `/api/companies/${companyId}/violation-rules`);
+      const response = await apiRequest("GET", `/api/companies/${companyId}/violation-rules`);
       return response.json();
     },
     enabled: !!companyId,
@@ -217,7 +217,7 @@ export default function Settings() {
     setHasChanges(false);
     toast({
       title: "Настройки сохранены",
-      description: "Ваши настройки успешно обновлены"
+      description: "Ваши настройки успешно обновлены",
     });
   };
 
@@ -226,22 +226,22 @@ export default function Settings() {
     resolver: zodResolver(companyFormSchema),
     values: {
       name: company?.name || "",
-      tz: company?.tz || "Europe/Moscow"
-    }
+      tz: company?.tz || "Europe/Moscow",
+    },
   });
 
   const updateCompanyMutation = useMutation({
     mutationFn: async (data: CompanyFormValues) => {
-      const response = await apiRequest('PUT', `/api/companies/${companyId}`, data);
+      const response = await apiRequest("PUT", `/api/companies/${companyId}`, data);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId] });
       toast({ title: "Настройки сохранены", description: "Настройки компании успешно обновлены" });
     },
     onError: () => {
       toast({ title: "Ошибка", description: "Не удалось обновить настройки", variant: "destructive" });
-    }
+    },
   });
 
   // Violation form
@@ -253,66 +253,74 @@ export default function Settings() {
       penalty_percent: 5,
       auto_detectable: false,
       is_active: true,
-    }
+    },
   });
 
   const createViolationRuleMutation = useMutation({
     mutationFn: async (data: ViolationRuleFormValues) => {
-      if (!companyId) throw new Error('Не определена компания');
-      const response = await apiRequest('POST', `/api/violation-rules`, { 
+      if (!companyId) {
+        throw new Error("Не определена компания");
+      }
+      const response = await apiRequest("POST", "/api/violation-rules", { 
         ...data, 
         penalty_percent: String(data.penalty_percent),
-        company_id: companyId 
+        company_id: companyId, 
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || 'Не удалось создать правило');
+      if (!response.ok) {
+        throw new Error(payload?.error || "Не удалось создать правило");
+      }
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'violation-rules'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "violation-rules"] });
       toast({ title: "Правило создано", description: "Новое правило нарушения успешно добавлено" });
       setIsViolationModalOpen(false);
     },
     onError: (err: Error) => {
-      toast({ title: 'Ошибка', description: err?.message || 'Не удалось создать правило нарушения', variant: 'destructive' });
-    }
+      toast({ title: "Ошибка", description: err?.message || "Не удалось создать правило нарушения", variant: "destructive" });
+    },
   });
 
   const updateViolationRuleMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: ViolationRuleFormValues }) => {
-      const response = await apiRequest('PUT', `/api/violation-rules/${id}`, {
+      const response = await apiRequest("PUT", `/api/violation-rules/${id}`, {
         ...data,
-        penalty_percent: String(data.penalty_percent)
+        penalty_percent: String(data.penalty_percent),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || 'Не удалось обновить правило');
+      if (!response.ok) {
+        throw new Error(payload?.error || "Не удалось обновить правило");
+      }
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'violation-rules'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "violation-rules"] });
       toast({ title: "Правило обновлено", description: "Правило нарушения успешно обновлено" });
       setIsViolationModalOpen(false);
       setEditingRule(null);
     },
     onError: (err: Error) => {
-      toast({ title: 'Ошибка', description: err?.message || 'Не удалось обновить правило нарушения', variant: 'destructive' });
-    }
+      toast({ title: "Ошибка", description: err?.message || "Не удалось обновить правило нарушения", variant: "destructive" });
+    },
   });
 
   const deleteViolationRuleMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest('DELETE', `/api/violation-rules/${id}`);
+      const response = await apiRequest("DELETE", `/api/violation-rules/${id}`);
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || 'Не удалось удалить правило');
+      if (!response.ok) {
+        throw new Error(payload?.error || "Не удалось удалить правило");
+      }
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/companies', companyId, 'violation-rules'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "violation-rules"] });
       toast({ title: "Правило удалено", description: "Правило нарушения успешно удалено" });
     },
     onError: (err: Error) => {
-      toast({ title: 'Ошибка', description: err?.message || 'Не удалось удалить правило нарушения', variant: 'destructive' });
-    }
+      toast({ title: "Ошибка", description: err?.message || "Не удалось удалить правило нарушения", variant: "destructive" });
+    },
   });
 
   // Handlers
@@ -323,12 +331,14 @@ export default function Settings() {
   const onViolationSubmit = (data: ViolationRuleFormValues) => {
     const normalized = data.code.trim().toLowerCase();
     const exists = violationRules.some((r) => {
-      if (editingRule && r.id === editingRule.id) return false;
+      if (editingRule && r.id === editingRule.id) {
+        return false;
+      }
       return r.code.trim().toLowerCase() === normalized;
     });
     if (exists) {
-      violationForm.setError('code', { type: 'manual', message: 'Код уже используется' });
-      toast({ title: 'Ошибка', description: 'Код правила должен быть уникальным', variant: 'destructive' });
+      violationForm.setError("code", { type: "manual", message: "Код уже используется" });
+      toast({ title: "Ошибка", description: "Код правила должен быть уникальным", variant: "destructive" });
       return;
     }
     if (editingRule) {
@@ -586,8 +596,8 @@ export default function Settings() {
   };
 
   // Retry hooks
-  const companyRetry = useRetry(['/api/companies', companyId]);
-  const rulesRetry = useRetry(['/api/companies', companyId, 'violation-rules']);
+  const companyRetry = useRetry(["/api/companies", companyId]);
+  const rulesRetry = useRetry(["/api/companies", companyId, "violation-rules"]);
 
   // Loading state
   if (authLoading || companyLoading) {
@@ -635,15 +645,15 @@ export default function Settings() {
         {/* General Tab (Profile + Company) */}
         <TabsContent value="general" className="flex flex-col gap-4">
           <div className="bg-[#f8f8f8] rounded-[20px] p-4 flex flex-col gap-4">
-              <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4">
               <div className="size-[50px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium">
-                {user.email?.charAt(0).toUpperCase() || 'U'}
+                {user.email?.charAt(0).toUpperCase() || "U"}
               </div>
-                <div>
+              <div>
                 <h3 className="text-base font-semibold text-black leading-[1.2]">Профиль пользователя</h3>
                 <p className="text-sm text-[#959595] leading-[1.2]">{user.email}</p>
-                </div>
               </div>
+            </div>
             <div className="flex flex-col gap-3 pt-3 border-t border-[#eeeeee]">
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-[#959595] leading-[1.2]">Email</label>
@@ -657,19 +667,19 @@ export default function Settings() {
           </div>
 
           <div className="bg-[#f8f8f8] rounded-[20px] p-4 flex flex-col gap-4">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <Globe className="w-5 h-5 text-[#e16546]" />
-                <div>
+              <div>
                 <h3 className="text-base font-semibold text-black leading-[1.2]">Язык интерфейса</h3>
                 <p className="text-sm text-[#959595] leading-[1.2]">Выберите язык приложения</p>
-                </div>
               </div>
+            </div>
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1">
                 <Label className="text-sm font-medium text-black leading-[1.2]">Язык</Label>
                 <Select 
                   value={userSettings.language} 
-                  onValueChange={(value) => updateUserSetting('language', value)}
+                  onValueChange={(value) => updateUserSetting("language", value)}
                 >
                   <SelectTrigger className="bg-white border-0 rounded-[12px] h-auto px-[14px] py-3" data-testid="select-language">
                     <SelectValue />
@@ -680,97 +690,97 @@ export default function Settings() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-[#959595] leading-[1.2]">
-                  {userSettings.language === 'en' && 'English translation will be available in the next version'}
-                  {userSettings.language === 'ru' && 'Перевод на английский будет доступен в следующей версии'}
+                  {userSettings.language === "en" && "English translation will be available in the next version"}
+                  {userSettings.language === "ru" && "Перевод на английский будет доступен в следующей версии"}
                 </p>
               </div>
             </div>
           </div>
           <div className="bg-[#f8f8f8] rounded-[20px] p-4 flex flex-col gap-4">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <Building2 className="w-5 h-5 text-[#e16546]" />
-                <div>
+              <div>
                 <h3 className="text-base font-semibold text-black leading-[1.2]">Основная информация</h3>
                 <p className="text-sm text-[#959595] leading-[1.2]">Название и базовые настройки компании</p>
-                </div>
               </div>
-              <Form {...companyForm}>
+            </div>
+            <Form {...companyForm}>
               <form onSubmit={companyForm.handleSubmit(onCompanySubmit)} className="flex flex-col gap-4">
-                  <FormField
-                    control={companyForm.control}
-                    name="name"
-                    render={({ field }) => (
+                <FormField
+                  control={companyForm.control}
+                  name="name"
+                  render={({ field }) => (
                     <FormItem className="flex flex-col gap-1">
                       <FormLabel className="text-sm font-medium text-black leading-[1.2]">Название компании</FormLabel>
-                        <FormControl>
+                      <FormControl>
                         <Input 
                           placeholder="ООО Ромашка" 
                           {...field} 
                           className="bg-white border-0 rounded-[12px] px-[14px] py-3 focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                           data-testid="input-company-name" 
                         />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                   
-                  <FormField
-                    control={companyForm.control}
-                    name="tz"
-                    render={({ field }) => (
+                <FormField
+                  control={companyForm.control}
+                  name="tz"
+                  render={({ field }) => (
                     <FormItem className="flex flex-col gap-1">
                       <FormLabel className="text-sm font-medium text-black leading-[1.2]">Часовой пояс компании</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
                           <SelectTrigger className="bg-white border-0 rounded-[12px] h-auto px-[14px] py-3" data-testid="select-company-timezone">
-                              <SelectValue placeholder="Выберите часовой пояс" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Europe/Moscow">Москва (UTC+3)</SelectItem>
-                            <SelectItem value="Europe/Samara">Самара (UTC+4)</SelectItem>
-                            <SelectItem value="Asia/Yekaterinburg">Екатеринбург (UTC+5)</SelectItem>
-                            <SelectItem value="Asia/Novosibirsk">Новосибирск (UTC+7)</SelectItem>
-                            <SelectItem value="Asia/Vladivostok">Владивосток (UTC+10)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                            <SelectValue placeholder="Выберите часовой пояс" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Europe/Moscow">Москва (UTC+3)</SelectItem>
+                          <SelectItem value="Europe/Samara">Самара (UTC+4)</SelectItem>
+                          <SelectItem value="Asia/Yekaterinburg">Екатеринбург (UTC+5)</SelectItem>
+                          <SelectItem value="Asia/Novosibirsk">Новосибирск (UTC+7)</SelectItem>
+                          <SelectItem value="Asia/Vladivostok">Владивосток (UTC+10)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="flex flex-col gap-1 pt-3 border-t border-[#eeeeee]">
                   <Label className="text-sm text-[#959595] leading-[1.2]">ID компании</Label>
                   <p className="text-sm text-[#565656] font-mono leading-[1.2]">{company?.id}</p>
-                  </div>
+                </div>
 
                 <div className="flex gap-2 pt-3">
                   <button
-                      type="button"
-                      onClick={() => companyForm.reset()}
+                    type="button"
+                    onClick={() => companyForm.reset()}
                     className="bg-[#f8f8f8] px-[17px] py-3 rounded-[40px] text-sm text-black leading-[1.2] hover:bg-[#eeeeee] transition-colors"
-                    >
+                  >
                       Отмена
                   </button>
                   <button
-                      type="submit"
-                      disabled={updateCompanyMutation.isPending}
+                    type="submit"
+                    disabled={updateCompanyMutation.isPending}
                     className="bg-[#e16546] px-[17px] py-3 rounded-[40px] text-sm font-medium text-white leading-[1.2] hover:bg-[#d15536] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      data-testid="button-save-company"
-                    >
+                    data-testid="button-save-company"
+                  >
                     {updateCompanyMutation.isPending ? (
                       <>
                         <Loader2 className="inline mr-2 h-4 w-4 animate-spin" />
                         Сохранение...
                       </>
                     ) : (
-                      'Сохранить изменения'
+                      "Сохранить изменения"
                     )}
                   </button>
-                  </div>
-                </form>
-              </Form>
+                </div>
+              </form>
+            </Form>
           </div>
         </TabsContent>
 
@@ -779,7 +789,7 @@ export default function Settings() {
           {authLoading || templatesLoading ? (
             <div className="flex items-center justify-center h-[50vh]">
               <Loader2 className="w-8 h-8 animate-spin" />
-                </div>
+            </div>
           ) : (
             <>
               <div className="flex gap-2">
@@ -806,7 +816,7 @@ export default function Settings() {
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
-              </div>
+                      </div>
                       <div className="flex flex-col gap-5">
                         <div className="flex flex-col gap-3">
                           <label className="text-sm font-medium text-black leading-[1.2]">Период генерации</label>
@@ -883,7 +893,7 @@ export default function Settings() {
                               Генерация...
                             </>
                           ) : (
-                            'Сгенерировать'
+                            "Сгенерировать"
                           )}
                         </button>
                       </div>
@@ -1168,7 +1178,7 @@ export default function Settings() {
                                   Назначение...
                                 </>
                               ) : (
-                                'Назначить'
+                                "Назначить"
                               )}
                             </button>
                           </div>
@@ -1277,8 +1287,8 @@ export default function Settings() {
                                   onClick={() => toggleWorkday(day.value)}
                                   className={`px-[14px] py-[7px] rounded-lg text-sm leading-[1.2] transition-colors ${
                                     selectedWorkdays.includes(day.value)
-                                      ? 'bg-[#e16546] text-white'
-                                      : 'bg-[#f8f8f8] text-black'
+                                      ? "bg-[#e16546] text-white"
+                                      : "bg-[#f8f8f8] text-black"
                                   }`}
                                 >
                                   {day.label}
@@ -1396,14 +1406,14 @@ export default function Settings() {
         {/* Violations Tab */}
         <TabsContent value="violations" className="flex flex-col gap-4">
           <div className="bg-[#f8f8f8] rounded-[20px] p-4 flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-[#e16546]" />
-                  <div>
+                <div>
                   <h3 className="text-base font-semibold text-black leading-[1.2]">Правила нарушений</h3>
                   <p className="text-sm text-[#959595] leading-[1.2]">Настройка штрафов за нарушения дисциплины</p>
-                  </div>
                 </div>
+              </div>
               <button 
                 onClick={handleAddRule} 
                 disabled={rulesLoading}
@@ -1412,7 +1422,7 @@ export default function Settings() {
                 <Plus className="w-4 h-4" />
                   Добавить правило
               </button>
-              </div>
+            </div>
             <div>
               {rulesLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -1454,8 +1464,8 @@ export default function Settings() {
                         <TableCell>
                           <div className={`px-[10px] py-1 rounded-[20px] text-xs font-medium inline-block ${
                             rule.auto_detectable 
-                              ? 'bg-[rgba(52,199,89,0.08)] text-[#34c759]' 
-                              : 'bg-[#f8f8f8] text-[#565656]'
+                              ? "bg-[rgba(52,199,89,0.08)] text-[#34c759]" 
+                              : "bg-[#f8f8f8] text-[#565656]"
                           }`}>
                             {rule.auto_detectable ? "✅ Да" : "❌ Нет"}
                           </div>
@@ -1483,7 +1493,7 @@ export default function Settings() {
                               }
                             />
                             <span className="text-sm text-[#565656]">
-                              {rule.is_active ? 'Включено' : 'Выключено'}
+                              {rule.is_active ? "Включено" : "Выключено"}
                             </span>
                           </div>
                         </TableCell>
@@ -1517,13 +1527,13 @@ export default function Settings() {
         {/* Notifications Tab */}
         <TabsContent value="notifications" className="flex flex-col gap-4">
           <div className="bg-[#f8f8f8] rounded-[20px] p-4 flex flex-col gap-4">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <Bell className="w-5 h-5 text-[#e16546]" />
-                <div>
+              <div>
                 <h3 className="text-base font-semibold text-black leading-[1.2]">Уведомления</h3>
                 <p className="text-sm text-[#959595] leading-[1.2]">Настройка оповещений</p>
-                </div>
               </div>
+            </div>
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1">
@@ -1534,7 +1544,7 @@ export default function Settings() {
                 </div>
                 <Switch
                   checked={userSettings.notifications}
-                  onCheckedChange={(checked) => updateUserSetting('notifications', checked)}
+                  onCheckedChange={(checked) => updateUserSetting("notifications", checked)}
                   data-testid="switch-notifications"
                 />
               </div>
@@ -1547,7 +1557,7 @@ export default function Settings() {
                 </div>
                 <Switch
                   checked={userSettings.emailNotifications}
-                  onCheckedChange={(checked) => updateUserSetting('emailNotifications', checked)}
+                  onCheckedChange={(checked) => updateUserSetting("emailNotifications", checked)}
                   data-testid="switch-email-notifications"
                 />
               </div>
@@ -1560,7 +1570,7 @@ export default function Settings() {
                 </div>
                 <Switch
                   checked={userSettings.desktopNotifications}
-                  onCheckedChange={(checked) => updateUserSetting('desktopNotifications', checked)}
+                  onCheckedChange={(checked) => updateUserSetting("desktopNotifications", checked)}
                   data-testid="switch-desktop-notifications"
                 />
               </div>
@@ -1603,8 +1613,8 @@ export default function Settings() {
             <div className="flex flex-col gap-5">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold text-[#1a1a1a] leading-[1.2]">
-              {editingRule ? "Редактировать правило" : "Добавить правило нарушения"}
-            </h3>
+                  {editingRule ? "Редактировать правило" : "Добавить правило нарушения"}
+                </h3>
                 <button
                   onClick={() => {
                     setIsViolationModalOpen(false);
@@ -1617,121 +1627,121 @@ export default function Settings() {
                 </button>
               </div>
 
-            <Form {...violationForm}>
+              <Form {...violationForm}>
                 <form onSubmit={violationForm.handleSubmit(onViolationSubmit)} className="flex flex-col gap-5">
-                <FormField
-                  control={violationForm.control}
-                  name="code"
-                  render={({ field }) => (
+                  <FormField
+                    control={violationForm.control}
+                    name="code"
+                    render={({ field }) => (
                       <FormItem className="flex flex-col gap-1">
                         <FormLabel className="text-sm font-medium text-black leading-[1.2]">Код нарушения</FormLabel>
-                      <FormControl>
+                        <FormControl>
                           <Input 
                             placeholder="late" 
                             {...field} 
                             className="bg-[#f8f8f8] border-0 rounded-[12px] px-[14px] py-3 focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                           />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 
-                <FormField
-                  control={violationForm.control}
-                  name="name"
-                  render={({ field }) => (
+                  <FormField
+                    control={violationForm.control}
+                    name="name"
+                    render={({ field }) => (
                       <FormItem className="flex flex-col gap-1">
                         <FormLabel className="text-sm font-medium text-black leading-[1.2]">Название нарушения</FormLabel>
-                      <FormControl>
+                        <FormControl>
                           <Input 
                             placeholder="Опоздание" 
                             {...field} 
                             className="bg-[#f8f8f8] border-0 rounded-[12px] px-[14px] py-3 focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                           />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 
-                <FormField
-                  control={violationForm.control}
-                  name="penalty_percent"
-                  render={({ field }) => (
+                  <FormField
+                    control={violationForm.control}
+                    name="penalty_percent"
+                    render={({ field }) => (
                       <FormItem className="flex flex-col gap-1">
                         <FormLabel className="text-sm font-medium text-black leading-[1.2]">Штраф (%)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          min="1" 
-                          max="100" 
-                          {...field} 
-                          onChange={(e) => field.onChange(Number(e.target.value))}
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="1" 
+                            max="100" 
+                            {...field} 
+                            onChange={(e) => field.onChange(Number(e.target.value))}
                             className="bg-[#f8f8f8] border-0 rounded-[12px] px-[14px] py-3 focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 
-                <FormField
-                  control={violationForm.control}
-                  name="auto_detectable"
-                  render={({ field }) => (
+                  <FormField
+                    control={violationForm.control}
+                    name="auto_detectable"
+                    render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between bg-[#f8f8f8] rounded-[12px] p-3">
                         <div className="flex flex-col gap-0.5">
                           <FormLabel className="text-sm font-medium text-black leading-[1.2]">Автоматическое определение</FormLabel>
                           <div className="text-sm text-[#959595] leading-[1.2]">
                           Может ли система определить нарушение автоматически
+                          </div>
                         </div>
-                      </div>
-                      <FormControl>
+                        <FormControl>
                           <Switch
-                          checked={field.value}
+                            checked={field.value}
                             onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
                 
-                <FormField
-                  control={violationForm.control}
-                  name="is_active"
-                  render={({ field }) => (
+                  <FormField
+                    control={violationForm.control}
+                    name="is_active"
+                    render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between bg-[#f8f8f8] rounded-[12px] p-3">
                         <div className="flex flex-col gap-0.5">
                           <FormLabel className="text-sm font-medium text-black leading-[1.2]">Активно</FormLabel>
                           <div className="text-sm text-[#959595] leading-[1.2]">
                           Правило активно и применяется к сотрудникам
+                          </div>
                         </div>
-                      </div>
-                      <FormControl>
+                        <FormControl>
                           <Switch
-                          checked={field.value}
+                            checked={field.value}
                             onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
 
                   <div className="flex gap-2">
                     <button
-                    type="button"
-                    onClick={() => {
-                      setIsViolationModalOpen(false);
-                      setEditingRule(null);
-                    }}
+                      type="button"
+                      onClick={() => {
+                        setIsViolationModalOpen(false);
+                        setEditingRule(null);
+                      }}
                       className="bg-[#f8f8f8] px-[17px] py-3 rounded-[40px] text-sm text-black leading-[1.2] hover:bg-[#eeeeee] transition-colors"
-                  >
+                    >
                     Отмена
                     </button>
                     <button
-                    type="submit"
-                    disabled={createViolationRuleMutation.isPending || updateViolationRuleMutation.isPending}
+                      type="submit"
+                      disabled={createViolationRuleMutation.isPending || updateViolationRuleMutation.isPending}
                       className="bg-[#e16546] px-[17px] py-3 rounded-[40px] text-sm font-medium text-white leading-[1.2] hover:bg-[#d15536] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {(createViolationRuleMutation.isPending || updateViolationRuleMutation.isPending) ? (
@@ -1743,9 +1753,9 @@ export default function Settings() {
                         editingRule ? "Сохранить" : "Добавить"
                       )}
                     </button>
-                </div>
-              </form>
-            </Form>
+                  </div>
+                </form>
+              </Form>
             </div>
           </div>
         </div>

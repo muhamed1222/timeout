@@ -1,19 +1,19 @@
 // Компонент списка сотрудников
 
-import React from 'react';
+import React from "react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from '@/components/ui/avatar';
+} from "@/components/ui/avatar";
 import {
   Table,
   TableBody,
@@ -21,10 +21,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Plus, Search, Filter } from 'lucide-react';
-import { Employee } from '@shared/types/entities/employee';
-import { getEmployeeAvatarUrl, getEmployeeInitials } from '@/lib/employeeAvatar';
+} from "@/components/ui/table";
+import { Plus, Search, Filter } from "lucide-react";
+import { Employee } from "@shared/types/entities/employee";
+import { getEmployeeAvatarUrl, getEmployeeInitials } from "@/lib/employeeAvatar";
 
 interface EmployeeListProps {
   employees: Employee[];
@@ -43,27 +43,27 @@ export function EmployeeList({
 }: EmployeeListProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
-    case 'active':
-      return 'bg-green-100 text-green-800';
-    case 'inactive':
-      return 'bg-gray-100 text-gray-800';
-    case 'suspended':
-      return 'bg-red-100 text-red-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "inactive":
+        return "bg-gray-100 text-gray-800";
+      case "suspended":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-    case 'active':
-      return 'Активен';
-    case 'inactive':
-      return 'Неактивен';
-    case 'suspended':
-      return 'Заблокирован';
-    default:
-      return status;
+      case "active":
+        return "Активен";
+      case "inactive":
+        return "Неактивен";
+      case "suspended":
+        return "Заблокирован";
+      default:
+        return status;
     }
   };
 
@@ -122,66 +122,66 @@ export function EmployeeList({
                   const initials = getEmployeeInitials(employee.full_name);
                   
                   return (
-                  <TableRow key={employee.id}>
-                    <TableCell>
-                      <div className='flex items-center gap-3'>
-                        <Avatar>
-                          <AvatarImage src={avatarUrl || undefined} />
-                          <AvatarFallback>
-                            {initials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className='font-medium'>
-                            {employee.full_name}
-                          </div>
-                          <div className='text-sm text-muted-foreground'>
+                    <TableRow key={employee.id}>
+                      <TableCell>
+                        <div className='flex items-center gap-3'>
+                          <Avatar>
+                            <AvatarImage src={avatarUrl || undefined} />
+                            <AvatarFallback>
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className='font-medium'>
+                              {employee.full_name}
+                            </div>
+                            <div className='text-sm text-muted-foreground'>
                             ID: {employee.id.slice(0, 8)}...
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{employee.position}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(employee.status)}>
-                        {getStatusLabel(employee.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {employee.telegram_user_id ? (
-                        <Badge variant='outline'>
-                          @{employee.telegram_user_id}
+                      </TableCell>
+                      <TableCell>{employee.position}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(employee.status)}>
+                          {getStatusLabel(employee.status)}
                         </Badge>
-                      ) : (
-                        <span className='text-muted-foreground'>
+                      </TableCell>
+                      <TableCell>
+                        {employee.telegram_user_id ? (
+                          <Badge variant='outline'>
+                          @{employee.telegram_user_id}
+                          </Badge>
+                        ) : (
+                          <span className='text-muted-foreground'>
                           Не привязан
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(employee.created_at).toLocaleDateString(
-                        'ru-RU'
-                      )}
-                    </TableCell>
-                    <TableCell className='text-right'>
-                      <div className='flex items-center justify-end gap-2'>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          onClick={() => onEditEmployee(employee)}
-                        >
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(employee.created_at).toLocaleDateString(
+                          "ru-RU",
+                        )}
+                      </TableCell>
+                      <TableCell className='text-right'>
+                        <div className='flex items-center justify-end gap-2'>
+                          <Button
+                            variant='outline'
+                            size='sm'
+                            onClick={() => onEditEmployee(employee)}
+                          >
                           Редактировать
-                        </Button>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          onClick={() => onDeleteEmployee(employee.id)}
-                        >
+                          </Button>
+                          <Button
+                            variant='outline'
+                            size='sm'
+                            onClick={() => onDeleteEmployee(employee.id)}
+                          >
                           Удалить
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   );
                 })
               )}

@@ -2,8 +2,8 @@
  * Employee invite validation schemas
  */
 
-import { z } from 'zod';
-import { uuidSchema, dateStringSchema } from './common.schemas.js';
+import { z } from "zod";
+import { uuidSchema, dateStringSchema } from "./common.schemas.js";
 
 /**
  * Create invite schema
@@ -43,4 +43,6 @@ export const acceptInviteSchema = z.object({
 export const inviteIdParamSchema = z.object({
   id: uuidSchema,
 });
+
+
 

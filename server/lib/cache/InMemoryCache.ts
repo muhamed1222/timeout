@@ -1,4 +1,4 @@
-import type { CacheAdapter } from './CacheAdapter.js';
+import type { CacheAdapter } from "./CacheAdapter.js";
 
 interface CacheEntry {
   value: any;

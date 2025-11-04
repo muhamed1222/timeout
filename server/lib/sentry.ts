@@ -9,13 +9,13 @@ import { logger } from "./logger.js";
  */
 export function initSentry(): void {
   const sentryDsn = process.env.SENTRY_DSN;
-  const environment = process.env.NODE_ENV || 'development';
+  const environment = process.env.NODE_ENV || "development";
 
   if (!sentryDsn) {
-    if (environment === 'production') {
-      logger.warn('SENTRY_DSN not set - error tracking disabled in production');
+    if (environment === "production") {
+      logger.warn("SENTRY_DSN not set - error tracking disabled in production");
     } else {
-      logger.debug('SENTRY_DSN not set - running without error tracking');
+      logger.debug("SENTRY_DSN not set - running without error tracking");
     }
     return;
   }
@@ -26,8 +26,8 @@ export function initSentry(): void {
       environment,
       
       // Set sample rates
-      tracesSampleRate: environment === 'production' ? 0.1 : 1.0,
-      profilesSampleRate: environment === 'production' ? 0.1 : 1.0,
+      tracesSampleRate: environment === "production" ? 0.1 : 1.0,
+      profilesSampleRate: environment === "production" ? 0.1 : 1.0,
       
       // Integrations
       integrations: [
@@ -35,7 +35,7 @@ export function initSentry(): void {
       ],
       
       // Release tracking
-      release: process.env.VERCEL_GIT_COMMIT_SHA || process.env.RENDER_GIT_COMMIT || 'development',
+      release: process.env.VERCEL_GIT_COMMIT_SHA || process.env.RENDER_GIT_COMMIT || "development",
       
       // Configure what to send
       beforeSend(event, hint) {
@@ -46,8 +46,8 @@ export function initSentry(): void {
         }
         
         // Don't send errors in development
-        if (environment === 'development') {
-          logger.error('Sentry captured error (not sent in dev)', hint.originalException);
+        if (environment === "development") {
+          logger.error("Sentry captured error (not sent in dev)", hint.originalException);
           return null;
         }
         
@@ -56,20 +56,20 @@ export function initSentry(): void {
       
       // Ignore certain errors
       ignoreErrors: [
-        'ECONNRESET',
-        'ECONNREFUSED',
-        'ETIMEDOUT',
-        'NetworkError',
-        'Non-Error promise rejection',
+        "ECONNRESET",
+        "ECONNREFUSED",
+        "ETIMEDOUT",
+        "NetworkError",
+        "Non-Error promise rejection",
       ],
     });
 
-    logger.info('Sentry initialized successfully', {
+    logger.info("Sentry initialized successfully", {
       environment,
-      tracesSampleRate: environment === 'production' ? 0.1 : 1.0,
+      tracesSampleRate: environment === "production" ? 0.1 : 1.0,
     });
   } catch (error) {
-    logger.error('Failed to initialize Sentry', error);
+    logger.error("Failed to initialize Sentry", error);
   }
 }
 
@@ -92,7 +92,7 @@ export function captureException(error: Error, context?: Record<string, any>): v
 /**
  * Capture a message in Sentry
  */
-export function captureMessage(message: string, level: Sentry.SeverityLevel = 'info'): void {
+export function captureMessage(message: string, level: Sentry.SeverityLevel = "info"): void {
   Sentry.captureMessage(message, level);
 }
 

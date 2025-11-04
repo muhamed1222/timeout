@@ -4,20 +4,20 @@
  * Provides centralized error handling with retry logic and user-friendly messages
  */
 
-import { QueryClient } from '@tanstack/react-query';
-import { toast } from '@/hooks/use-toast';
+import { QueryClient } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 
 /**
  * Error types
  */
 export enum ErrorType {
-  NETWORK = 'NETWORK',
-  VALIDATION = 'VALIDATION',
-  AUTHENTICATION = 'AUTHENTICATION',
-  AUTHORIZATION = 'AUTHORIZATION',
-  NOT_FOUND = 'NOT_FOUND',
-  SERVER = 'SERVER',
-  UNKNOWN = 'UNKNOWN',
+  NETWORK = "NETWORK",
+  VALIDATION = "VALIDATION",
+  AUTHENTICATION = "AUTHENTICATION",
+  AUTHORIZATION = "AUTHORIZATION",
+  NOT_FOUND = "NOT_FOUND",
+  SERVER = "SERVER",
+  UNKNOWN = "UNKNOWN",
 }
 
 /**
@@ -30,7 +30,7 @@ export class AppError extends Error {
 
   constructor(message: string, type: ErrorType, statusCode?: number, details?: unknown) {
     super(message);
-    this.name = 'AppError';
+    this.name = "AppError";
     this.type = type;
     this.statusCode = statusCode;
     this.details = details;
@@ -41,7 +41,7 @@ export class AppError extends Error {
  * Parse API error response
  */
 export async function parseApiError(response: Response): Promise<AppError> {
-  let message = 'Произошла ошибка';
+  let message = "Произошла ошибка";
   let details: unknown;
 
   try {
@@ -58,18 +58,18 @@ export async function parseApiError(response: Response): Promise<AppError> {
   
   if (response.status === 401) {
     type = ErrorType.AUTHENTICATION;
-    message = 'Требуется авторизация';
+    message = "Требуется авторизация";
   } else if (response.status === 403) {
     type = ErrorType.AUTHORIZATION;
-    message = 'Недостаточно прав';
+    message = "Недостаточно прав";
   } else if (response.status === 404) {
     type = ErrorType.NOT_FOUND;
-    message = 'Ресурс не найден';
+    message = "Ресурс не найден";
   } else if (response.status === 422 || response.status === 400) {
     type = ErrorType.VALIDATION;
   } else if (response.status >= 500) {
     type = ErrorType.SERVER;
-    message = 'Ошибка сервера';
+    message = "Ошибка сервера";
   }
 
   return new AppError(message, type, response.status, details);
@@ -85,14 +85,14 @@ export function parseError(error: unknown): AppError {
 
   if (error instanceof Error) {
     // Check if it's a network error
-    if (error.message.includes('fetch') || error.message.includes('network')) {
-      return new AppError('Ошибка сети. Проверьте подключение к интернету.', ErrorType.NETWORK);
+    if (error.message.includes("fetch") || error.message.includes("network")) {
+      return new AppError("Ошибка сети. Проверьте подключение к интернету.", ErrorType.NETWORK);
     }
 
     return new AppError(error.message, ErrorType.UNKNOWN);
   }
 
-  return new AppError('Неизвестная ошибка', ErrorType.UNKNOWN);
+  return new AppError("Неизвестная ошибка", ErrorType.UNKNOWN);
 }
 
 /**
@@ -100,13 +100,13 @@ export function parseError(error: unknown): AppError {
  */
 export function getUserFriendlyMessage(error: AppError): string {
   const messages: Record<ErrorType, string> = {
-    [ErrorType.NETWORK]: 'Проблемы с подключением к интернету',
-    [ErrorType.VALIDATION]: error.message || 'Проверьте введенные данные',
-    [ErrorType.AUTHENTICATION]: 'Необходимо войти в систему',
-    [ErrorType.AUTHORIZATION]: 'У вас нет доступа к этому ресурсу',
-    [ErrorType.NOT_FOUND]: 'Запрашиваемый ресурс не найден',
-    [ErrorType.SERVER]: 'Ошибка сервера. Попробуйте позже.',
-    [ErrorType.UNKNOWN]: 'Что-то пошло не так',
+    [ErrorType.NETWORK]: "Проблемы с подключением к интернету",
+    [ErrorType.VALIDATION]: error.message || "Проверьте введенные данные",
+    [ErrorType.AUTHENTICATION]: "Необходимо войти в систему",
+    [ErrorType.AUTHORIZATION]: "У вас нет доступа к этому ресурсу",
+    [ErrorType.NOT_FOUND]: "Запрашиваемый ресурс не найден",
+    [ErrorType.SERVER]: "Ошибка сервера. Попробуйте позже.",
+    [ErrorType.UNKNOWN]: "Что-то пошло не так",
   };
 
   return messages[error.type] || error.message;
@@ -120,14 +120,14 @@ export function showErrorToast(error: unknown, customMessage?: string) {
   const message = customMessage || getUserFriendlyMessage(appError);
 
   toast({
-    title: 'Ошибка',
+    title: "Ошибка",
     description: message,
-    variant: 'destructive',
+    variant: "destructive",
   });
 
   // Log to console in development
   if (import.meta.env.DEV) {
-    console.error('Error:', appError);
+    console.error("Error:", appError);
   }
 }
 
@@ -170,7 +170,7 @@ function shouldRetry(error: AppError, config: RetryConfig): boolean {
  */
 export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
-  config: Partial<RetryConfig> = {}
+  config: Partial<RetryConfig> = {},
 ): Promise<T> {
   const retryConfig = { ...DEFAULT_RETRY_CONFIG, ...config };
   let lastError: AppError;
@@ -238,8 +238,8 @@ export function setupGlobalErrorHandler(queryClient: QueryClient) {
   });
 
   // Handle unhandled promise rejections
-  window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled promise rejection:', event.reason);
+  window.addEventListener("unhandledrejection", (event) => {
+    console.error("Unhandled promise rejection:", event.reason);
     event.preventDefault();
   });
 }
@@ -252,8 +252,8 @@ export class NetworkMonitor {
   private listeners: Set<(online: boolean) => void> = new Set();
 
   constructor() {
-    window.addEventListener('online', this.handleOnline);
-    window.addEventListener('offline', this.handleOffline);
+    window.addEventListener("online", this.handleOnline);
+    window.addEventListener("offline", this.handleOffline);
   }
 
   private handleOnline = () => {
@@ -261,8 +261,8 @@ export class NetworkMonitor {
     this.notify();
     
     toast({
-      title: 'Соединение восстановлено',
-      description: 'Вы снова онлайн',
+      title: "Соединение восстановлено",
+      description: "Вы снова онлайн",
     });
   };
 
@@ -271,9 +271,9 @@ export class NetworkMonitor {
     this.notify();
     
     toast({
-      title: 'Нет соединения',
-      description: 'Проверьте подключение к интернету',
-      variant: 'destructive',
+      title: "Нет соединения",
+      description: "Проверьте подключение к интернету",
+      variant: "destructive",
     });
   };
 
@@ -294,8 +294,8 @@ export class NetworkMonitor {
   }
 
   public destroy() {
-    window.removeEventListener('online', this.handleOnline);
-    window.removeEventListener('offline', this.handleOffline);
+    window.removeEventListener("online", this.handleOnline);
+    window.removeEventListener("offline", this.handleOffline);
     this.listeners.clear();
   }
 }
@@ -318,5 +318,5 @@ export function useNetworkStatus() {
 }
 
 // Note: Import React for the hook
-import React from 'react';
+import React from "react";
 

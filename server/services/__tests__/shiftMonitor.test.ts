@@ -40,6 +40,8 @@ describe('ShiftMonitor', () => {
     telegram_user_id: null,
     status: 'active',
     tz: null,
+    avatar_id: null,
+    photo_url: null,
     created_at: new Date(),
   };
 
@@ -359,7 +361,16 @@ describe('ShiftMonitor', () => {
         created_by: null,
         created_at: new Date(),
       });
-      vi.mocked(repositories.rating.updateFromViolations).mockResolvedValue(undefined);
+      vi.mocked(repositories.rating.updateFromViolations).mockResolvedValue({
+        id: 'rating-1',
+        employee_id: 'emp-1',
+        company_id: 'comp-1',
+        period_start: '2025-01-01',
+        period_end: '2025-01-31',
+        rating: '95',
+        status: 'warning',
+        updated_at: new Date(),
+      });
       vi.mocked(repositories.exception.create).mockResolvedValue({
         id: 'exc-1',
         employee_id: 'emp-1',
@@ -369,7 +380,8 @@ describe('ShiftMonitor', () => {
         details: {},
         resolved_at: null,
         violation_id: 'viol-1',
-      });
+        employee: mockEmployee,
+      } as any);
     });
 
     it('should create violation, update rating, and create exception', async () => {
@@ -390,7 +402,9 @@ describe('ShiftMonitor', () => {
       expect(repositories.rating.updateFromViolations).toHaveBeenCalledWith(
         'emp-1',
         expect.any(Date),
-        expect.any(Date)
+        expect.any(Date),
+        expect.any(Object),
+        expect.any(Object)
       );
 
       // Verify exception created with violation link
@@ -417,7 +431,8 @@ describe('ShiftMonitor', () => {
           details: {},
           resolved_at: null,
           violation_id: null,
-        },
+          employee: mockEmployee,
+        } as any,
       ]);
 
       await shiftMonitor.createExceptionsFromViolations([mockViolation]);
@@ -435,7 +450,7 @@ describe('ShiftMonitor', () => {
     });
 
     it('should handle employee not found', async () => {
-      vi.mocked(repositories.employee.findById).mockResolvedValue(null);
+      vi.mocked(repositories.employee.findById).mockResolvedValue(null as any);
 
       await shiftMonitor.createExceptionsFromViolations([mockViolation]);
 
@@ -461,6 +476,9 @@ describe('ShiftMonitor', () => {
 
   describe('processCompanyShifts', () => {
     it('should process shifts and return statistics', async () => {
+      const now = new Date('2025-10-29T09:30:00');
+      vi.setSystemTime(now);
+
       const mockShift = {
         id: 'shift-1',
         employee_id: 'emp-1',
@@ -496,8 +514,21 @@ describe('ShiftMonitor', () => {
       ]);
       vi.mocked(repositories.shift.findBreakIntervalsByShiftId).mockResolvedValue([]);
       vi.mocked(repositories.employee.findById).mockResolvedValue(mockEmployee);
-      // getExceptionsByCompany is called 3 times: once to check duplicates, once for initial count, once for final count
-      vi.mocked(repositories.exception.findByCompanyId).mockResolvedValue([]); // For duplicate check and initial
+      // findByCompanyId вызывается дважды: для начального счета и для финального
+      vi.mocked(repositories.exception.findByCompanyId)
+        .mockResolvedValueOnce([]) // Начальный счет
+        .mockResolvedValueOnce([]) // Для проверки дубликатов в createExceptionsFromViolations
+        .mockResolvedValueOnce([{ // Финальный счет - после создания exception
+          id: 'exc-1',
+          employee_id: 'emp-1',
+          date: '2025-10-29',
+          kind: 'late_start',
+          severity: 1,
+          details: {},
+          resolved_at: null,
+          violation_id: 'viol-1',
+          employee: mockEmployee,
+        } as any]);
       vi.mocked(repositories.violation.findByCompanyId).mockResolvedValue([mockRule]);
       vi.mocked(repositories.violation.createViolation).mockResolvedValue({
         id: 'viol-1',
@@ -510,7 +541,16 @@ describe('ShiftMonitor', () => {
         created_by: null,
         created_at: new Date(),
       });
-      vi.mocked(repositories.rating.updateFromViolations).mockResolvedValue(undefined);
+      vi.mocked(repositories.rating.updateFromViolations).mockResolvedValue({
+        id: 'rating-1',
+        employee_id: 'emp-1',
+        company_id: 'comp-1',
+        period_start: '2025-01-01',
+        period_end: '2025-01-31',
+        rating: '95',
+        status: 'warning',
+        updated_at: new Date(),
+      });
       vi.mocked(repositories.exception.create).mockResolvedValue({
         id: 'exc-1',
         employee_id: 'emp-1',
@@ -520,12 +560,13 @@ describe('ShiftMonitor', () => {
         details: {},
         resolved_at: null,
         violation_id: 'viol-1',
-      });
+        employee: mockEmployee,
+      } as any);
 
       const result = await shiftMonitor.processCompanyShifts('comp-1');
 
       expect(result.violationsFound).toBe(1);
-      expect(result.exceptionsCreated).toBeGreaterThan(0); // Just check that exception was created
+      expect(result.exceptionsCreated).toBe(1);
     });
 
     it('should handle errors and return zero counts', async () => {

@@ -1,115 +1,117 @@
-import { Context } from 'telegraf';
-import type { InlineKeyboardButton } from 'telegraf/types';
-import { SessionData } from '../types.js';
-import { repositories } from '../../repositories/index.js';
-import { logger } from '../../lib/logger.js';
+import { Context } from "telegraf";
+import type { InlineKeyboardButton } from "telegraf/types";
+import { SessionData } from "../types.js";
+import { repositories } from "../../repositories/index.js";
+import { logger } from "../../lib/logger.js";
 
 type InlineKeyboard = InlineKeyboardButton[][];
 
 export async function handleStart(ctx: Context & { session: SessionData }) {
-  logger.info('Start command received', {
+  logger.info("Start command received", {
     userId: ctx.from?.id,
     username: ctx.from?.username,
-    messageText: ctx.message && 'text' in ctx.message ? ctx.message.text : 'No text'
+    messageText: ctx.message && "text" in ctx.message ? ctx.message.text : "No text",
   });
 
-  const startParam = ctx.message && 'text' in ctx.message ? 
-    ctx.message.text.split(' ')[1] : null;
+  const startParam = ctx.message && "text" in ctx.message ? 
+    ctx.message.text.split(" ")[1] : null;
   
   // Если нет параметра start, но сотрудник уже авторизован - показываем главное меню
   if (!startParam && ctx.session?.employeeId) {
-    logger.info('Employee already authorized, showing main menu');
+    logger.info("Employee already authorized, showing main menu");
     try {
       await showMainMenu(ctx);
     } catch (error: any) {
-      logger.error('Error showing main menu in start handler', {
+      logger.error("Error showing main menu in start handler", {
         error: error.message || String(error),
         code: error.code,
-        stack: error.stack
+        stack: error.stack,
       });
       // Попробуем отправить простое сообщение
       try {
-        await ctx.reply('❌ Ошибка загрузки меню. Попробуйте команду /status');
+        await ctx.reply("❌ Ошибка загрузки меню. Попробуйте команду /status");
       } catch (replyError) {
-        logger.error('Failed to send error message', { error: replyError });
+        logger.error("Failed to send error message", { error: replyError });
       }
     }
     return;
   }
   
   if (!startParam) {
-    logger.info('No start parameter provided, showing access denied message');
+    logger.info("No start parameter provided, showing access denied message");
     return ctx.reply(`
 ❌ *Доступ запрещён*
 
 Этот бот работает только по приглашению от вашей компании.
 
 Для подключения обратитесь к администратору и получите специальную ссылку-приглашение.
-    `, { parse_mode: 'Markdown' });
+    `, { parse_mode: "Markdown" });
   }
 
   if (!ctx.from?.id) {
-    logger.error('No user ID in context');
+    logger.error("No user ID in context");
     return ctx.reply(`
 ❌ *Ошибка аутентификации*
 
 Не удалось определить пользователя Telegram.
 Попробуйте позже или обратитесь к администратору.
-    `, { parse_mode: 'Markdown' });
+    `, { parse_mode: "Markdown" });
   }
 
   try {
-    logger.info('Processing invite code', { code: startParam });
+    logger.info("Processing invite code", { code: startParam });
     // Проверяем инвайт-код
     const invite = await repositories.invite.findByCode(startParam);
     
     if (!invite) {
-      logger.warn('Invite not found', { code: startParam });
+      logger.warn("Invite not found", { code: startParam });
       return ctx.reply(`
 ❌ *Неверный код приглашения*
 
 Код приглашения не найден или уже использован.
 Обратитесь к администратору за новым приглашением.
-      `, { parse_mode: 'Markdown' });
+      `, { parse_mode: "Markdown" });
     }
 
     // Сначала проверяем, есть ли уже сотрудник с этим Telegram ID
     const currentTelegramId = ctx.from.id.toString();
-    logger.info('Checking for existing employee with Telegram ID', { telegramId: currentTelegramId });
-    let existingEmployee = await repositories.employee.findByTelegramId(currentTelegramId);
-    logger.info('Found existing employee', existingEmployee ? {
+    logger.info("Checking for existing employee with Telegram ID", { telegramId: currentTelegramId });
+    const existingEmployee = await repositories.employee.findByTelegramId(currentTelegramId);
+    logger.info("Found existing employee", existingEmployee ? {
       id: existingEmployee.id,
       company_id: existingEmployee.company_id,
-      full_name: existingEmployee.full_name
+      full_name: existingEmployee.full_name,
     } : { found: false });
     
     if (existingEmployee) {
-      logger.info('Found existing employee with Telegram ID', { telegramId: currentTelegramId });
+      logger.info("Found existing employee with Telegram ID", { telegramId: currentTelegramId });
       
       // Если сотрудник уже существует, обновляем его данные и переносим в новую компанию
       const needsCompanyTransfer = existingEmployee.company_id !== invite.company_id;
-      logger.info('Company transfer needed', { needsTransfer: needsCompanyTransfer, fromCompany: existingEmployee.company_id, toCompany: invite.company_id });
+      logger.info("Company transfer needed", { needsTransfer: needsCompanyTransfer, fromCompany: existingEmployee.company_id, toCompany: invite.company_id });
       
       const updated = await repositories.employee.update(existingEmployee.id, {
         company_id: invite.company_id,
         full_name: invite.full_name || existingEmployee.full_name,
         position: invite.position || existingEmployee.position,
         telegram_user_id: currentTelegramId,
-        status: 'active'
+        status: "active",
       });
-      logger.info('Updated employee', updated ? {
+      logger.info("Updated employee", updated ? {
         id: updated.id,
         company_id: updated.company_id,
-        full_name: updated.full_name
+        full_name: updated.full_name,
       } : { updated: false });
 
       // Помечаем инвайт как использованный
-      logger.info('Marking invite as used', { inviteCode: invite.code, employeeId: existingEmployee.id });
+      logger.info("Marking invite as used", { inviteCode: invite.code, employeeId: existingEmployee.id });
       await repositories.invite.useInvite(invite.code, existingEmployee.id);
-      logger.info('Invite marked as used successfully');
+      logger.info("Invite marked as used successfully");
 
       // Сохраняем в сессию и продолжаем стандартный флоу
-      if (!ctx.session) ctx.session = {} as any;
+      if (!ctx.session) {
+        ctx.session = {} as any;
+      }
       ctx.session.employeeId = (updated || existingEmployee).id;
       ctx.session.companyId = invite.company_id;
 
@@ -119,8 +121,8 @@ export async function handleStart(ctx: Context & { session: SessionData }) {
 🎉 *Добро пожаловать!*
 
 👤 *Сотрудник:* ${(updated || existingEmployee).full_name}
-🏢 *Компания:* ${company?.name || 'Не указана'}
-${(updated || existingEmployee).position ? `💼 *Должность:* ${(updated || existingEmployee).position}` : ''}
+🏢 *Компания:* ${company?.name || "Не указана"}
+${(updated || existingEmployee).position ? `💼 *Должность:* ${(updated || existingEmployee).position}` : ""}
 
 ✅ Вы успешно подключены к системе учёта рабочего времени.
 
@@ -129,39 +131,39 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
 /help - Справка по командам
 
 Используйте кнопки для управления сменой.
-        `, { parse_mode: 'Markdown' });
+        `, { parse_mode: "Markdown" });
       } catch (error: any) {
-        logger.error('Error sending welcome message (existing employee)', {
+        logger.error("Error sending welcome message (existing employee)", {
           error: error.message || String(error),
-          code: error.code
+          code: error.code,
         });
         // Fallback без Markdown
         try {
           await ctx.reply(
-            `🎉 Добро пожаловать!\n\n👤 Сотрудник: ${(updated || existingEmployee).full_name}\n🏢 Компания: ${company?.name || 'Не указана'}\n\n✅ Вы успешно подключены к системе учёта рабочего времени.\n\nДоступные команды:\n/status - Текущий статус смены\n/help - Справка по командам`
+            `🎉 Добро пожаловать!\n\n👤 Сотрудник: ${(updated || existingEmployee).full_name}\n🏢 Компания: ${company?.name || "Не указана"}\n\n✅ Вы успешно подключены к системе учёта рабочего времени.\n\nДоступные команды:\n/status - Текущий статус смены\n/help - Справка по командам`,
           );
         } catch (retryError) {
-          logger.error('Failed to send fallback welcome message', { error: retryError });
+          logger.error("Failed to send fallback welcome message", { error: retryError });
         }
       }
 
       try {
         await showMainMenu(ctx);
       } catch (menuError: any) {
-        logger.error('Error showing main menu after welcome', {
+        logger.error("Error showing main menu after welcome", {
           error: menuError.message || String(menuError),
-          code: menuError.code
+          code: menuError.code,
         });
       }
       return;
     }
 
     if (invite.used_at) {
-      logger.warn('Invite already used', { code: startParam });
+      logger.warn("Invite already used", { code: startParam });
       
       // Если сотрудник уже авторизован и использует свой же инвайт - показываем главное меню
       if (ctx.session?.employeeId && invite.used_by_employee === ctx.session.employeeId) {
-        logger.info('Employee using their own invite, showing main menu');
+        logger.info("Employee using their own invite, showing main menu");
         await showMainMenu(ctx);
         return;
       }
@@ -171,10 +173,10 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
 
 Этот код приглашения уже был использован.
 Обратитесь к администратору за новым приглашением.
-      `, { parse_mode: 'Markdown' });
+      `, { parse_mode: "Markdown" });
     }
 
-    logger.info('Creating/updating employee for Telegram ID', { telegramId: ctx.from.id });
+    logger.info("Creating/updating employee for Telegram ID", { telegramId: ctx.from.id });
     // Создаем или обновляем сотрудника
     let employee = await repositories.employee.findByTelegramId(ctx.from.id.toString());
     
@@ -182,12 +184,12 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
       // Создаем нового сотрудника
       employee = await repositories.employee.create({
         company_id: invite.company_id,
-        full_name: invite.full_name || 'Сотрудник',
+        full_name: invite.full_name || "Сотрудник",
         position: invite.position,
         telegram_user_id: ctx.from.id.toString(),
-        status: 'active'
+        status: "active",
       });
-      logger.info('Created new employee', { employeeId: employee.id });
+      logger.info("Created new employee", { employeeId: employee.id });
     } else {
       // Перенос сотрудника в компанию из инвайта, если отличается
       const needsCompanyTransfer = employee.company_id !== invite.company_id;
@@ -196,37 +198,37 @@ ${(updated || existingEmployee).position ? `💼 *Должность:* ${(update
         full_name: invite.full_name || employee.full_name,
         position: invite.position || employee.position,
         telegram_user_id: ctx.from.id.toString(),
-        status: 'active'
+        status: "active",
       });
       logger.info(
-        needsCompanyTransfer ? 'Transferred employee to company' : 'Updated existing employee',
-        { employeeId: updated?.id, companyId: invite.company_id }
+        needsCompanyTransfer ? "Transferred employee to company" : "Updated existing employee",
+        { employeeId: updated?.id, companyId: invite.company_id },
       );
       employee = updated || employee;
     }
 
     // Отмечаем инвайт как использованный
-    await repositories.invite.useInvite(startParam, employee!.id);
-    logger.info('Marked invite as used', { code: startParam });
+    await repositories.invite.useInvite(startParam, employee.id);
+    logger.info("Marked invite as used", { code: startParam });
 
     // Сохраняем данные в сессию
     if (!ctx.session) {
       ctx.session = {};
     }
-    ctx.session.employeeId = employee!.id;
-    ctx.session.companyId = employee!.company_id;
+    ctx.session.employeeId = employee.id;
+    ctx.session.companyId = employee.company_id;
 
     // Получаем информацию о компании
-    const company = await repositories.company.findById(employee!.company_id);
+    const company = await repositories.company.findById(employee.company_id);
 
-    logger.info('Sending welcome message to user', { userId: ctx.from.id });
+    logger.info("Sending welcome message to user", { userId: ctx.from.id });
     try {
       await ctx.reply(`
 🎉 *Добро пожаловать!*
 
 👤 *Сотрудник:* ${employee.full_name}
-🏢 *Компания:* ${company?.name || 'Не указана'}
-${employee.position ? `💼 *Должность:* ${employee.position}` : ''}
+🏢 *Компания:* ${company?.name || "Не указана"}
+${employee.position ? `💼 *Должность:* ${employee.position}` : ""}
 
 ✅ Вы успешно подключены к системе учёта рабочего времени.
 
@@ -235,19 +237,19 @@ ${employee.position ? `💼 *Должность:* ${employee.position}` : ''}
 /help - Справка по командам
 
 Используйте кнопки для управления сменой.
-      `, { parse_mode: 'Markdown' });
+      `, { parse_mode: "Markdown" });
     } catch (error: any) {
-      logger.error('Error sending welcome message (new employee)', {
+      logger.error("Error sending welcome message (new employee)", {
         error: error.message || String(error),
-        code: error.code
+        code: error.code,
       });
       // Fallback без Markdown
       try {
         await ctx.reply(
-          `🎉 Добро пожаловать!\n\n👤 Сотрудник: ${employee.full_name}\n🏢 Компания: ${company?.name || 'Не указана'}\n\n✅ Вы успешно подключены к системе учёта рабочего времени.\n\nДоступные команды:\n/status - Текущий статус смены\n/help - Справка по командам`
+          `🎉 Добро пожаловать!\n\n👤 Сотрудник: ${employee.full_name}\n🏢 Компания: ${company?.name || "Не указана"}\n\n✅ Вы успешно подключены к системе учёта рабочего времени.\n\nДоступные команды:\n/status - Текущий статус смены\n/help - Справка по командам`,
         );
       } catch (retryError) {
-        logger.error('Failed to send fallback welcome message', { error: retryError });
+        logger.error("Failed to send fallback welcome message", { error: retryError });
       }
     }
 
@@ -255,53 +257,53 @@ ${employee.position ? `💼 *Должность:* ${employee.position}` : ''}
     try {
       await showMainMenu(ctx);
     } catch (menuError: any) {
-      logger.error('Error showing main menu after welcome (new employee)', {
+      logger.error("Error showing main menu after welcome (new employee)", {
         error: menuError.message || String(menuError),
-        code: menuError.code
+        code: menuError.code,
       });
     }
 
   } catch (error: unknown) {
-    logger.error('Error in start handler', error);
+    logger.error("Error in start handler", error);
     ctx.reply(`
 ❌ *Ошибка подключения*
 
 Произошла ошибка при подключении к системе.
 Попробуйте позже или обратитесь к администратору.
 
-Ошибка: ${(error as any)?.message || 'Неизвестная ошибка'}
-    `, { parse_mode: 'Markdown' });
+Ошибка: ${(error as any)?.message || "Неизвестная ошибка"}
+    `, { parse_mode: "Markdown" });
   }
 }
 
 async function showMainMenu(ctx: Context & { session: SessionData }) {
   const startTime = Date.now();
-  logger.info('showMainMenu called', { 
+  logger.info("showMainMenu called", { 
     hasSession: !!ctx.session,
     hasEmployeeId: !!ctx.session?.employeeId,
-    chatId: ctx.chat?.id 
+    chatId: ctx.chat?.id, 
   });
   
   if (!ctx.session) {
-    logger.error('No session available in showMainMenu');
+    logger.error("No session available in showMainMenu");
     try {
-      await ctx.reply('❌ Ошибка сессии. Попробуйте /start');
+      await ctx.reply("❌ Ошибка сессии. Попробуйте /start");
     } catch {}
     return;
   }
   
   const employeeId = ctx.session.employeeId;
   if (!employeeId) {
-    logger.error('No employeeId in session');
+    logger.error("No employeeId in session");
     try {
-      await ctx.reply('❌ Ошибка авторизации. Попробуйте /start');
+      await ctx.reply("❌ Ошибка авторизации. Попробуйте /start");
     } catch {}
     return;
   }
 
   try {
-    logger.info('Entering showMainMenu try block', { employeeId, elapsed: Date.now() - startTime });
-    logger.info('Fetching shifts for employee', { employeeId, elapsed: Date.now() - startTime });
+    logger.info("Entering showMainMenu try block", { employeeId, elapsed: Date.now() - startTime });
+    logger.info("Fetching shifts for employee", { employeeId, elapsed: Date.now() - startTime });
     // Получаем текущую смену
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -312,16 +314,16 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
     const QUERY_TIMEOUT = 3000; // 3 секунды - достаточно для быстрого ответа
     
     try {
-      logger.info('Starting database query with timeout', { employeeId, timeout: QUERY_TIMEOUT });
+      logger.info("Starting database query with timeout", { employeeId, timeout: QUERY_TIMEOUT });
       
       // Создаем промис с таймаутом
       const queryPromise = repositories.shift.findByEmployeeId(employeeId);
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
-          logger.warn('Database query timeout - using fallback', { 
+          logger.warn("Database query timeout - using fallback", { 
             employeeId,
             elapsed: Date.now() - startTime,
-            timeout: QUERY_TIMEOUT
+            timeout: QUERY_TIMEOUT,
           });
           reject(new Error(`Database query timeout after ${QUERY_TIMEOUT}ms`));
         }, QUERY_TIMEOUT);
@@ -329,25 +331,25 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
       
       shifts = await Promise.race([queryPromise, timeoutPromise]);
       
-      logger.info('Database query completed successfully', { 
+      logger.info("Database query completed successfully", { 
         employeeId,
         resultCount: shifts.length,
-        elapsed: Date.now() - startTime
+        elapsed: Date.now() - startTime,
       });
     } catch (dbError: any) {
       const elapsed = Date.now() - startTime;
-      if (dbError.message?.includes('timeout')) {
-        logger.warn('Database query timed out, continuing with empty shifts', {
+      if (dbError.message?.includes("timeout")) {
+        logger.warn("Database query timed out, continuing with empty shifts", {
           employeeId,
           elapsed,
-          timeout: QUERY_TIMEOUT
+          timeout: QUERY_TIMEOUT,
         });
       } else {
-        logger.error('Error fetching shifts from database', {
+        logger.error("Error fetching shifts from database", {
           employeeId,
           error: dbError.message || String(dbError),
           code: dbError.code,
-          elapsed
+          elapsed,
         });
       }
       // Продолжаем с пустым массивом смен, чтобы показать меню
@@ -359,30 +361,30 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
       shiftDate.setHours(0, 0, 0, 0);
       return shiftDate.getTime() === today.getTime();
     });
-    logger.info('Today shift check completed', { 
+    logger.info("Today shift check completed", { 
       hasTodayShift: !!todayShift,
       todayShiftStatus: todayShift?.status,
-      shiftId: todayShift?.id
+      shiftId: todayShift?.id,
     });
 
     let keyboard: InlineKeyboard = [];
-    logger.info('Keyboard initialized, checking shift status', {
+    logger.info("Keyboard initialized, checking shift status", {
       shiftStatus: todayShift?.status,
-      hasTodayShift: !!todayShift
+      hasTodayShift: !!todayShift,
     });
 
     // Если смены нет, показываем кнопку для начала новой смены
     if (!todayShift) {
       keyboard = [
         [
-          { text: '▶️ Начать смену', callback_data: 'start_shift' }
-        ]
+          { text: "▶️ Начать смену", callback_data: "start_shift" },
+        ],
       ];
       
       try {
-        logger.info('Attempting to send main menu message (no shift)', {
+        logger.info("Attempting to send main menu message (no shift)", {
           keyboardLength: keyboard.length,
-          chatId: ctx.chat?.id
+          chatId: ctx.chat?.id,
         });
         const message = await ctx.reply(`
 📊 *Управление сменой*
@@ -391,28 +393,28 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
 
 Выберите действие:
         `, {
-          parse_mode: 'Markdown',
+          parse_mode: "Markdown",
           reply_markup: {
-            inline_keyboard: keyboard
-          }
+            inline_keyboard: keyboard,
+          },
         });
-        logger.info('Main menu message sent successfully (no shift)', {
-          messageId: (message as any)?.message_id
+        logger.info("Main menu message sent successfully (no shift)", {
+          messageId: (message as any)?.message_id,
         });
       } catch (error: any) {
-        logger.error('Error sending main menu message (no shift)', {
+        logger.error("Error sending main menu message (no shift)", {
           error: error.message || String(error),
-          code: error.code
+          code: error.code,
         });
         // Попробуем отправить простое сообщение без форматирования
         try {
-          await ctx.reply('📊 Управление сменой\n\n📅 На сегодня смена не запланирована. Нажмите кнопку ниже, чтобы начать смену.', {
+          await ctx.reply("📊 Управление сменой\n\n📅 На сегодня смена не запланирована. Нажмите кнопку ниже, чтобы начать смену.", {
             reply_markup: {
-              inline_keyboard: keyboard
-            }
+              inline_keyboard: keyboard,
+            },
           });
         } catch (retryError) {
-          logger.error('Failed to send fallback message', { error: retryError });
+          logger.error("Failed to send fallback message", { error: retryError });
         }
       }
       return;
@@ -423,70 +425,70 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
     let breakIntervals: Awaited<ReturnType<typeof repositories.shift.findBreakIntervalsByShiftId>> = [];
     let activeBreak: Awaited<ReturnType<typeof repositories.shift.findBreakIntervalsByShiftId>>[0] | undefined;
     
-    if (todayShift.status !== 'completed') {
-      logger.info('Fetching break intervals for active/planned shift', {
+    if (todayShift.status !== "completed") {
+      logger.info("Fetching break intervals for active/planned shift", {
         shiftId: todayShift.id,
-        shiftStatus: todayShift.status
+        shiftStatus: todayShift.status,
       });
       try {
         breakIntervals = await Promise.race([
           repositories.shift.findBreakIntervalsByShiftId(todayShift.id),
           new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Break intervals query timeout')), 3000)
-          )
+            setTimeout(() => reject(new Error("Break intervals query timeout")), 3000),
+          ),
         ]);
         activeBreak = breakIntervals.find(bi => !bi.end_at);
-        logger.info('Break intervals fetched', {
+        logger.info("Break intervals fetched", {
           shiftId: todayShift.id,
           intervalsCount: breakIntervals.length,
-          hasActiveBreak: !!activeBreak
+          hasActiveBreak: !!activeBreak,
         });
       } catch (breakError: any) {
-        logger.error('Error fetching break intervals', {
+        logger.error("Error fetching break intervals", {
           shiftId: todayShift.id,
-          error: breakError.message || String(breakError)
+          error: breakError.message || String(breakError),
         });
         // Продолжаем без информации о перерывах
       }
     } else {
-      logger.info('Skipping break intervals fetch for completed shift', {
-        shiftId: todayShift.id
+      logger.info("Skipping break intervals fetch for completed shift", {
+        shiftId: todayShift.id,
       });
     }
 
-    if (todayShift.status === 'planned') {
+    if (todayShift.status === "planned") {
       keyboard = [
         [
-          { text: '▶️ Начать смену', callback_data: 'start_shift' }
-        ]
+          { text: "▶️ Начать смену", callback_data: "start_shift" },
+        ],
       ];
-    } else if (todayShift.status === 'active') {
+    } else if (todayShift.status === "active") {
       if (activeBreak) {
         keyboard = [
-          [{ text: '☑️ Вернулся', callback_data: 'end_break' }]
+          [{ text: "☑️ Вернулся", callback_data: "end_break" }],
         ];
       } else {
         keyboard = [
           [
-            { text: '🍽 Начать перерыв', callback_data: 'start_break' },
-            { text: '🕔 Завершить смену', callback_data: 'end_shift' }
-          ]
+            { text: "🍽 Начать перерыв", callback_data: "start_break" },
+            { text: "🕔 Завершить смену", callback_data: "end_shift" },
+          ],
         ];
       }
     }
 
     // Всегда отправляем сообщение, даже если клавиатура пустая (для завершенных смен)
-    const statusText = todayShift.status === 'completed' 
-      ? '✅ *Смена завершена*' 
-      : todayShift.status === 'active' 
-        ? '💼 *Смена активна*' 
-        : '📅 *Смена запланирована*';
+    const statusText = todayShift.status === "completed" 
+      ? "✅ *Смена завершена*" 
+      : todayShift.status === "active" 
+        ? "💼 *Смена активна*" 
+        : "📅 *Смена запланирована*";
     
     try {
-      logger.info('Attempting to send main menu message', {
+      logger.info("Attempting to send main menu message", {
         shiftStatus: todayShift.status,
         keyboardLength: keyboard.length,
-        chatId: ctx.chat?.id
+        chatId: ctx.chat?.id,
       });
       
       const messageText = `
@@ -494,70 +496,70 @@ async function showMainMenu(ctx: Context & { session: SessionData }) {
 
 ${statusText}
 
-⏰ *Планируемое время:* ${new Date(todayShift.planned_start_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} - ${new Date(todayShift.planned_end_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+⏰ *Планируемое время:* ${new Date(todayShift.planned_start_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} - ${new Date(todayShift.planned_end_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
 
-${keyboard.length > 0 ? 'Выберите действие:' : todayShift.status === 'completed' ? 'Смена уже завершена.' : ''}
+${keyboard.length > 0 ? "Выберите действие:" : todayShift.status === "completed" ? "Смена уже завершена." : ""}
       `;
       
       const messageOptions: any = {
-        parse_mode: 'Markdown'
+        parse_mode: "Markdown",
       };
       
       if (keyboard.length > 0) {
         messageOptions.reply_markup = {
-          inline_keyboard: keyboard
+          inline_keyboard: keyboard,
         };
       }
       
       const message = await ctx.reply(messageText, messageOptions);
       
-      logger.info('Main menu message sent successfully', { 
+      logger.info("Main menu message sent successfully", { 
         shiftStatus: todayShift.status,
         messageId: (message as any)?.message_id,
-        hasKeyboard: keyboard.length > 0
+        hasKeyboard: keyboard.length > 0,
       });
     } catch (error: any) {
-      logger.error('Error sending main menu message', {
+      logger.error("Error sending main menu message", {
         error: error.message || String(error),
         code: error.code,
-        shiftStatus: todayShift.status
+        shiftStatus: todayShift.status,
       });
       // Попробуем отправить без Markdown форматирования
       try {
-        const fallbackText = `📊 Управление сменой\n\n${todayShift.status === 'completed' ? '✅ Смена завершена' : todayShift.status === 'active' ? '💼 Смена активна' : '📅 Смена запланирована'}\n\n⏰ Планируемое время: ${new Date(todayShift.planned_start_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} - ${new Date(todayShift.planned_end_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+        const fallbackText = `📊 Управление сменой\n\n${todayShift.status === "completed" ? "✅ Смена завершена" : todayShift.status === "active" ? "💼 Смена активна" : "📅 Смена запланирована"}\n\n⏰ Планируемое время: ${new Date(todayShift.planned_start_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} - ${new Date(todayShift.planned_end_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`;
         const fallbackOptions: any = {};
         if (keyboard.length > 0) {
           fallbackOptions.reply_markup = {
-            inline_keyboard: keyboard
+            inline_keyboard: keyboard,
           };
         }
         await ctx.reply(fallbackText, fallbackOptions);
-        logger.info('Fallback message sent successfully');
+        logger.info("Fallback message sent successfully");
       } catch (retryError) {
-        logger.error('Failed to send fallback message', { error: retryError });
+        logger.error("Failed to send fallback message", { error: retryError });
       }
     }
 
   } catch (error) {
     const err = error as any;
-    logger.error('Error showing main menu', {
+    logger.error("Error showing main menu", {
       error: err.message || String(error),
       code: err.code,
-      stack: err.stack
+      stack: err.stack,
     });
     
     // Не пытаемся отвечать при сетевых ошибках
-    if (err.code === 'ERR_SSL_DECRYPTION_FAILED_OR_BAD_RECORD_MAC' ||
-        err.code === 'ECONNRESET' ||
-        err.code === 'ETIMEDOUT') {
-      logger.warn('Network error in showMainMenu', { code: err.code });
+    if (err.code === "ERR_SSL_DECRYPTION_FAILED_OR_BAD_RECORD_MAC" ||
+        err.code === "ECONNRESET" ||
+        err.code === "ETIMEDOUT") {
+      logger.warn("Network error in showMainMenu", { code: err.code });
       return;
     }
     
     try {
-      await ctx.reply('❌ Ошибка загрузки меню. Попробуйте позже или используйте /status');
+      await ctx.reply("❌ Ошибка загрузки меню. Попробуйте позже или используйте /status");
     } catch (replyError) {
-      logger.error('Failed to send error message', { error: replyError });
+      logger.error("Failed to send error message", { error: replyError });
     }
   }
 }

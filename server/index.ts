@@ -14,7 +14,7 @@ import { setupSwagger } from "./swagger.js";
 import { loadSecretsAsync, validateSecretsOnStartup, isProduction, getSecret } from "./lib/secrets.js";
 
 // Launch Telegram bot in development mode
-import './launchBot.js';
+import "./launchBot.js";
 
 const app = express();
 
@@ -24,8 +24,9 @@ app.set("trust proxy", true);
 // CORS must be configured before other middleware
 app.use(configureCors());
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// Parse JSON and URL-encoded bodies
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 
 // Input sanitization middleware - must be after body parsing but before routes
@@ -70,21 +71,21 @@ app.use((req, res, next) => {
     }
     await validateSecretsOnStartup();
   } catch (error) {
-    log(`Failed to load secrets: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    log(`Failed to load secrets: ${error instanceof Error ? error.message : "Unknown error"}`);
     process.exit(1);
   }
 
   const server = await registerRoutes(app);
 
   // Setup Swagger/OpenAPI documentation (enable in development or with ENABLE_DOCS=true)
-  if (!isProduction() || process.env.ENABLE_DOCS === 'true') {
+  if (!isProduction() || process.env.ENABLE_DOCS === "true") {
     setupSwagger(app);
   }
 
-// Sentry error handler (must be before other error handlers)
-// @ts-ignore - Sentry types issue
+  // Sentry error handler (must be before other error handlers)
+  // @ts-ignore - Sentry types issue
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/prefer-nullish-coalescing
-app.use(Sentry.Handlers?.errorHandler?.() || ((_req: any, _res: any, next: any) => next()));
+  app.use(Sentry.Handlers?.errorHandler?.() || ((_req: any, _res: any, next: any) => next()));
 
   // Standardized error handling (must be after all routes)
   app.use(notFoundHandler);
@@ -103,33 +104,33 @@ app.use(Sentry.Handlers?.errorHandler?.() || ((_req: any, _res: any, next: any) 
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = getSecret('PORT');
+  const port = getSecret("PORT");
   server.listen({
     port,
-    host: "127.0.0.1"
+    host: "127.0.0.1",
   }, () => {
     log(`serving on port ${port}`);
     
     // Start scheduled tasks (monitoring, reminders)
     scheduler.startAll();
-    log('Schedulers started');
+    log("Schedulers started");
   });
 
   // Graceful shutdown
-  process.on('SIGTERM', () => {
-    log('SIGTERM received, shutting down gracefully...');
+  process.on("SIGTERM", () => {
+    log("SIGTERM received, shutting down gracefully...");
     scheduler.stopAll();
     server.close(() => {
-      log('Server closed');
+      log("Server closed");
       process.exit(0);
     });
   });
 
-  process.on('SIGINT', () => {
-    log('SIGINT received, shutting down gracefully...');
+  process.on("SIGINT", () => {
+    log("SIGINT received, shutting down gracefully...");
     scheduler.stopAll();
     server.close(() => {
-      log('Server closed');
+      log("Server closed");
       process.exit(0);
     });
   });

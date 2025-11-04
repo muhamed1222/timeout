@@ -1,45 +1,38 @@
 import { Router } from "express";
 import { repositories } from "../repositories/index.js";
-import { logger } from "../lib/logger.js";
+import { asyncHandler } from "../lib/errorHandler.js";
+import { validateParams } from "../middleware/validate.js";
+import { companyIdInParamsSchema } from "../lib/schemas/index.js";
+import { getOrSet } from "../lib/utils/cache.js";
 
 const router = Router();
 
 // Get employee invites by company
-router.get("/:companyId/employee-invites", async (req, res) => {
-  try {
-    const { companyId } = req.params;
-    const invites = await repositories.invite.findByCompanyId(companyId);
-    res.json(invites);
-  } catch (error) {
-    logger.error("Error fetching employee invites", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+router.get("/:companyId/employee-invites", validateParams(companyIdInParamsSchema), asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  const invites = await repositories.invite.findByCompanyId(companyId);
+  res.json(invites);
+}));
 
 // Get schedule templates by company
-router.get("/:companyId/schedule-templates", async (req, res) => {
-  try {
-    const { companyId } = req.params;
-    const templates = await repositories.schedule.findByCompanyId(companyId);
-    res.json(templates);
-  } catch (error) {
-    logger.error("Error fetching schedule templates", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+router.get("/:companyId/schedule-templates", validateParams(companyIdInParamsSchema), asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  const templates = await repositories.schedule.findByCompanyId(companyId);
+  res.json(templates);
+}));
 
-// Get active shifts by company
-router.get("/:companyId/shifts/active", async (req, res) => {
-  try {
-    const { companyId } = req.params;
-    const shifts = await repositories.shift.findActiveByCompanyId(companyId);
-    res.json(shifts);
-  } catch (error) {
-    logger.error("Error fetching active shifts", error);
-    // Soft fallback: return empty list to avoid breaking UI
-    res.status(200).json([]);
-  }
-});
+// Get active shifts by company (with caching)
+router.get("/:companyId/shifts/active", validateParams(companyIdInParamsSchema), asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  
+  const shifts = await getOrSet(
+    `company:${companyId}:active-shifts`,
+    async () => await repositories.shift.findActiveByCompanyId(companyId),
+    60 // Cache for 1 minute (active shifts change frequently)
+  );
+  
+  res.json(shifts);
+}));
 
 export default router;
 

@@ -1,13 +1,13 @@
-import { BaseRepository } from './BaseRepository.js';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import * as schema from '../../shared/schema.js';
+import { BaseRepository } from "./BaseRepository.js";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import * as schema from "../../shared/schema.js";
 import type { 
   CompanyViolationRules, 
   InsertCompanyViolationRules,
   Violations,
-  InsertViolations
-} from '../../shared/schema.js';
-import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
+  InsertViolations,
+} from "../../shared/schema.js";
+import { eq, and, gte, lte, desc } from "drizzle-orm";
 
 /**
  * Repository for Violation Rules and Violations
@@ -40,8 +40,8 @@ export class ViolationRepository extends BaseRepository<CompanyViolationRules, I
       .where(
         and(
           eq(schema.company_violation_rules.company_id, companyId),
-          eq(schema.company_violation_rules.is_active, true)
-        )
+          eq(schema.company_violation_rules.is_active, true),
+        ),
       )
       .orderBy(schema.company_violation_rules.name);
 
@@ -58,8 +58,8 @@ export class ViolationRepository extends BaseRepository<CompanyViolationRules, I
       .where(
         and(
           eq(schema.company_violation_rules.company_id, companyId),
-          eq(schema.company_violation_rules.code, code)
-        )
+          eq(schema.company_violation_rules.code, code),
+        ),
       )
       .limit(1);
 
@@ -77,10 +77,10 @@ export class ViolationRepository extends BaseRepository<CompanyViolationRules, I
         .returning();
 
       if (!results[0]) {
-        throw new Error('Failed to create violation: no result returned');
+        throw new Error("Failed to create violation: no result returned");
       }
 
-      return results[0] as Violations;
+      return results[0];
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to create violation: ${errorMessage}. Data: ${JSON.stringify(violation)}`);
@@ -93,14 +93,14 @@ export class ViolationRepository extends BaseRepository<CompanyViolationRules, I
   async findViolationsByEmployee(
     employeeId: string,
     periodStart?: Date,
-    periodEnd?: Date
+    periodEnd?: Date,
   ): Promise<Violations[]> {
     const whereExpr = (periodStart && periodEnd)
       ? and(
-          eq(schema.violations.employee_id, employeeId),
-          gte(schema.violations.created_at, periodStart),
-          lte(schema.violations.created_at, periodEnd)
-        )
+        eq(schema.violations.employee_id, employeeId),
+        gte(schema.violations.created_at, periodStart),
+        lte(schema.violations.created_at, periodEnd),
+      )
       : eq(schema.violations.employee_id, employeeId);
 
     const results = await this.db
@@ -118,14 +118,14 @@ export class ViolationRepository extends BaseRepository<CompanyViolationRules, I
   async findViolationsByCompany(
     companyId: string,
     periodStart?: Date,
-    periodEnd?: Date
+    periodEnd?: Date,
   ): Promise<Violations[]> {
     const whereExpr = (periodStart && periodEnd)
       ? and(
-          eq(schema.violations.company_id, companyId),
-          gte(schema.violations.created_at, periodStart),
-          lte(schema.violations.created_at, periodEnd)
-        )
+        eq(schema.violations.company_id, companyId),
+        gte(schema.violations.created_at, periodStart),
+        lte(schema.violations.created_at, periodEnd),
+      )
       : eq(schema.violations.company_id, companyId);
 
     const results = await this.db
@@ -156,7 +156,7 @@ export class ViolationRepository extends BaseRepository<CompanyViolationRules, I
   async calculateTotalPenalty(
     employeeId: string,
     periodStart: Date,
-    periodEnd: Date
+    periodEnd: Date,
   ): Promise<number> {
     const violations = await this.findViolationsByEmployee(employeeId, periodStart, periodEnd);
     return violations.reduce((sum, violation) => sum + Number(violation.penalty), 0);

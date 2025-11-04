@@ -5,9 +5,9 @@
  * Falls back to environment variables in development.
  */
 
-import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
-import { logger } from './logger.js';
-import type { Secrets } from './secrets.js';
+import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
+import { logger } from "./logger.js";
+import type { Secrets } from "./secrets.js";
 
 let secretsManagerClient: SecretsManagerClient | null = null;
 let cachedAWSSecrets: Secrets | null = null;
@@ -22,7 +22,7 @@ export function initSecretsManager(region?: string): SecretsManagerClient {
     return secretsManagerClient;
   }
 
-  const awsRegion = region || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1';
+  const awsRegion = region || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || "us-east-1";
   
   secretsManagerClient = new SecretsManagerClient({
     region: awsRegion,
@@ -32,7 +32,7 @@ export function initSecretsManager(region?: string): SecretsManagerClient {
     // 3. IAM role (when running on EC2/ECS/Lambda)
   });
 
-  logger.info('AWS Secrets Manager client initialized', { region: awsRegion });
+  logger.info("AWS Secrets Manager client initialized", { region: awsRegion });
   
   return secretsManagerClient;
 }
@@ -41,16 +41,16 @@ export function initSecretsManager(region?: string): SecretsManagerClient {
  * Load secrets from AWS Secrets Manager
  */
 export async function loadSecretsFromAWS(
-  secretName?: string
+  secretName?: string,
 ): Promise<Record<string, string>> {
   const secretId = secretName || 
     process.env.AWS_SECRETS_MANAGER_SECRET_NAME || 
-    'shiftmanager/production';
+    "shiftmanager/production";
 
   // Check cache
   const now = Date.now();
   if (cachedAWSSecrets && (now - lastFetchTime) < CACHE_TTL) {
-    logger.debug('Using cached AWS secrets');
+    logger.debug("Using cached AWS secrets");
     // Convert Secrets to Record<string, string> for AWS compatibility
     const stringSecrets: Record<string, string> = {};
     for (const [key, value] of Object.entries(cachedAWSSecrets)) {
@@ -64,7 +64,7 @@ export async function loadSecretsFromAWS(
   try {
     const client = initSecretsManager();
     
-    logger.info('Fetching secrets from AWS Secrets Manager', { secretId });
+    logger.info("Fetching secrets from AWS Secrets Manager", { secretId });
     
     const command = new GetSecretValueCommand({
       SecretId: secretId,
@@ -74,7 +74,7 @@ export async function loadSecretsFromAWS(
     const response = await client.send(command);
     
     if (!response.SecretString) {
-      throw new Error('Secret string is empty');
+      throw new Error("Secret string is empty");
     }
 
     const secrets = JSON.parse(response.SecretString) as Record<string, string>;
@@ -83,27 +83,27 @@ export async function loadSecretsFromAWS(
     cachedAWSSecrets = secrets as unknown as Secrets;
     lastFetchTime = now;
     
-    logger.info('Successfully loaded secrets from AWS Secrets Manager', {
+    logger.info("Successfully loaded secrets from AWS Secrets Manager", {
       secretId,
       secretCount: Object.keys(secrets).length,
     });
     
     return secrets;
   } catch (error) {
-    logger.error('Failed to load secrets from AWS Secrets Manager', {
+    logger.error("Failed to load secrets from AWS Secrets Manager", {
       error,
       secretId,
     });
     
     // In production, this is critical - throw error
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === "production") {
       throw new Error(
-        `Failed to load secrets from AWS Secrets Manager: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to load secrets from AWS Secrets Manager: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
     
     // In development/test, fall back to environment variables
-    logger.warn('Falling back to environment variables');
+    logger.warn("Falling back to environment variables");
     return {};
   }
 }
@@ -125,7 +125,7 @@ export function isAWSSecretsManagerEnabled(): boolean {
 export function clearSecretsCache(): void {
   cachedAWSSecrets = null;
   lastFetchTime = 0;
-  logger.info('Secrets cache cleared');
+  logger.info("Secrets cache cleared");
 }
 
 /**
@@ -135,13 +135,13 @@ export function clearSecretsCache(): void {
  */
 export async function rotateSecretInAWS(
   secretName: string,
-  newSecretValue: Record<string, string>
+  newSecretValue: Record<string, string>,
 ): Promise<void> {
-  const { SecretsManagerClient, PutSecretValueCommand } = await import('@aws-sdk/client-secrets-manager');
+  const { SecretsManagerClient, PutSecretValueCommand } = await import("@aws-sdk/client-secrets-manager");
   
   const client = initSecretsManager();
   
-  logger.info('Rotating secret in AWS Secrets Manager', { secretName });
+  logger.info("Rotating secret in AWS Secrets Manager", { secretName });
   
   try {
     const command = new PutSecretValueCommand({
@@ -154,9 +154,9 @@ export async function rotateSecretInAWS(
     // Clear cache to force reload
     clearSecretsCache();
     
-    logger.info('Secret rotated successfully', { secretName });
+    logger.info("Secret rotated successfully", { secretName });
   } catch (error) {
-    logger.error('Failed to rotate secret', { error, secretName });
+    logger.error("Failed to rotate secret", { error, secretName });
     throw error;
   }
 }

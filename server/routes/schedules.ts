@@ -78,7 +78,7 @@ router.post("/assign", async (req, res) => {
       employee_id, 
       schedule_id, 
       new Date(valid_from),
-      valid_to ? new Date(valid_to) : undefined
+      valid_to ? new Date(valid_to) : undefined,
     );
     res.json({ success: true });
   } catch (error) {

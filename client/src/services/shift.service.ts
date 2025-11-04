@@ -1,14 +1,14 @@
 // Сервис для работы со сменами
 
-import { apiService } from './api.service';
-import { API_ENDPOINTS } from '../constants/api.constants';
+import { apiService } from "./api.service";
+import { API_ENDPOINTS } from "../constants/api.constants";
 import {
   Shift,
   ApiResponse,
   FilterOptions,
   SortOptions,
   PaginationOptions,
-} from '../types';
+} from "../types";
 
 export interface CreateShiftData {
   employee_id: string;
@@ -31,7 +31,7 @@ export class ShiftService {
   // Получение активных смен компании
   async getActiveShifts(companyId: string): Promise<Shift[]> {
     const response = await apiService.get<Shift[]>(
-      API_ENDPOINTS.COMPANIES.SHIFTS.ACTIVE(companyId)
+      API_ENDPOINTS.COMPANIES.SHIFTS.ACTIVE(companyId),
     );
 
     return response;
@@ -40,7 +40,7 @@ export class ShiftService {
   // Получение запланированных смен компании
   async getPlannedShifts(companyId: string): Promise<Shift[]> {
     const response = await apiService.get<Shift[]>(
-      API_ENDPOINTS.COMPANIES.SHIFTS.PLANNED(companyId)
+      API_ENDPOINTS.COMPANIES.SHIFTS.PLANNED(companyId),
     );
 
     return response;
@@ -51,7 +51,7 @@ export class ShiftService {
     companyId: string,
     filters?: FilterOptions,
     sort?: SortOptions,
-    pagination?: PaginationOptions
+    pagination?: PaginationOptions,
   ): Promise<Shift[]> {
     const params = {
       ...filters,
@@ -61,7 +61,7 @@ export class ShiftService {
 
     const response = await apiService.get<Shift[]>(
       `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts`,
-      params
+      params,
     );
 
     return response;
@@ -70,7 +70,7 @@ export class ShiftService {
   // Получение смены по ID
   async getShift(companyId: string, shiftId: string): Promise<Shift> {
     const response = await apiService.get<Shift>(
-      API_ENDPOINTS.COMPANIES.SHIFTS.BY_ID(companyId, shiftId)
+      API_ENDPOINTS.COMPANIES.SHIFTS.BY_ID(companyId, shiftId),
     );
 
     return response;
@@ -80,7 +80,7 @@ export class ShiftService {
   async createShift(companyId: string, data: CreateShiftData): Promise<Shift> {
     const response = await apiService.post<ApiResponse<Shift>>(
       `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts`,
-      data
+      data,
     );
 
     if (response.error) {
@@ -94,11 +94,11 @@ export class ShiftService {
   async updateShift(
     companyId: string,
     shiftId: string,
-    data: UpdateShiftData
+    data: UpdateShiftData,
   ): Promise<Shift> {
     const response = await apiService.patch<ApiResponse<Shift>>(
       API_ENDPOINTS.COMPANIES.SHIFTS.BY_ID(companyId, shiftId),
-      data
+      data,
     );
 
     if (response.error) {
@@ -111,7 +111,7 @@ export class ShiftService {
   // Удаление смены
   async deleteShift(companyId: string, shiftId: string): Promise<void> {
     const response = await apiService.delete<ApiResponse>(
-      API_ENDPOINTS.COMPANIES.SHIFTS.BY_ID(companyId, shiftId)
+      API_ENDPOINTS.COMPANIES.SHIFTS.BY_ID(companyId, shiftId),
     );
 
     if (response.error) {
@@ -122,7 +122,7 @@ export class ShiftService {
   // Начало смены
   async startShift(companyId: string, shiftId: string): Promise<Shift> {
     const response = await apiService.post<ApiResponse<Shift>>(
-      `${API_ENDPOINTS.COMPANIES.SHIFTS.BY_ID(companyId, shiftId)}/start`
+      `${API_ENDPOINTS.COMPANIES.SHIFTS.BY_ID(companyId, shiftId)}/start`,
     );
 
     if (response.error) {
@@ -136,11 +136,11 @@ export class ShiftService {
   async endShift(
     companyId: string,
     shiftId: string,
-    notes?: string
+    notes?: string,
   ): Promise<Shift> {
     const response = await apiService.post<ApiResponse<Shift>>(
       `${API_ENDPOINTS.COMPANIES.SHIFTS.BY_ID(companyId, shiftId)}/end`,
-      { notes }
+      { notes },
     );
 
     if (response.error) {
@@ -154,7 +154,7 @@ export class ShiftService {
   async getEmployeeShifts(
     companyId: string,
     employeeId: string,
-    filters?: FilterOptions
+    filters?: FilterOptions,
   ): Promise<Shift[]> {
     const params = {
       ...filters,
@@ -162,7 +162,7 @@ export class ShiftService {
 
     const response = await apiService.get<Shift[]>(
       `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/employees/${employeeId}/shifts`,
-      params
+      params,
     );
 
     return response;
@@ -171,11 +171,11 @@ export class ShiftService {
   // Получение текущей активной смены сотрудника
   async getCurrentShift(
     companyId: string,
-    employeeId: string
+    employeeId: string,
   ): Promise<Shift | null> {
     try {
       const response = await apiService.get<Shift>(
-        `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/employees/${employeeId}/current-shift`
+        `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/employees/${employeeId}/current-shift`,
       );
 
       return response;
@@ -188,11 +188,11 @@ export class ShiftService {
   // Массовое создание смен
   async bulkCreateShifts(
     companyId: string,
-    shifts: CreateShiftData[]
+    shifts: CreateShiftData[],
   ): Promise<Shift[]> {
     const response = await apiService.post<ApiResponse<Shift[]>>(
       `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts/bulk`,
-      { shifts }
+      { shifts },
     );
 
     if (response.error) {
@@ -206,11 +206,11 @@ export class ShiftService {
   async bulkUpdateShifts(
     companyId: string,
     shiftIds: string[],
-    data: UpdateShiftData
+    data: UpdateShiftData,
   ): Promise<void> {
     const response = await apiService.patch<ApiResponse>(
       `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts/bulk`,
-      { shiftIds, data }
+      { shiftIds, data },
     );
 
     if (response.error) {
@@ -222,7 +222,7 @@ export class ShiftService {
   async bulkDeleteShifts(companyId: string, shiftIds: string[]): Promise<void> {
     const response = await apiService.delete<ApiResponse>(
       `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts/bulk`,
-      { shiftIds }
+      { shiftIds },
     );
 
     if (response.error) {
@@ -233,7 +233,7 @@ export class ShiftService {
   // Получение статистики смен
   async getShiftStats(
     companyId: string,
-    filters?: FilterOptions
+    filters?: FilterOptions,
   ): Promise<any> {
     const params = {
       ...filters,
@@ -241,7 +241,7 @@ export class ShiftService {
 
     const response = await apiService.get<any>(
       `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts/stats`,
-      params
+      params,
     );
 
     return response;
@@ -250,11 +250,11 @@ export class ShiftService {
   // Экспорт смен
   async exportShifts(
     companyId: string,
-    format: 'csv' | 'xlsx' = 'csv'
+    format: "csv" | "xlsx" = "csv",
   ): Promise<void> {
     await apiService.downloadFile(
       `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts/export?format=${format}`,
-      `shifts.${format}`
+      `shifts.${format}`,
     );
   }
 
@@ -262,11 +262,11 @@ export class ShiftService {
   async copyShift(
     companyId: string,
     shiftId: string,
-    newDate: string
+    newDate: string,
   ): Promise<Shift> {
     const response = await apiService.post<ApiResponse<Shift>>(
       `${API_ENDPOINTS.COMPANIES.SHIFTS.BY_ID(companyId, shiftId)}/copy`,
-      { newDate }
+      { newDate },
     );
 
     if (response.error) {
@@ -280,11 +280,11 @@ export class ShiftService {
   async getShiftsByPeriod(
     companyId: string,
     startDate: string,
-    endDate: string
+    endDate: string,
   ): Promise<Shift[]> {
     const response = await apiService.get<Shift[]>(
       `${API_ENDPOINTS.COMPANIES.BY_ID(companyId)}/shifts/period`,
-      { startDate, endDate }
+      { startDate, endDate },
     );
 
     return response;

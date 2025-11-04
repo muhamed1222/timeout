@@ -1,6 +1,6 @@
-import { randomBytes } from 'crypto';
-import { Request, Response, NextFunction } from 'express';
-import { logger } from '../lib/logger.js';
+import { randomBytes } from "crypto";
+import { Request, Response, NextFunction } from "express";
+import { logger } from "../lib/logger.js";
 
 // Extend Express Request type
 declare global {
@@ -35,15 +35,15 @@ setInterval(() => {
  * Generate CSRF token for a session
  */
 export function generateCsrfToken(req: Request): string {
-  const token = randomBytes(32).toString('hex');
-  const sessionId = req.sessionID || req.ip || 'unknown';
+  const token = randomBytes(32).toString("hex");
+  const sessionId = req.sessionID || req.ip || "unknown";
   
   csrfTokens.set(sessionId, {
     token,
     createdAt: Date.now(),
   });
   
-  logger.debug('CSRF token generated', { sessionId });
+  logger.debug("CSRF token generated", { sessionId });
   return token;
 }
 
@@ -51,18 +51,18 @@ export function generateCsrfToken(req: Request): string {
  * Verify CSRF token
  */
 function verifyCsrfToken(req: Request, providedToken: string): boolean {
-  const sessionId = req.sessionID || req.ip || 'unknown';
+  const sessionId = req.sessionID || req.ip || "unknown";
   const stored = csrfTokens.get(sessionId);
   
   if (!stored) {
-    logger.warn('CSRF token not found for session', { sessionId });
+    logger.warn("CSRF token not found for session", { sessionId });
     return false;
   }
   
   // Check expiry
   if (Date.now() - stored.createdAt > TOKEN_EXPIRY) {
     csrfTokens.delete(sessionId);
-    logger.warn('CSRF token expired', { sessionId });
+    logger.warn("CSRF token expired", { sessionId });
     return false;
   }
   
@@ -70,7 +70,7 @@ function verifyCsrfToken(req: Request, providedToken: string): boolean {
   const isValid = stored.token === providedToken;
   
   if (!isValid) {
-    logger.warn('CSRF token mismatch', { sessionId });
+    logger.warn("CSRF token mismatch", { sessionId });
   }
   
   return isValid;
@@ -82,37 +82,37 @@ function verifyCsrfToken(req: Request, providedToken: string): boolean {
  */
 export function csrfProtection(req: Request, res: Response, next: NextFunction): void {
   // Skip GET, HEAD, OPTIONS (safe methods)
-  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
     return next();
   }
   
   // Skip bot API routes (protected by X-Bot-Secret)
-  if (req.headers['x-bot-secret']) {
+  if (req.headers["x-bot-secret"]) {
     return next();
   }
   
   // Skip public routes
-  const publicPaths = ['/api/auth/login', '/api/auth/register'];
+  const publicPaths = ["/api/auth/login", "/api/auth/register"];
   if (publicPaths.includes(req.path)) {
     return next();
   }
   
   // Get token from header
-  const providedToken = req.headers['x-csrf-token'] as string;
+  const providedToken = req.headers["x-csrf-token"] as string;
   
   if (!providedToken) {
-    logger.warn('CSRF token missing in request', {
+    logger.warn("CSRF token missing in request", {
       path: req.path,
       method: req.method,
       ip: req.ip,
     });
-    res.status(403).json({ error: 'CSRF token missing' });
+    res.status(403).json({ error: "CSRF token missing" });
     return;
   }
   
   // Verify token
   if (!verifyCsrfToken(req, providedToken)) {
-    res.status(403).json({ error: 'Invalid CSRF token' });
+    res.status(403).json({ error: "Invalid CSRF token" });
     return;
   }
   

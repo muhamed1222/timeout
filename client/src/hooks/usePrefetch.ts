@@ -4,9 +4,9 @@
  * Prefetch data before user navigates to improve perceived performance
  */
 
-import { useQueryClient } from '@tanstack/react-query';
-import { queryConfig } from '@/lib/queryClient';
-import { useCallback } from 'react';
+import { useQueryClient } from "@tanstack/react-query";
+import { queryConfig } from "@/lib/queryClient";
+import { useCallback } from "react";
 
 /**
  * Prefetch employee data on hover
@@ -17,18 +17,20 @@ export function usePrefetchEmployee() {
   return useCallback(
     (employeeId: string) => {
       queryClient.prefetchQuery({
-        queryKey: ['/api/employees', employeeId],
+        queryKey: ["/api/employees", employeeId],
         queryFn: async () => {
           const res = await fetch(`/api/employees/${employeeId}`, {
-            credentials: 'include',
+            credentials: "include",
           });
-          if (!res.ok) throw new Error('Failed to fetch employee');
+          if (!res.ok) {
+            throw new Error("Failed to fetch employee");
+          }
           return res.json();
         },
         staleTime: queryConfig.employees.staleTime,
       });
     },
-    [queryClient]
+    [queryClient],
   );
 }
 
@@ -41,18 +43,20 @@ export function usePrefetchEmployeeStats() {
   return useCallback(
     (employeeId: string) => {
       queryClient.prefetchQuery({
-        queryKey: ['/api/employees', employeeId, 'stats'],
+        queryKey: ["/api/employees", employeeId, "stats"],
         queryFn: async () => {
           const res = await fetch(`/api/employees/${employeeId}/stats`, {
-            credentials: 'include',
+            credentials: "include",
           });
-          if (!res.ok) throw new Error('Failed to fetch stats');
+          if (!res.ok) {
+            throw new Error("Failed to fetch stats");
+          }
           return res.json();
         },
         staleTime: queryConfig.live.staleTime,
       });
     },
-    [queryClient]
+    [queryClient],
   );
 }
 
@@ -65,18 +69,20 @@ export function usePrefetchCompany() {
   return useCallback(
     (companyId: string) => {
       queryClient.prefetchQuery({
-        queryKey: ['/api/companies', companyId],
+        queryKey: ["/api/companies", companyId],
         queryFn: async () => {
           const res = await fetch(`/api/companies/${companyId}`, {
-            credentials: 'include',
+            credentials: "include",
           });
-          if (!res.ok) throw new Error('Failed to fetch company');
+          if (!res.ok) {
+            throw new Error("Failed to fetch company");
+          }
           return res.json();
         },
         staleTime: queryConfig.static.staleTime,
       });
     },
-    [queryClient]
+    [queryClient],
   );
 }
 
@@ -89,7 +95,7 @@ export function usePrefetchEmployeeShifts() {
   return useCallback(
     (employeeId: string, startDate?: string, endDate?: string) => {
       const queryKey = [
-        '/api/shifts',
+        "/api/shifts",
         employeeId,
         ...(startDate ? [startDate] : []),
         ...(endDate ? [endDate] : []),
@@ -99,22 +105,28 @@ export function usePrefetchEmployeeShifts() {
         queryKey,
         queryFn: async () => {
           const params = new URLSearchParams();
-          if (startDate) params.set('start', startDate);
-          if (endDate) params.set('end', endDate);
+          if (startDate) {
+            params.set("start", startDate);
+          }
+          if (endDate) {
+            params.set("end", endDate);
+          }
 
           const url = `/api/shifts?employee_id=${employeeId}${
-            params.toString() ? `&${params.toString()}` : ''
+            params.toString() ? `&${params.toString()}` : ""
           }`;
           const res = await fetch(url, {
-            credentials: 'include',
+            credentials: "include",
           });
-          if (!res.ok) throw new Error('Failed to fetch shifts');
+          if (!res.ok) {
+            throw new Error("Failed to fetch shifts");
+          }
           return res.json();
         },
         staleTime: queryConfig.live.staleTime,
       });
     },
-    [queryClient]
+    [queryClient],
   );
 }
 
@@ -127,9 +139,9 @@ export function usePrefetchRatings() {
   return useCallback(
     (companyId: string, periodStart?: string, periodEnd?: string) => {
       const queryKey = [
-        '/api/companies',
+        "/api/companies",
         companyId,
-        'ratings',
+        "ratings",
         ...(periodStart ? [periodStart] : []),
         ...(periodEnd ? [periodEnd] : []),
       ];
@@ -138,22 +150,28 @@ export function usePrefetchRatings() {
         queryKey,
         queryFn: async () => {
           const params = new URLSearchParams();
-          if (periodStart) params.set('periodStart', periodStart);
-          if (periodEnd) params.set('periodEnd', periodEnd);
+          if (periodStart) {
+            params.set("periodStart", periodStart);
+          }
+          if (periodEnd) {
+            params.set("periodEnd", periodEnd);
+          }
 
           const url = `/api/companies/${companyId}/ratings${
-            params.toString() ? `?${params.toString()}` : ''
+            params.toString() ? `?${params.toString()}` : ""
           }`;
           const res = await fetch(url, {
-            credentials: 'include',
+            credentials: "include",
           });
-          if (!res.ok) throw new Error('Failed to fetch ratings');
+          if (!res.ok) {
+            throw new Error("Failed to fetch ratings");
+          }
           return res.json();
         },
         staleTime: queryConfig.ratings.staleTime,
       });
     },
-    [queryClient]
+    [queryClient],
   );
 }
 
@@ -170,7 +188,7 @@ export function usePrefetch<TData = unknown>() {
       options?: {
         staleTime?: number;
         cacheTime?: number;
-      }
+      },
     ) => {
       queryClient.prefetchQuery({
         queryKey,
@@ -178,7 +196,9 @@ export function usePrefetch<TData = unknown>() {
         staleTime: options?.staleTime,
       });
     },
-    [queryClient]
+    [queryClient],
   );
 }
+
+
 

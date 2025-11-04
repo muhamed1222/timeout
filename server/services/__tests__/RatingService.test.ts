@@ -183,9 +183,13 @@ describe('RatingService', () => {
 
   describe('recalculateEmployeeRating', () => {
     it('should calculate rating from violations', async () => {
+      const periodStart = '2025-01-01';
+      const periodEnd = '2025-01-31';
+      
+      // Создаем нарушения с датами, которые попадают в период
       const violations = [
-        { id: 'v1', rule_id: 'rule-1', created_at: new Date() },
-        { id: 'v2', rule_id: 'rule-2', created_at: new Date() },
+        { id: 'v1', rule_id: 'rule-1', created_at: new Date('2025-01-15') },
+        { id: 'v2', rule_id: 'rule-2', created_at: new Date('2025-01-20') },
       ];
 
       const rules = [
@@ -201,8 +205,8 @@ describe('RatingService', () => {
 
       const result = await service.recalculateEmployeeRating(
         'emp-1',
-        '2025-01-01',
-        '2025-01-31'
+        periodStart,
+        periodEnd
       );
 
       expect(result.rating).toBe(85); // 100 - 10 - 5
@@ -211,7 +215,13 @@ describe('RatingService', () => {
     });
 
     it('should update existing rating', async () => {
-      const violations = [{ id: 'v1', rule_id: 'rule-1', created_at: new Date() }];
+      const periodStart = '2025-01-01';
+      const periodEnd = '2025-01-31';
+      
+      // Создаем нарушение с датой, которая попадает в период
+      const violations = [
+        { id: 'v1', rule_id: 'rule-1', created_at: new Date('2025-01-15') }
+      ];
       const rules = [{ id: 'rule-1', penalty_percent: '5', is_active: true }];
       const existingRating = { id: 'rating-1', employee_id: 'emp-1', rating: '100' };
 
@@ -223,8 +233,8 @@ describe('RatingService', () => {
 
       const result = await service.recalculateEmployeeRating(
         'emp-1',
-        '2025-01-01',
-        '2025-01-31'
+        periodStart,
+        periodEnd
       );
 
       expect(result.rating).toBe(95);
@@ -232,7 +242,13 @@ describe('RatingService', () => {
     });
 
     it('should terminate employee if rating <= 30', async () => {
-      const violations = [{ id: 'v1', rule_id: 'rule-1', created_at: new Date() }];
+      const periodStart = '2025-01-01';
+      const periodEnd = '2025-01-31';
+      
+      // Создаем нарушение с датой, которая попадает в период
+      const violations = [
+        { id: 'v1', rule_id: 'rule-1', created_at: new Date('2025-01-15') }
+      ];
       const rules = [{ id: 'rule-1', penalty_percent: '75', is_active: true }];
 
       mockRepositories.employee.findById.mockResolvedValue(mockEmployee);
@@ -244,8 +260,8 @@ describe('RatingService', () => {
 
       const result = await service.recalculateEmployeeRating(
         'emp-1',
-        '2025-01-01',
-        '2025-01-31'
+        periodStart,
+        periodEnd
       );
 
       expect(result.rating).toBe(25);

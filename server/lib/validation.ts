@@ -3,18 +3,18 @@
  * All API request validation should use these schemas
  */
 
-import { z } from 'zod';
+import { z } from "zod";
 
 // ============================================================================
 // COMMON SCHEMAS
 // ============================================================================
 
-export const uuidSchema = z.string().uuid('Invalid UUID format');
+export const uuidSchema = z.string().uuid("Invalid UUID format");
 
 export const dateSchema = z.union([
   z.string().datetime(),
   z.date(),
-  z.string().transform((str) => new Date(str))
+  z.string().transform((str) => new Date(str)),
 ]);
 
 export const paginationSchema = z.object({
@@ -27,19 +27,19 @@ export const paginationSchema = z.object({
 // ============================================================================
 
 export const loginSchema = z.object({
-  email: z.string().email('Invalid email format'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 export const registerSchema = z.object({
-  email: z.string().email('Invalid email format'),
+  email: z.string().email("Invalid email format"),
   password: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number'),
-  full_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
-  company_name: z.string().min(2, 'Company name must be at least 2 characters').max(100),
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
+  full_name: z.string().min(2, "Name must be at least 2 characters").max(100),
+  company_name: z.string().min(2, "Company name must be at least 2 characters").max(100),
 });
 
 // ============================================================================
@@ -49,10 +49,10 @@ export const registerSchema = z.object({
 export const createCompanySchema = z.object({
   name: z.string().min(2).max(100),
   industry: z.string().optional(),
-  timezone: z.string().default('UTC'),
+  timezone: z.string().default("UTC"),
   settings: z.object({
-    working_hours_start: z.string().regex(/^\d{2}:\d{2}$/).default('09:00'),
-    working_hours_end: z.string().regex(/^\d{2}:\d{2}$/).default('18:00'),
+    working_hours_start: z.string().regex(/^\d{2}:\d{2}$/).default("09:00"),
+    working_hours_end: z.string().regex(/^\d{2}:\d{2}$/).default("18:00"),
     break_duration_minutes: z.number().int().min(0).max(120).default(60),
   }).optional(),
 });
@@ -69,13 +69,13 @@ export const createEmployeeSchema = z.object({
   email: z.string().email().optional(),
   phone_number: z.string().regex(/^\+?[1-9]\d{1,14}$/).optional(),
   hire_date: dateSchema.optional(),
-  status: z.enum(['active', 'inactive', 'on_leave']).default('active'),
+  status: z.enum(["active", "inactive", "on_leave"]).default("active"),
 });
 
 export const updateEmployeeSchema = createEmployeeSchema.partial();
 
 export const linkTelegramSchema = z.object({
-  telegram_id: z.string().regex(/^\d+$/, 'Invalid Telegram ID'),
+  telegram_id: z.string().regex(/^\d+$/, "Invalid Telegram ID"),
   telegram_username: z.string().min(1).optional(),
 });
 
@@ -83,7 +83,7 @@ export const linkTelegramSchema = z.object({
 // SHIFT SCHEMAS
 // ============================================================================
 
-export const shiftStatusSchema = z.enum(['scheduled', 'active', 'paused', 'completed', 'cancelled']);
+export const shiftStatusSchema = z.enum(["scheduled", "active", "paused", "completed", "cancelled"]);
 
 export const createShiftSchema = z.object({
   employee_id: uuidSchema,
@@ -92,7 +92,7 @@ export const createShiftSchema = z.object({
   notes: z.string().max(500).optional(),
 }).refine(
   (data) => new Date(data.planned_end_at) > new Date(data.planned_start_at),
-  { message: 'End time must be after start time', path: ['planned_end_at'] }
+  { message: "End time must be after start time", path: ["planned_end_at"] },
 );
 
 export const updateShiftSchema = z.object({
@@ -109,7 +109,7 @@ export const updateShiftSchema = z.object({
     }
     return true;
   },
-  { message: 'End time must be after start time', path: ['planned_end_at'] }
+  { message: "End time must be after start time", path: ["planned_end_at"] },
 );
 
 export const startShiftSchema = z.object({
@@ -140,15 +140,15 @@ export const endBreakSchema = z.object({
 // ============================================================================
 
 export const violationTypeSchema = z.enum([
-  'late_start',
-  'early_end',
-  'long_break',
-  'missed_shift',
-  'unauthorized_absence',
-  'other'
+  "late_start",
+  "early_end",
+  "long_break",
+  "missed_shift",
+  "unauthorized_absence",
+  "other",
 ]);
 
-export const violationSourceSchema = z.enum(['auto', 'manual']);
+export const violationSourceSchema = z.enum(["auto", "manual"]);
 
 export const createViolationSchema = z.object({
   employee_id: uuidSchema,
@@ -158,7 +158,7 @@ export const createViolationSchema = z.object({
   severity: z.number().int().min(1).max(10),
   description: z.string().min(10).max(500),
   detected_at: dateSchema.optional(),
-  source: violationSourceSchema.default('manual'),
+  source: violationSourceSchema.default("manual"),
   evidence: z.record(z.any()).optional(),
 });
 
@@ -167,12 +167,12 @@ export const createViolationSchema = z.object({
 // ============================================================================
 
 export const exceptionKindSchema = z.enum([
-  'sick_leave',
-  'vacation',
-  'personal',
-  'technical_issue',
-  'approved_late',
-  'other'
+  "sick_leave",
+  "vacation",
+  "personal",
+  "technical_issue",
+  "approved_late",
+  "other",
 ]);
 
 export const createExceptionSchema = z.object({
@@ -220,7 +220,7 @@ export const createReminderSchema = z.object({
   employee_id: uuidSchema,
   message: z.string().min(1).max(500),
   planned_at: dateSchema,
-  type: z.enum(['shift_start', 'break_end', 'shift_end', 'custom']).default('custom'),
+  type: z.enum(["shift_start", "break_end", "shift_end", "custom"]).default("custom"),
 });
 
 // ============================================================================
@@ -246,7 +246,7 @@ export const updateViolationRuleSchema = createViolationRuleSchema.partial().omi
 
 export const employeeQuerySchema = z.object({
   company_id: uuidSchema.optional(),
-  status: z.enum(['active', 'inactive', 'on_leave']).optional(),
+  status: z.enum(["active", "inactive", "on_leave"]).optional(),
   search: z.string().max(100).optional(),
   ...paginationSchema.shape,
 });
@@ -299,6 +299,8 @@ export type EmployeeQuery = z.infer<typeof employeeQuerySchema>;
 export type ShiftQuery = z.infer<typeof shiftQuerySchema>;
 export type ViolationQuery = z.infer<typeof violationQuerySchema>;
 export type ExceptionQuery = z.infer<typeof exceptionQuerySchema>;
+
+
 
 
 

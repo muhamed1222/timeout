@@ -1,6 +1,6 @@
-import { BaseRepository } from './BaseRepository.js';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import * as schema from '../../shared/schema.js';
+import { BaseRepository } from "./BaseRepository.js";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import * as schema from "../../shared/schema.js";
 import type { 
   EmployeeRating, 
   InsertEmployeeRating,
@@ -8,11 +8,11 @@ import type {
   InsertViolations,
   CompanyViolationRules,
   InsertCompanyViolationRules,
-  Employee
-} from '../../shared/schema.js';
-import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
-import type { ViolationRepository } from './ViolationRepository.js';
-import type { EmployeeRepository } from './EmployeeRepository.js';
+  Employee,
+} from "../../shared/schema.js";
+import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
+import type { ViolationRepository } from "./ViolationRepository.js";
+import type { EmployeeRepository } from "./EmployeeRepository.js";
 
 /**
  * Repository for Rating and Violations entities
@@ -28,11 +28,11 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
   async findByEmployeeAndPeriod(
     employeeId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): Promise<EmployeeRating | undefined> {
     // Convert Date to YYYY-MM-DD string format for date column
-    const startDateStr = startDate.toISOString().split('T')[0];
-    const endDateStr = endDate.toISOString().split('T')[0];
+    const startDateStr = startDate.toISOString().split("T")[0];
+    const endDateStr = endDate.toISOString().split("T")[0];
     
     // Find rating where period_start <= endDate AND period_end >= startDate
     // This ensures we find ratings that overlap with the requested period
@@ -43,8 +43,8 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
         and(
           eq(schema.employee_rating.employee_id, employeeId),
           lte(schema.employee_rating.period_start, endDateStr as any),
-          gte(schema.employee_rating.period_end, startDateStr as any)
-        )
+          gte(schema.employee_rating.period_end, startDateStr as any),
+        ),
       )
       .limit(1);
 
@@ -59,13 +59,13 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
     
     if (periodStart && periodEnd) {
       // Find ratings that overlap with the requested period
-      const startDateStr = periodStart.toISOString().split('T')[0];
-      const endDateStr = periodEnd.toISOString().split('T')[0];
+      const startDateStr = periodStart.toISOString().split("T")[0];
+      const endDateStr = periodEnd.toISOString().split("T")[0];
       
       whereExpr = and(
         eq(schema.employee_rating.company_id, companyId),
         lte(schema.employee_rating.period_start, endDateStr as any),
-        gte(schema.employee_rating.period_end, startDateStr as any)
+        gte(schema.employee_rating.period_end, startDateStr as any),
       );
     } else {
       whereExpr = eq(schema.employee_rating.company_id, companyId);
@@ -89,7 +89,7 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
       .from(this.table)
       .innerJoin(
         schema.employee,
-        eq(schema.employee_rating.employee_id, schema.employee.id)
+        eq(schema.employee_rating.employee_id, schema.employee.id),
       )
       .where(eq(schema.employee.company_id, companyId))
       .orderBy(desc(schema.employee_rating.rating))
@@ -107,12 +107,12 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
   async getAverageRating(companyId: string): Promise<number> {
     const result = await this.db
       .select({ 
-        avg: sql<number>`AVG(${schema.employee_rating.rating})` 
+        avg: sql<number>`AVG(${schema.employee_rating.rating})`, 
       })
       .from(this.table)
       .innerJoin(
         schema.employee,
-        eq(schema.employee_rating.employee_id, schema.employee.id)
+        eq(schema.employee_rating.employee_id, schema.employee.id),
       )
       .where(eq(schema.employee.company_id, companyId));
 
@@ -130,7 +130,7 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
       .values(violation)
       .returning();
 
-    return results[0] as Violations;
+    return results[0];
   }
 
   /**
@@ -139,7 +139,7 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
   async findViolationsByEmployee(
     employeeId: string,
     startDate?: Date,
-    endDate?: Date
+    endDate?: Date,
   ): Promise<Violations[]> {
     const conditions = [eq(schema.violations.employee_id, employeeId)];
 
@@ -163,14 +163,14 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
    * Find violations by company
    */
   async findViolationsByCompany(companyId: string, limit?: number): Promise<Violations[]> {
-    let query = this.db
+    const query = this.db
       .select({
         violation: schema.violations,
       })
       .from(schema.violations)
       .innerJoin(
         schema.employee,
-        eq(schema.violations.employee_id, schema.employee.id)
+        eq(schema.violations.employee_id, schema.employee.id),
       )
       .where(eq(schema.employee.company_id, companyId))
       .orderBy(desc(schema.violations.created_at));
@@ -185,7 +185,7 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
   async countViolationsByEmployee(
     employeeId: string,
     startDate?: Date,
-    endDate?: Date
+    endDate?: Date,
   ): Promise<number> {
     const conditions = [eq(schema.violations.employee_id, employeeId)];
 
@@ -215,7 +215,7 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
       .values(rule)
       .returning();
 
-    return results[0] as CompanyViolationRules;
+    return results[0];
   }
 
   /**
@@ -240,8 +240,8 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
       .where(
         and(
           eq(schema.company_violation_rules.company_id, companyId),
-          eq(schema.company_violation_rules.is_active, true)
-        )
+          eq(schema.company_violation_rules.is_active, true),
+        ),
       );
 
     return results as CompanyViolationRules[];
@@ -252,7 +252,7 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
    */
   async updateViolationRule(
     id: string,
-    updates: Partial<InsertCompanyViolationRules>
+    updates: Partial<InsertCompanyViolationRules>,
   ): Promise<CompanyViolationRules | undefined> {
     const results = await this.db
       .update(schema.company_violation_rules)
@@ -281,7 +281,7 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
     periodStart: Date,
     periodEnd: Date,
     violationRepo: ViolationRepository,
-    employeeRepo: EmployeeRepository
+    employeeRepo: EmployeeRepository,
   ): Promise<EmployeeRating> {
     // Calculate rating from violations
     const violations = await violationRepo.findViolationsByEmployee(employeeId, periodStart, periodEnd);
@@ -294,29 +294,29 @@ export class RatingRepository extends BaseRepository<EmployeeRating, InsertEmplo
     if (employeeRating) {
       employeeRating = await this.update(employeeRating.id, { 
         rating: rating.toString(),
-        status: rating <= 30 ? 'terminated' : rating <= 50 ? 'warning' : 'active'
+        status: rating <= 30 ? "terminated" : rating <= 50 ? "warning" : "active",
       } as any);
     } else {
       // Get employee to get company_id
       const employee = await employeeRepo.findById(employeeId);
       if (!employee) {
-        throw new Error('Employee not found');
+        throw new Error("Employee not found");
       }
 
       employeeRating = await this.create({
         employee_id: employeeId,
         company_id: employee.company_id,
-        period_start: periodStart.toISOString().split('T')[0] as any,
-        period_end: periodEnd.toISOString().split('T')[0] as any,
+        period_start: periodStart.toISOString().split("T")[0] as any,
+        period_end: periodEnd.toISOString().split("T")[0] as any,
         rating: rating.toString(),
-        status: rating <= 30 ? 'terminated' : rating <= 50 ? 'warning' : 'active'
+        status: rating <= 30 ? "terminated" : rating <= 50 ? "warning" : "active",
       } as any);
     }
 
     // Update employee status if rating is too low
     if (rating <= 30) {
       await employeeRepo.update(employeeId, { 
-        status: 'terminated'
+        status: "terminated",
       } as any);
     }
 

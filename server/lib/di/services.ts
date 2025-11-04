@@ -3,11 +3,11 @@
  * Creates service instances with dependency injection
  */
 
-import { getContainer } from './container.js';
-import { CompanyService } from '../../services/CompanyService.js';
-import { EmployeeService } from '../../services/EmployeeService.js';
-import { ShiftService } from '../../services/ShiftService.js';
-import { RatingService } from '../../services/RatingService.js';
+import { getContainer } from "./container.js";
+import { CompanyService } from "../../services/CompanyService.js";
+import { EmployeeService } from "../../services/EmployeeService.js";
+import { ShiftService } from "../../services/ShiftService.js";
+import { RatingService } from "../../services/RatingService.js";
 
 /**
  * Get CompanyService instance with DI
@@ -36,4 +36,6 @@ export function getShiftService(): ShiftService {
 export function getRatingService(): RatingService {
   return new RatingService(getContainer());
 }
+
+
 

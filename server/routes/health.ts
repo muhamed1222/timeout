@@ -1,15 +1,14 @@
-import { Router } from 'express';
-import { db } from '../repositories/index.js';
-import { sql } from 'drizzle-orm';
-import { cacheAsync } from '../lib/cache.js';
-import { scheduler } from '../services/scheduler.js';
-import { getMetrics } from '../lib/metrics.js';
-import { logger } from '../lib/logger.js';
+import { Router } from "express";
+import { db } from "../repositories/index.js";
+import { sql } from "drizzle-orm";
+import { cacheAsync } from "../lib/cache.js";
+import { getMetrics } from "../lib/metrics.js";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 
 interface HealthStatus {
-  status: 'healthy' | 'degraded' | 'unhealthy';
+  status: "healthy" | "degraded" | "unhealthy";
   uptime: number;
   timestamp: number;
   version: string;
@@ -27,7 +26,7 @@ interface HealthStatus {
 }
 
 interface ServiceStatus {
-  status: 'ok' | 'error' | 'degraded';
+  status: "ok" | "error" | "degraded";
   responseTime?: number;
   message?: string;
 }
@@ -36,15 +35,15 @@ interface ServiceStatus {
  * Comprehensive health check
  * GET /api/health
  */
-router.get('/health', async (req, res) => {
+router.get("/health", async (req, res) => {
   const startTime = Date.now();
   
   const health: HealthStatus = {
-    status: 'healthy',
+    status: "healthy",
     uptime: process.uptime(),
     timestamp: Date.now(),
-    version: process.env.npm_package_version || '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
+    version: process.env.npm_package_version || "1.0.0",
+    environment: process.env.NODE_ENV || "development",
     services: {
       database: await checkDatabase(),
       cache: await checkCache(),
@@ -62,16 +61,16 @@ router.get('/health', async (req, res) => {
 
   // Determine overall status
   const statuses = Object.values(health.services).map(s => s.status);
-  if (statuses.some(s => s === 'error')) {
-    health.status = 'unhealthy';
-  } else if (statuses.some(s => s === 'degraded')) {
-    health.status = 'degraded';
+  if (statuses.some(s => s === "error")) {
+    health.status = "unhealthy";
+  } else if (statuses.some(s => s === "degraded")) {
+    health.status = "degraded";
   }
 
   const responseTime = Date.now() - startTime;
   
   // Return appropriate HTTP status
-  const httpStatus = health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
+  const httpStatus = health.status === "healthy" ? 200 : health.status === "degraded" ? 200 : 503;
   
   res.status(httpStatus).json({
     ...health,
@@ -86,9 +85,9 @@ router.get('/health', async (req, res) => {
  * Returns 200 if the application is running
  * Should not check dependencies
  */
-router.get('/health/live', (req, res) => {
+router.get("/health/live", (req, res) => {
   res.status(200).json({
-    status: 'ok',
+    status: "ok",
     timestamp: Date.now(),
   });
 });
@@ -100,28 +99,28 @@ router.get('/health/live', (req, res) => {
  * Returns 200 if the application is ready to serve traffic
  * Should check critical dependencies
  */
-router.get('/health/ready', async (req, res) => {
+router.get("/health/ready", async (req, res) => {
   try {
     // Check database connectivity
     const dbStatus = await checkDatabase();
     
-    if (dbStatus.status === 'error') {
+    if (dbStatus.status === "error") {
       return res.status(503).json({
-        status: 'not_ready',
-        reason: 'database_unavailable',
+        status: "not_ready",
+        reason: "database_unavailable",
         timestamp: Date.now(),
       });
     }
     
     res.status(200).json({
-      status: 'ready',
+      status: "ready",
       timestamp: Date.now(),
     });
   } catch (error) {
-    logger.error('Readiness check failed', error);
+    logger.error("Readiness check failed", error);
     res.status(503).json({
-      status: 'not_ready',
-      reason: 'internal_error',
+      status: "not_ready",
+      reason: "internal_error",
       timestamp: Date.now(),
     });
   }
@@ -133,26 +132,26 @@ router.get('/health/ready', async (req, res) => {
  * 
  * Returns 200 when the application has completed startup
  */
-router.get('/health/startup', async (req, res) => {
+router.get("/health/startup", async (req, res) => {
   try {
     // Check if essential services are initialized
     const dbStatus = await checkDatabase();
     
-    if (dbStatus.status === 'error') {
+    if (dbStatus.status === "error") {
       return res.status(503).json({
-        status: 'starting',
+        status: "starting",
         timestamp: Date.now(),
       });
     }
     
     res.status(200).json({
-      status: 'started',
+      status: "started",
       timestamp: Date.now(),
     });
   } catch (error) {
-    logger.error('Startup check failed', error);
+    logger.error("Startup check failed", error);
     res.status(503).json({
-      status: 'starting',
+      status: "starting",
       timestamp: Date.now(),
     });
   }
@@ -162,14 +161,14 @@ router.get('/health/startup', async (req, res) => {
  * Metrics endpoint for Prometheus
  * GET /api/metrics
  */
-router.get('/metrics', async (req, res) => {
+router.get("/metrics", async (req, res) => {
   try {
-    res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+    res.set("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
     const metrics = await getMetrics();
     res.send(metrics);
   } catch (error) {
-    logger.error('Error fetching metrics', error);
-    res.status(500).json({ error: 'Failed to fetch metrics' });
+    logger.error("Error fetching metrics", error);
+    res.status(500).json({ error: "Failed to fetch metrics" });
   }
 });
 
@@ -186,15 +185,15 @@ async function checkDatabase(): Promise<ServiceStatus> {
     const responseTime = Date.now() - start;
     
     return {
-      status: responseTime > 1000 ? 'degraded' : 'ok',
+      status: responseTime > 1000 ? "degraded" : "ok",
       responseTime,
-      message: responseTime > 1000 ? 'Slow response' : undefined,
+      message: responseTime > 1000 ? "Slow response" : undefined,
     };
   } catch (error) {
-    logger.error('Database health check failed', error);
+    logger.error("Database health check failed", error);
     return {
-      status: 'error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      message: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -206,7 +205,7 @@ async function checkCache(): Promise<ServiceStatus> {
   const start = Date.now();
   
   try {
-    const testKey = '__health_check__';
+    const testKey = "__health_check__";
     const testValue = Date.now().toString();
     
     // Test write
@@ -222,21 +221,21 @@ async function checkCache(): Promise<ServiceStatus> {
     
     if (retrieved !== testValue) {
       return {
-        status: 'error',
-        message: 'Cache read/write mismatch',
+        status: "error",
+        message: "Cache read/write mismatch",
         responseTime,
       };
     }
     
     return {
-      status: 'ok',
+      status: "ok",
       responseTime,
     };
   } catch (error) {
-    logger.error('Cache health check failed', error);
+    logger.error("Cache health check failed", error);
     return {
-      status: 'error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      message: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -252,14 +251,14 @@ function checkScheduler(): ServiceStatus {
     // Scheduler is always considered healthy if the app is running
     // Could add more sophisticated checks here
     return {
-      status: 'ok',
-      message: 'Scheduler is operational',
+      status: "ok",
+      message: "Scheduler is operational",
     };
   } catch (error) {
-    logger.error('Scheduler health check failed', error);
+    logger.error("Scheduler health check failed", error);
     return {
-      status: 'error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      message: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }

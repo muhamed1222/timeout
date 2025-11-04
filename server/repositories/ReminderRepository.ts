@@ -1,8 +1,8 @@
-import { BaseRepository } from './BaseRepository.js';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import * as schema from '../../shared/schema.js';
-import type { Reminder, InsertReminder, Employee } from '../../shared/schema.js';
-import { eq, and, sql } from 'drizzle-orm';
+import { BaseRepository } from "./BaseRepository.js";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import * as schema from "../../shared/schema.js";
+import type { Reminder, InsertReminder, Employee } from "../../shared/schema.js";
+import { eq, and, sql } from "drizzle-orm";
 
 /**
  * Repository for Reminders
@@ -32,16 +32,16 @@ export class ReminderRepository extends BaseRepository<Reminder, InsertReminder>
           telegram_user_id: schema.employee.telegram_user_id,
           status: schema.employee.status,
           tz: schema.employee.tz,
-          created_at: schema.employee.created_at
-        }
+          created_at: schema.employee.created_at,
+        },
       })
       .from(schema.reminder)
       .innerJoin(schema.employee, eq(schema.reminder.employee_id, schema.employee.id))
       .where(
         and(
           sql`${schema.reminder.planned_at} <= ${timeFilter.toISOString()}`,
-          sql`${schema.reminder.sent_at} IS NULL`
-        )
+          sql`${schema.reminder.sent_at} IS NULL`,
+        ),
       )
       .orderBy(schema.reminder.planned_at);
 
@@ -55,9 +55,9 @@ export class ReminderRepository extends BaseRepository<Reminder, InsertReminder>
     const results = await this.db
       .select()
       .from(this.table)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .where(eq((this.table as any).employee_id, employeeId))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .orderBy(sql`${(this.table as any).planned_at} DESC`);
 
     return results as Reminder[];
@@ -70,7 +70,7 @@ export class ReminderRepository extends BaseRepository<Reminder, InsertReminder>
     const results = await this.db
       .update(this.table)
       .set({ sent_at: sql`now()` } as any)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .where(eq((this.table as any).id, id))
       .returning();
 

@@ -11,8 +11,24 @@ const router = Router();
 // Create employee invite
 router.post("/", asyncHandler(async (req, res) => {
   const data = { ...req.body };
+  
+  // Validate company_id exists in request
+  if (!data.company_id) {
+    throw new ValidationError("company_id is required");
+  }
+  
+  // Check if company exists before creating invite
+  const company = await repositories.company.findById(data.company_id);
+  if (!company) {
+    logger.warn("Attempt to create invite for non-existent company", {
+      company_id: data.company_id,
+      ip: req.ip,
+    });
+    throw new NotFoundError("Company");
+  }
+  
   // Generate unique invite code
-  data.code = randomBytes(16).toString('hex');
+  data.code = randomBytes(16).toString("hex");
   let validatedData;
   try {
     validatedData = insertEmployeeInviteSchema.parse(data);
@@ -22,7 +38,14 @@ router.post("/", asyncHandler(async (req, res) => {
     }
     throw error;
   }
+  
   const invite = await repositories.invite.create(validatedData as any);
+  logger.info("Employee invite created", {
+    invite_id: invite.id,
+    company_id: invite.company_id,
+    full_name: invite.full_name,
+  });
+  
   res.json(invite);
 }));
 
@@ -86,16 +109,16 @@ router.post("/:code/accept", asyncHandler(async (req, res) => {
       full_name: invite.full_name || employee.full_name,
       position: invite.position || employee.position,
       telegram_user_id,
-      status: 'active'
+      status: "active",
     } as any);
   } else {
     // Создаем нового сотрудника
     employee = await repositories.employee.create({
       company_id: invite.company_id,
-      full_name: invite.full_name || 'Сотрудник',
+      full_name: invite.full_name || "Сотрудник",
       position: invite.position,
       telegram_user_id,
-      status: 'active'
+      status: "active",
     } as any);
   }
 
@@ -137,13 +160,13 @@ router.get("/:code/link", asyncHandler(async (req, res) => {
   }
   
   // Remove @ symbol if present
-  const cleanBotUsername = botUsername.replace('@', '');
+  const cleanBotUsername = botUsername.replace("@", "");
   const deepLink = `https://t.me/${cleanBotUsername}?start=${code}`;
   
   res.json({ 
     code,
     deep_link: deepLink,
-    qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(deepLink)}`
+    qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(deepLink)}`,
   });
 }));
 

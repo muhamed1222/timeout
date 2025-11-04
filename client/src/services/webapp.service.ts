@@ -1,5 +1,5 @@
 // Сервис для бизнес-логики Telegram WebApp
-import { apiService } from './api.service';
+import { apiService } from "./api.service";
 
 export interface EmployeeData {
   employee: {
@@ -10,7 +10,7 @@ export interface EmployeeData {
   activeShift?: Record<string, unknown>;
   workIntervals: Record<string, unknown>[];
   breakIntervals: Record<string, unknown>[];
-  status: 'off_work' | 'working' | 'on_break' | 'unknown';
+  status: "off_work" | "working" | "on_break" | "unknown";
 }
 
 export interface GeolocationData {
@@ -22,14 +22,14 @@ export interface GeolocationData {
 
 export interface ShiftActionData {
   shiftId: string;
-  action: 'start' | 'end' | 'break' | 'resume';
+  action: "start" | "end" | "break" | "resume";
   location?: GeolocationData;
   notes?: string;
 }
 
 export interface ShiftStatus {
   id: string;
-  status: 'planned' | 'active' | 'on_break' | 'completed' | 'cancelled';
+  status: "planned" | "active" | "on_break" | "completed" | "cancelled";
   plannedStartAt: string;
   plannedEndAt: string;
   actualStartAt?: string;
@@ -45,8 +45,8 @@ export class WebAppService {
       const response = await apiService.get<EmployeeData>(`/telegram/employee/${telegramUserId}`);
       return response;
     } catch (error) {
-      console.error('Error fetching employee data:', error);
-      throw new Error('Не удалось загрузить данные сотрудника');
+      console.error("Error fetching employee data:", error);
+      throw new Error("Не удалось загрузить данные сотрудника");
     }
   }
 
@@ -56,7 +56,7 @@ export class WebAppService {
       const response = await apiService.get<ShiftStatus>(`/employees/${employeeId}/current-shift`);
       return response;
     } catch (error) {
-      console.error('Error fetching current shift:', error);
+      console.error("Error fetching current shift:", error);
       return null;
     }
   }
@@ -64,60 +64,60 @@ export class WebAppService {
   // Начало смены
   async startShift(data: ShiftActionData): Promise<ShiftStatus> {
     try {
-      const response = await apiService.post<ShiftStatus>('/shifts/start', {
+      const response = await apiService.post<ShiftStatus>("/shifts/start", {
         shiftId: data.shiftId,
         location: data.location,
-        notes: data.notes
+        notes: data.notes,
       });
       return response;
     } catch (error) {
-      console.error('Error starting shift:', error);
-      throw new Error('Не удалось начать смену');
+      console.error("Error starting shift:", error);
+      throw new Error("Не удалось начать смену");
     }
   }
 
   // Завершение смены
   async endShift(data: ShiftActionData): Promise<ShiftStatus> {
     try {
-      const response = await apiService.post<ShiftStatus>('/shifts/end', {
+      const response = await apiService.post<ShiftStatus>("/shifts/end", {
         shiftId: data.shiftId,
         location: data.location,
-        notes: data.notes
+        notes: data.notes,
       });
       return response;
     } catch (error) {
-      console.error('Error ending shift:', error);
-      throw new Error('Не удалось завершить смену');
+      console.error("Error ending shift:", error);
+      throw new Error("Не удалось завершить смену");
     }
   }
 
   // Начало перерыва
   async startBreak(data: ShiftActionData): Promise<ShiftStatus> {
     try {
-      const response = await apiService.post<ShiftStatus>('/shifts/break', {
+      const response = await apiService.post<ShiftStatus>("/shifts/break", {
         shiftId: data.shiftId,
         location: data.location,
-        notes: data.notes
+        notes: data.notes,
       });
       return response;
     } catch (error) {
-      console.error('Error starting break:', error);
-      throw new Error('Не удалось начать перерыв');
+      console.error("Error starting break:", error);
+      throw new Error("Не удалось начать перерыв");
     }
   }
 
   // Завершение перерыва
   async endBreak(data: ShiftActionData): Promise<ShiftStatus> {
     try {
-      const response = await apiService.post<ShiftStatus>('/shifts/resume', {
+      const response = await apiService.post<ShiftStatus>("/shifts/resume", {
         shiftId: data.shiftId,
         location: data.location,
-        notes: data.notes
+        notes: data.notes,
       });
       return response;
     } catch (error) {
-      console.error('Error ending break:', error);
-      throw new Error('Не удалось завершить перерыв');
+      console.error("Error ending break:", error);
+      throw new Error("Не удалось завершить перерыв");
     }
   }
 
@@ -125,7 +125,7 @@ export class WebAppService {
   async getCurrentLocation(): Promise<GeolocationData> {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject(new Error('Геолокация не поддерживается'));
+        reject(new Error("Геолокация не поддерживается"));
         return;
       }
 
@@ -135,7 +135,7 @@ export class WebAppService {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
             accuracy: position.coords.accuracy,
-            timestamp: position.timestamp
+            timestamp: position.timestamp,
           });
         },
         (error) => {
@@ -144,8 +144,8 @@ export class WebAppService {
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 300000 // 5 минут
-        }
+          maximumAge: 300000, // 5 минут
+        },
       );
     });
   }
@@ -175,12 +175,12 @@ export class WebAppService {
   formatTime(dateString: string): string {
     try {
       const date = new Date(dateString);
-      return date.toLocaleTimeString('ru-RU', {
-        hour: '2-digit',
-        minute: '2-digit'
+      return date.toLocaleTimeString("ru-RU", {
+        hour: "2-digit",
+        minute: "2-digit",
       });
     } catch (error) {
-      return '--:--';
+      return "--:--";
     }
   }
 
@@ -188,13 +188,13 @@ export class WebAppService {
   formatDate(dateString: string): string {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('ru-RU', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
+      return date.toLocaleDateString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
       });
     } catch (error) {
-      return '--.--.----';
+      return "--.--.----";
     }
   }
 
@@ -209,14 +209,14 @@ export class WebAppService {
       const hours = Math.floor(diffMinutes / 60);
       const minutes = diffMinutes % 60;
       
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
     } catch (error) {
-      return '00:00';
+      return "00:00";
     }
   }
 
   // Определение статуса смены
-  getShiftStatus(shift: ShiftStatus): 'planned' | 'active' | 'on_break' | 'completed' | 'cancelled' {
+  getShiftStatus(shift: ShiftStatus): "planned" | "active" | "on_break" | "completed" | "cancelled" {
     return shift.status;
   }
 
@@ -225,19 +225,19 @@ export class WebAppService {
     const actions: string[] = [];
 
     switch (shift.status) {
-    case 'planned':
-      actions.push('start');
-      break;
-    case 'active':
-      actions.push('break', 'end');
-      break;
-    case 'on_break':
-      actions.push('resume', 'end');
-      break;
-    case 'completed':
-    case 'cancelled':
+      case "planned":
+        actions.push("start");
+        break;
+      case "active":
+        actions.push("break", "end");
+        break;
+      case "on_break":
+        actions.push("resume", "end");
+        break;
+      case "completed":
+      case "cancelled":
       // Нет доступных действий
-      break;
+        break;
     }
 
     return actions;
@@ -252,68 +252,68 @@ export class WebAppService {
   // Получение текста для кнопки
   getActionButtonText(action: string): string {
     switch (action) {
-    case 'start':
-      return 'Начать смену';
-    case 'end':
-      return 'Завершить смену';
-    case 'break':
-      return 'Начать перерыв';
-    case 'resume':
-      return 'Завершить перерыв';
-    default:
-      return 'Действие';
+      case "start":
+        return "Начать смену";
+      case "end":
+        return "Завершить смену";
+      case "break":
+        return "Начать перерыв";
+      case "resume":
+        return "Завершить перерыв";
+      default:
+        return "Действие";
     }
   }
 
   // Получение иконки для действия
   getActionIcon(action: string): string {
     switch (action) {
-    case 'start':
-      return 'play';
-    case 'end':
-      return 'square';
-    case 'break':
-      return 'coffee';
-    case 'resume':
-      return 'play';
-    default:
-      return 'clock';
+      case "start":
+        return "play";
+      case "end":
+        return "square";
+      case "break":
+        return "coffee";
+      case "resume":
+        return "play";
+      default:
+        return "clock";
     }
   }
 
   // Получение цвета для статуса
   getStatusColor(status: string): string {
     switch (status) {
-    case 'planned':
-      return 'bg-blue-100 text-blue-800';
-    case 'active':
-      return 'bg-green-100 text-green-800';
-    case 'on_break':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'completed':
-      return 'bg-gray-100 text-gray-800';
-    case 'cancelled':
-      return 'bg-red-100 text-red-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
+      case "planned":
+        return "bg-blue-100 text-blue-800";
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "on_break":
+        return "bg-yellow-100 text-yellow-800";
+      case "completed":
+        return "bg-gray-100 text-gray-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   }
 
   // Получение текста для статуса
   getStatusText(status: string): string {
     switch (status) {
-    case 'planned':
-      return 'Запланирована';
-    case 'active':
-      return 'Активна';
-    case 'on_break':
-      return 'На перерыве';
-    case 'completed':
-      return 'Завершена';
-    case 'cancelled':
-      return 'Отменена';
-    default:
-      return 'Неизвестно';
+      case "planned":
+        return "Запланирована";
+      case "active":
+        return "Активна";
+      case "on_break":
+        return "На перерыве";
+      case "completed":
+        return "Завершена";
+      case "cancelled":
+        return "Отменена";
+      default:
+        return "Неизвестно";
     }
   }
 }

@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Clock, CheckCircle, Coffee, XCircle, AlertTriangle } from "lucide-react";
 
-export type ShiftStatus = 'planned' | 'active' | 'break' | 'done' | 'missed' | 'late';
+export type ShiftStatus = "planned" | "active" | "break" | "done" | "missed" | "late";
 
 interface StatusBadgeProps {
   status: ShiftStatus;
@@ -11,35 +11,35 @@ interface StatusBadgeProps {
 
 const statusConfig = {
   planned: {
-    color: 'bg-shift-planned text-white',
+    color: "bg-shift-planned text-white",
     icon: Clock,
-    defaultText: 'Запланировано'
+    defaultText: "Запланировано",
   },
   active: {
-    color: 'bg-shift-active text-white',
+    color: "bg-shift-active text-white",
     icon: CheckCircle,
-    defaultText: 'Активна'
+    defaultText: "Активна",
   },
   break: {
-    color: 'bg-shift-break text-white',
+    color: "bg-shift-break text-white",
     icon: Coffee,
-    defaultText: 'Перерыв'
+    defaultText: "Перерыв",
   },
   done: {
-    color: 'bg-shift-done text-white',
+    color: "bg-shift-done text-white",
     icon: CheckCircle,
-    defaultText: 'Завершено'
+    defaultText: "Завершено",
   },
   missed: {
-    color: 'bg-shift-missed text-white',
+    color: "bg-shift-missed text-white",
     icon: XCircle,
-    defaultText: 'Пропущено'
+    defaultText: "Пропущено",
   },
   late: {
-    color: 'bg-shift-late text-white',
+    color: "bg-shift-late text-white",
     icon: AlertTriangle,
-    defaultText: 'Опоздание'
-  }
+    defaultText: "Опоздание",
+  },
 };
 
 export default function StatusBadge({ status, text, showIcon = true }: StatusBadgeProps) {

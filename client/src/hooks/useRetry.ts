@@ -4,9 +4,9 @@
  * Provides retry functionality for React Query with exponential backoff
  */
 
-import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
-import { toast } from './use-toast';
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
+import { toast } from "./use-toast";
 
 export interface RetryOptions {
   maxRetries?: number;
@@ -34,7 +34,9 @@ export function useRetry(queryKey: unknown[]) {
         onFailure,
       } = options;
 
-      if (isRetrying) return;
+      if (isRetrying) {
+        return;
+      }
 
       setIsRetrying(true);
       let attempt = 0;
@@ -59,8 +61,8 @@ export function useRetry(queryKey: unknown[]) {
             setRetryCount(0);
             onSuccess?.();
             toast({
-              title: 'Данные обновлены',
-              description: 'Повторная попытка успешна',
+              title: "Данные обновлены",
+              description: "Повторная попытка успешна",
             });
             return;
           }
@@ -68,26 +70,26 @@ export function useRetry(queryKey: unknown[]) {
           // If still no data, wait before next retry
           if (attempt < maxRetries) {
             await new Promise((resolve) =>
-              setTimeout(resolve, retryDelay * attempt)
+              setTimeout(resolve, retryDelay * attempt),
             );
           }
         } catch (error) {
           if (attempt >= maxRetries) {
             setIsRetrying(false);
             setRetryCount(0);
-            const err = error instanceof Error ? error : new Error('Unknown error');
+            const err = error instanceof Error ? error : new Error("Unknown error");
             onFailure?.(err);
             toast({
-              title: 'Ошибка',
+              title: "Ошибка",
               description: `Не удалось загрузить данные после ${maxRetries} попыток`,
-              variant: 'destructive',
+              variant: "destructive",
             });
             throw err;
           }
 
           // Wait before next retry with exponential backoff
           await new Promise((resolve) =>
-            setTimeout(resolve, retryDelay * 2 ** attempt)
+            setTimeout(resolve, retryDelay * 2 ** attempt),
           );
         }
       }
@@ -95,7 +97,7 @@ export function useRetry(queryKey: unknown[]) {
       setIsRetrying(false);
       setRetryCount(0);
     },
-    [queryClient, queryKey, isRetrying]
+    [queryClient, queryKey, isRetrying],
   );
 
   const reset = useCallback(() => {
@@ -122,7 +124,9 @@ export function useRetryMultiple(queryKeys: unknown[][]) {
     async (options: RetryOptions = {}) => {
       const { maxRetries = 3, onSuccess, onFailure } = options;
 
-      if (isRetrying) return;
+      if (isRetrying) {
+        return;
+      }
 
       setIsRetrying(true);
 
@@ -135,29 +139,29 @@ export function useRetryMultiple(queryKeys: unknown[][]) {
         // Refetch all queries
         await Promise.all(
           queryKeys.map((queryKey) =>
-            queryClient.refetchQueries({ queryKey })
-          )
+            queryClient.refetchQueries({ queryKey }),
+          ),
         );
 
         setIsRetrying(false);
         onSuccess?.();
         toast({
-          title: 'Данные обновлены',
-          description: 'Все данные успешно загружены',
+          title: "Данные обновлены",
+          description: "Все данные успешно загружены",
         });
       } catch (error) {
         setIsRetrying(false);
-        const err = error instanceof Error ? error : new Error('Unknown error');
+        const err = error instanceof Error ? error : new Error("Unknown error");
         onFailure?.(err);
         toast({
-          title: 'Ошибка',
-          description: 'Не удалось загрузить некоторые данные',
-          variant: 'destructive',
+          title: "Ошибка",
+          description: "Не удалось загрузить некоторые данные",
+          variant: "destructive",
         });
         throw err;
       }
     },
-    [queryClient, queryKeys, isRetrying]
+    [queryClient, queryKeys, isRetrying],
   );
 
   return {
@@ -165,4 +169,6 @@ export function useRetryMultiple(queryKeys: unknown[][]) {
     isRetrying,
   };
 }
+
+
 

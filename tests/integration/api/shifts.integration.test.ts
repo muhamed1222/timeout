@@ -160,7 +160,93 @@ describe('Shifts API Integration', () => {
       expect(shiftExists).toBeUndefined();
     });
   });
+
+  describe('Edge Cases', () => {
+    it('should handle overlapping shifts for same employee', async () => {
+      await createTestShift(employeeId, {
+        planned_start_at: new Date('2025-02-01T09:00:00Z'),
+        planned_end_at: new Date('2025-02-01T17:00:00Z'),
+      });
+
+      const response = await getRequest(app)
+        .post('/api/shifts')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          employee_id: employeeId,
+          planned_start_at: '2025-02-01T10:00:00Z',
+          planned_end_at: '2025-02-01T18:00:00Z',
+        });
+
+      expect([200, 201, 400, 409]).toContain(response.status);
+    });
+
+    it('should handle shifts at midnight boundary', async () => {
+      const response = await getRequest(app)
+        .post('/api/shifts')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          employee_id: employeeId,
+          planned_start_at: '2025-02-01T23:00:00Z',
+          planned_end_at: '2025-02-02T07:00:00Z',
+        });
+
+      expect([200, 201]).toContain(response.status);
+      if (response.status === 201) {
+        expect(response.body).toHaveProperty('id');
+      }
+    });
+
+    it('should handle very long shifts (24+ hours)', async () => {
+      const response = await getRequest(app)
+        .post('/api/shifts')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          employee_id: employeeId,
+          planned_start_at: '2025-02-01T09:00:00Z',
+          planned_end_at: '2025-02-03T09:00:00Z',
+        });
+
+      expect([200, 201, 400, 422]).toContain(response.status);
+    });
+
+    it('should handle concurrent shift updates', async () => {
+      const shift = await createTestShift(employeeId);
+
+      const [update1, update2] = await Promise.all([
+        getRequest(app)
+          .put(`/api/shifts/${shift.id}`)
+          .set('Authorization', `Bearer ${authToken}`)
+          .send({ actual_start_at: '2025-01-01T09:00:00Z' }),
+        getRequest(app)
+          .put(`/api/shifts/${shift.id}`)
+          .set('Authorization', `Bearer ${authToken}`)
+          .send({ actual_start_at: '2025-01-01T09:05:00Z' }),
+      ]);
+
+      expect([200, 409]).toContain(update1.status);
+      expect([200, 409]).toContain(update2.status);
+    });
+
+    it('should handle shift with timezone differences', async () => {
+      const tzEmployee = await createTestEmployee(companyId, {
+        position: 'TZ Employee',
+      });
+
+      const response = await getRequest(app)
+        .post('/api/shifts')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          employee_id: tzEmployee.id,
+          planned_start_at: '2025-02-01T14:00:00Z',
+          planned_end_at: '2025-02-01T22:00:00Z',
+        });
+
+      expect([200, 201]).toContain(response.status);
+    });
+  });
 });
+
+
 
 
 

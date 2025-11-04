@@ -1,8 +1,8 @@
-import { BaseRepository } from './BaseRepository.js';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import * as schema from '../../shared/schema.js';
-import type { Employee, InsertEmployee } from '../../shared/schema.js';
-import { eq, and, or, sql } from 'drizzle-orm';
+import { BaseRepository } from "./BaseRepository.js";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import * as schema from "../../shared/schema.js";
+import type { Employee, InsertEmployee } from "../../shared/schema.js";
+import { eq, and, or, sql } from "drizzle-orm";
 
 /**
  * Repository for Employee entity
@@ -23,7 +23,9 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
         .where(eq(schema.employee.id, id))
         .limit(1);
 
-      if (!results[0]) return undefined;
+      if (!results[0]) {
+        return undefined;
+      }
 
       // Ensure avatar_id and photo_url are present (for backward compatibility)
       return {
@@ -34,11 +36,11 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
     } catch (error) {
       // If error is due to missing columns, try selecting without avatar fields
       const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-      const isColumnError = errorMessage.includes('column') && (
-        errorMessage.includes('does not exist') ||
-        errorMessage.includes('не существует') ||
-        errorMessage.includes('avatar_id') ||
-        errorMessage.includes('photo_url')
+      const isColumnError = errorMessage.includes("column") && (
+        errorMessage.includes("does not exist") ||
+        errorMessage.includes("не существует") ||
+        errorMessage.includes("avatar_id") ||
+        errorMessage.includes("photo_url")
       );
 
       if (isColumnError) {
@@ -58,7 +60,9 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
             .where(eq(schema.employee.id, id))
             .limit(1);
 
-          if (!results[0]) return undefined;
+          if (!results[0]) {
+            return undefined;
+          }
 
           // Add null avatar fields for backward compatibility
           return {
@@ -85,7 +89,9 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
         .where(eq(schema.employee.telegram_user_id, telegramUserId))
         .limit(1);
 
-      if (!results[0]) return undefined;
+      if (!results[0]) {
+        return undefined;
+      }
 
       // Ensure avatar_id and photo_url are present (for backward compatibility)
       return {
@@ -96,11 +102,11 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
     } catch (error) {
       // If error is due to missing columns, try selecting without avatar fields
       const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-      const isColumnError = errorMessage.includes('column') && (
-        errorMessage.includes('does not exist') ||
-        errorMessage.includes('не существует') ||
-        errorMessage.includes('avatar_id') ||
-        errorMessage.includes('photo_url')
+      const isColumnError = errorMessage.includes("column") && (
+        errorMessage.includes("does not exist") ||
+        errorMessage.includes("не существует") ||
+        errorMessage.includes("avatar_id") ||
+        errorMessage.includes("photo_url")
       );
 
       if (isColumnError) {
@@ -120,7 +126,9 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
             .where(eq(schema.employee.telegram_user_id, telegramUserId))
             .limit(1);
 
-          if (!results[0]) return undefined;
+          if (!results[0]) {
+            return undefined;
+          }
 
           // Add null avatar fields for backward compatibility
           return {
@@ -155,11 +163,11 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
     } catch (error) {
       // If error is due to missing columns (avatar_id or photo_url), try selecting without avatar fields
       const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-      const isColumnError = errorMessage.includes('column') && (
-        errorMessage.includes('does not exist') ||
-        errorMessage.includes('не существует') ||
-        errorMessage.includes('avatar_id') ||
-        errorMessage.includes('photo_url')
+      const isColumnError = errorMessage.includes("column") && (
+        errorMessage.includes("does not exist") ||
+        errorMessage.includes("не существует") ||
+        errorMessage.includes("avatar_id") ||
+        errorMessage.includes("photo_url")
       );
       
       if (isColumnError) {
@@ -202,8 +210,8 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
       .where(
         and(
           eq(schema.employee.company_id, companyId),
-          eq(schema.employee.status, 'active')
-        )
+          eq(schema.employee.status, "active"),
+        ),
       );
 
     return results as Employee[];
@@ -212,16 +220,16 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
   /**
    * Find employees by role
    */
-  async findByRole(companyId: string, role: 'admin' | 'manager' | 'employee'): Promise<Employee[]> {
+  async findByRole(companyId: string, role: "admin" | "manager" | "employee"): Promise<Employee[]> {
     const results = await this.db
       .select()
       .from(this.table)
       .where(
         and(
           eq(schema.employee.company_id, companyId),
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-          sql`${(this.table as any).role} = ${role}`
-        )
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sql`${(this.table as any).role} = ${role}`,
+        ),
       );
 
     return results as Employee[];
@@ -238,12 +246,12 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
         and(
           eq(schema.employee.company_id, companyId),
           or(
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-            sql`${(this.table as any).full_name} ILIKE ${`%${query.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`}`,
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-            sql`${(this.table as any).phone} ILIKE ${`%${query.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`}`
-          )
-        )
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            sql`${(this.table as any).full_name} ILIKE ${`%${query.replace(/%/g, "\\%").replace(/_/g, "\\_")}%`}`,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            sql`${(this.table as any).phone} ILIKE ${`%${query.replace(/%/g, "\\%").replace(/_/g, "\\_")}%`}`,
+          ),
+        ),
       );
 
     return results as Employee[];
@@ -252,15 +260,15 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
   /**
    * Count employees by status
    */
-  async countByStatus(companyId: string, status: 'active' | 'inactive'): Promise<number> {
+  async countByStatus(companyId: string, status: "active" | "inactive"): Promise<number> {
     const result = await this.db
       .select({ count: sql<number>`count(*)` })
       .from(this.table)
       .where(
         and(
           eq(schema.employee.company_id, companyId),
-          eq(schema.employee.status, status)
-        )
+          eq(schema.employee.status, status),
+        ),
       );
 
     return Number(result[0]?.count || 0);
@@ -277,7 +285,9 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
         .where(eq(schema.employee.id, id))
         .returning();
 
-      if (!results[0]) return undefined;
+      if (!results[0]) {
+        return undefined;
+      }
 
       // Ensure avatar_id and photo_url are present
       return {
@@ -288,11 +298,11 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
     } catch (error) {
       // If error is due to missing columns, try updating without returning, then fetch
       const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-      const isColumnError = errorMessage.includes('column') && (
-        errorMessage.includes('does not exist') ||
-        errorMessage.includes('не существует') ||
-        errorMessage.includes('avatar_id') ||
-        errorMessage.includes('photo_url')
+      const isColumnError = errorMessage.includes("column") && (
+        errorMessage.includes("does not exist") ||
+        errorMessage.includes("не существует") ||
+        errorMessage.includes("avatar_id") ||
+        errorMessage.includes("photo_url")
       );
 
       if (isColumnError) {
@@ -335,7 +345,7 @@ export class EmployeeRepository extends BaseRepository<Employee, InsertEmployee>
   /**
    * Update employee status
    */
-  async updateStatus(id: string, status: 'active' | 'inactive'): Promise<Employee | undefined> {
+  async updateStatus(id: string, status: "active" | "inactive"): Promise<Employee | undefined> {
     return this.update(id, { status });
   }
 

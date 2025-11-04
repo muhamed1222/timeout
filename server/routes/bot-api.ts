@@ -2,18 +2,11 @@ import { Router, Request, Response, NextFunction } from "express";
 import { repositories } from "../repositories/index.js";
 import { logger } from "../lib/logger.js";
 import { getSecret } from "../lib/secrets.js";
-import { validateBody, validateParams } from "../middleware/validate.js";
+import { validateBody } from "../middleware/validate.js";
 import { 
   linkTelegramSchema, 
-  uuidSchema, 
-  startShiftSchema, 
-  endShiftSchema,
-  startBreakSchema,
-  endBreakSchema,
-  createDailyReportSchema
 } from "../lib/validation.js";
 import { auditLogger } from "../lib/audit.js";
-import { z } from "zod";
 import { botRateLimit } from "../middleware/rate-limit.js";
 
 const router = Router();
@@ -22,17 +15,17 @@ const router = Router();
 const authenticateBot = (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
-  const botSecret = req.headers['x-bot-secret'];
-  const expectedSecret = getSecret('BOT_API_SECRET') || getSecret('API_SECRET_KEY');
+  const botSecret = req.headers["x-bot-secret"];
+  const expectedSecret = getSecret("BOT_API_SECRET") || getSecret("API_SECRET_KEY");
   
   if (!botSecret || botSecret !== expectedSecret) {
-    logger.warn('Unauthorized bot API request', {
+    logger.warn("Unauthorized bot API request", {
       ip: req.ip,
-      path: req.path
+      path: req.path,
     });
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).json({ error: "Unauthorized" });
   }
   
   next();
@@ -82,25 +75,25 @@ router.post(
 
       // Audit log
       await auditLogger.logResourceChange({
-        action: 'employee.telegram_link',
+        action: "employee.telegram_link",
         actorId: employee.id,
-        actorType: 'bot',
+        actorType: "bot",
         companyId: employee.company_id,
-        resourceType: 'employee',
+        resourceType: "employee",
         resourceId: employee.id,
         changes: { telegram_id, telegram_username },
       });
 
       res.json(employee);
-      logger.info('Employee linked to Telegram', {
+      logger.info("Employee linked to Telegram", {
         employeeId: employee.id,
-        telegramId: telegram_id
+        telegramId: telegram_id,
       });
     } catch (error) {
       logger.error("Error accepting invite", error);
       res.status(500).json({ error: "Failed to accept invite" });
     }
-  }
+  },
 );
 
 // Получить сотрудника по Telegram ID
@@ -168,10 +161,10 @@ router.post("/shifts/:id/start", async (req, res) => {
       return res.status(404).json({ error: "Shift not found" });
     }
 
-    if (shift.status !== 'scheduled') {
+    if (shift.status !== "scheduled") {
       return res.status(400).json({ 
         error: "Shift cannot be started", 
-        currentStatus: shift.status 
+        currentStatus: shift.status, 
       });
     }
 
@@ -183,12 +176,12 @@ router.post("/shifts/:id/start", async (req, res) => {
 
     // Обновляем статус смены
     const updatedShift = await repositories.shift.update(id, {
-      status: 'active',
+      status: "active",
       actual_start_at: new Date(),
     });
 
     res.json({ shift: updatedShift, workInterval });
-    logger.info('Shift started', { shiftId: id, employeeId: shift.employee_id });
+    logger.info("Shift started", { shiftId: id, employeeId: shift.employee_id });
   } catch (error) {
     logger.error("Error starting shift", error);
     res.status(500).json({ error: "Failed to start shift" });
@@ -206,10 +199,10 @@ router.post("/shifts/:id/end", async (req, res) => {
       return res.status(404).json({ error: "Shift not found" });
     }
 
-    if (shift.status !== 'active') {
+    if (shift.status !== "active") {
       return res.status(400).json({ 
         error: "Shift is not active", 
-        currentStatus: shift.status 
+        currentStatus: shift.status, 
       });
     }
 
@@ -235,12 +228,12 @@ router.post("/shifts/:id/end", async (req, res) => {
 
     // Обновляем статус смены
     const updatedShift = await repositories.shift.update(id, {
-      status: 'completed',
+      status: "completed",
       actual_end_at: new Date(),
     });
 
     res.json(updatedShift);
-    logger.info('Shift ended', { shiftId: id, employeeId: shift.employee_id });
+    logger.info("Shift ended", { shiftId: id, employeeId: shift.employee_id });
   } catch (error) {
     logger.error("Error ending shift", error);
     res.status(500).json({ error: "Failed to end shift" });
@@ -255,7 +248,7 @@ router.post("/shifts/:id/end", async (req, res) => {
 router.post("/shifts/:id/break/start", async (req, res) => {
   try {
     const { id } = req.params;
-    const { type = 'lunch' } = req.body;
+    const { type = "lunch" } = req.body;
 
     const shift = await repositories.shift.findById(id);
 
@@ -263,7 +256,7 @@ router.post("/shifts/:id/break/start", async (req, res) => {
       return res.status(404).json({ error: "Shift not found" });
     }
 
-    if (shift.status !== 'active') {
+    if (shift.status !== "active") {
       return res.status(400).json({ error: "Shift is not active" });
     }
 
@@ -283,7 +276,7 @@ router.post("/shifts/:id/break/start", async (req, res) => {
     });
 
     res.json(breakInterval);
-    logger.info('Break started', { shiftId: id, breakType: type });
+    logger.info("Break started", { shiftId: id, breakType: type });
   } catch (error) {
     logger.error("Error starting break", error);
     res.status(500).json({ error: "Failed to start break" });
@@ -315,7 +308,7 @@ router.post("/shifts/:id/break/end", async (req, res) => {
     });
 
     res.json(updatedBreak);
-    logger.info('Break ended', { shiftId: id, breakId: activeBreak.id });
+    logger.info("Break ended", { shiftId: id, breakId: activeBreak.id });
   } catch (error) {
     logger.error("Error ending break", error);
     res.status(500).json({ error: "Failed to end break" });
@@ -359,7 +352,7 @@ router.post("/daily-reports", async (req, res) => {
 
     if (!employee_id || !shift_id || !content) {
       return res.status(400).json({ 
-        error: "employee_id, shift_id, and content are required" 
+        error: "employee_id, shift_id, and content are required", 
       });
     }
 
@@ -377,7 +370,7 @@ router.post("/daily-reports", async (req, res) => {
     });
 
     res.json(report);
-    logger.info('Daily report created', { reportId: report.id, employeeId: employee_id });
+    logger.info("Daily report created", { reportId: report.id, employeeId: employee_id });
   } catch (error) {
     logger.error("Error creating daily report", error);
     res.status(500).json({ error: "Failed to create daily report" });
@@ -387,11 +380,11 @@ router.post("/daily-reports", async (req, res) => {
 // Создать исключение (отсутствие и т.д.)
 router.post("/exceptions", async (req, res) => {
   try {
-    const { employee_id, company_id, shift_id, date, type, reason } = req.body;
+    const { employee_id, date, type, reason } = req.body;
 
     if (!employee_id || !date || !type) {
       return res.status(400).json({ 
-        error: "employee_id, date, and type are required" 
+        error: "employee_id, date, and type are required", 
       });
     }
 
@@ -403,7 +396,7 @@ router.post("/exceptions", async (req, res) => {
     });
 
     res.json(exception);
-    logger.info('Exception created', { exceptionId: exception.id, type, employeeId: employee_id });
+    logger.info("Exception created", { exceptionId: exception.id, type, employeeId: employee_id });
   } catch (error) {
     logger.error("Error creating exception", error);
     res.status(500).json({ error: "Failed to create exception" });
@@ -421,7 +414,7 @@ router.post("/notifications/send", async (req, res) => {
 
     if (!employee_id || !message) {
       return res.status(400).json({ 
-        error: "employee_id and message are required" 
+        error: "employee_id and message are required", 
       });
     }
 
@@ -434,23 +427,23 @@ router.post("/notifications/send", async (req, res) => {
 
     if (!employee.telegram_user_id) {
       return res.status(400).json({ 
-        error: "Employee does not have Telegram linked" 
+        error: "Employee does not have Telegram linked", 
       });
     }
 
     // Store notification info for the bot to pick up
     // In a real implementation, you'd queue this or use a webhook to the bot
-    logger.info('Notification request received', {
+    logger.info("Notification request received", {
       employeeId: employee_id,
       telegramId: employee.telegram_user_id,
-      urgent
+      urgent,
     });
 
     // Return success - the actual sending would be done by the bot
     res.json({
       success: true,
       telegram_id: employee.telegram_user_id,
-      message: "Notification queued for delivery"
+      message: "Notification queued for delivery",
     });
   } catch (error) {
     logger.error("Error queueing notification", error);
@@ -465,7 +458,7 @@ router.post("/notifications/broadcast", async (req, res) => {
 
     if (!company_id || !message) {
       return res.status(400).json({ 
-        error: "company_id and message are required" 
+        error: "company_id and message are required", 
       });
     }
 
@@ -473,10 +466,10 @@ router.post("/notifications/broadcast", async (req, res) => {
     const employees = await repositories.employee.findByCompanyId(company_id);
     const telegramEmployees = employees.filter(emp => emp.telegram_user_id);
 
-    logger.info('Broadcast notification request', {
+    logger.info("Broadcast notification request", {
       companyId: company_id,
       totalEmployees: employees.length,
-      withTelegram: telegramEmployees.length
+      withTelegram: telegramEmployees.length,
     });
 
     // Return list of Telegram IDs to notify
@@ -485,7 +478,7 @@ router.post("/notifications/broadcast", async (req, res) => {
       total_employees: employees.length,
       employees_with_telegram: telegramEmployees.length,
       telegram_ids: telegramEmployees.map(emp => emp.telegram_user_id),
-      message: "Broadcast queued for delivery"
+      message: "Broadcast queued for delivery",
     });
   } catch (error) {
     logger.error("Error queueing broadcast", error);

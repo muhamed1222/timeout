@@ -38,7 +38,7 @@ export default function Dashboard() {
   // Fetch company stats
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<CompanyStats>({
     ...queryConfig.dashboard,
-    queryKey: ['/api/companies', companyId, 'stats'],
+    queryKey: ["/api/companies", companyId, "stats"],
     queryFn: async () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 seconds timeout
@@ -46,7 +46,7 @@ export default function Dashboard() {
       try {
         const res = await fetch(`/api/companies/${companyId}/stats`, {
           signal: controller.signal,
-          credentials: 'include',
+          credentials: "include",
         });
         clearTimeout(timeoutId);
         
@@ -63,8 +63,8 @@ export default function Dashboard() {
         return res.json();
       } catch (error) {
         clearTimeout(timeoutId);
-        if (error instanceof Error && error.name === 'AbortError') {
-          throw new Error('Request timeout - database unavailable');
+        if (error instanceof Error && error.name === "AbortError") {
+          throw new Error("Request timeout - database unavailable");
         }
         throw error;
       }
@@ -75,8 +75,8 @@ export default function Dashboard() {
     retry: (failureCount, error) => {
       // Don't retry on timeout or 503 errors
       if (error instanceof Error && (
-        error.message.includes('timeout') || 
-        error.message.includes('unavailable')
+        error.message.includes("timeout") || 
+        error.message.includes("unavailable")
       )) {
         return false;
       }
@@ -87,7 +87,7 @@ export default function Dashboard() {
   // Fetch active shifts
   const { data: activeShifts = [], isLoading: shiftsLoading, error: shiftsError } = useQuery<ActiveShift[]>({
     ...queryConfig.live,
-    queryKey: ['/api/companies', companyId, 'shifts', 'active'],
+    queryKey: ["/api/companies", companyId, "shifts", "active"],
     queryFn: async () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 seconds timeout
@@ -95,7 +95,7 @@ export default function Dashboard() {
       try {
         const res = await fetch(`/api/companies/${companyId}/shifts/active`, {
           signal: controller.signal,
-          credentials: 'include',
+          credentials: "include",
         });
         clearTimeout(timeoutId);
         
@@ -109,7 +109,7 @@ export default function Dashboard() {
         return res.json();
       } catch (error) {
         clearTimeout(timeoutId);
-        if (error instanceof Error && error.name === 'AbortError') {
+        if (error instanceof Error && error.name === "AbortError") {
           // Return empty array on timeout instead of throwing
           return [];
         }
@@ -121,7 +121,7 @@ export default function Dashboard() {
     staleTime: 20000,
     retry: (failureCount, error) => {
       // Don't retry on timeout
-      if (error instanceof Error && error.message.includes('timeout')) {
+      if (error instanceof Error && error.message.includes("timeout")) {
         return false;
       }
       return failureCount < 2;
@@ -129,17 +129,19 @@ export default function Dashboard() {
   });
 
   // Fetch completed shifts for today
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split("T")[0];
   const { data: completedShiftsData = [], isLoading: completedLoading } = useQuery<ActiveShift[]>({
     ...queryConfig.dashboard,
-    queryKey: ['/api/companies', companyId, 'shifts', 'completed', today],
+    queryKey: ["/api/companies", companyId, "shifts", "completed", today],
     queryFn: async () => {
       const res = await fetch(`/api/companies/${companyId}/shifts/active`);
-      if (!res.ok) throw new Error('Failed to fetch shifts');
+      if (!res.ok) {
+        throw new Error("Failed to fetch shifts");
+      }
       const allShifts = await res.json();
       return allShifts.filter((shift: ActiveShift) => 
-        shift.status === 'completed' && 
-        shift.planned_start_at.startsWith(today)
+        shift.status === "completed" && 
+        shift.planned_start_at.startsWith(today),
       );
     },
     enabled: !!companyId,
@@ -149,58 +151,62 @@ export default function Dashboard() {
   const todayDate = new Date();
   const startOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
   const endOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0);
-  const periodStart = startOfMonth.toISOString().split('T')[0];
-  const periodEnd = endOfMonth.toISOString().split('T')[0];
+  const periodStart = startOfMonth.toISOString().split("T")[0];
+  const periodEnd = endOfMonth.toISOString().split("T")[0];
 
 
   const getShiftStatus = (shift: ActiveShift): "active" | "break" | "completed" => {
-    if (shift.status === 'completed') return 'completed';
+    if (shift.status === "completed") {
+      return "completed";
+    }
     // Определяем статус "break" по наличию активного перерыва (можно расширить)
-    if (shift.status === 'active') return 'active';
-    return 'active';
+    if (shift.status === "active") {
+      return "active";
+    }
+    return "active";
   };
 
   // Transform active shifts for table
   const activeShiftsTableData = activeShifts.map(shift => ({
     id: shift.id,
     employeeName: shift.employee.full_name,
-    position: shift.employee.position || 'Сотрудник',
+    position: shift.employee.position || "Сотрудник",
     startedAt: shift.actual_start_at 
-      ? new Date(shift.actual_start_at).toLocaleTimeString('ru-RU', { 
-      hour: '2-digit', 
-          minute: '2-digit',
-          second: '2-digit'
-        })
-      : new Date(shift.planned_start_at).toLocaleTimeString('ru-RU', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    }),
-    rating: '100%', // Можно получить из рейтингов
-    status: getShiftStatus(shift) as "active" | "break" | "completed",
+      ? new Date(shift.actual_start_at).toLocaleTimeString("ru-RU", { 
+        hour: "2-digit", 
+        minute: "2-digit",
+        second: "2-digit",
+      })
+      : new Date(shift.planned_start_at).toLocaleTimeString("ru-RU", { 
+        hour: "2-digit", 
+        minute: "2-digit", 
+      }),
+    rating: "100%", // Можно получить из рейтингов
+    status: getShiftStatus(shift),
   }));
 
   // Transform completed shifts for table
   const completedShiftsTableData = completedShiftsData.map(shift => ({
     id: shift.id,
-          employeeName: shift.employee.full_name,
-    position: shift.employee.position || 'Сотрудник',
+    employeeName: shift.employee.full_name,
+    position: shift.employee.position || "Сотрудник",
     startedAt: shift.actual_start_at 
-      ? new Date(shift.actual_start_at).toLocaleTimeString('ru-RU', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })
-      : new Date(shift.planned_start_at).toLocaleTimeString('ru-RU', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        }),
-    rating: '66%', // Можно получить из рейтингов
-    status: 'completed' as const,
+      ? new Date(shift.actual_start_at).toLocaleTimeString("ru-RU", { 
+        hour: "2-digit", 
+        minute: "2-digit", 
+      })
+      : new Date(shift.planned_start_at).toLocaleTimeString("ru-RU", { 
+        hour: "2-digit", 
+        minute: "2-digit", 
+      }),
+    rating: "66%", // Можно получить из рейтингов
+    status: "completed" as const,
   }));
 
 
   // Retry hooks for failed queries
-  const statsRetry = useRetry(['/api/companies', companyId, 'stats']);
-  const shiftsRetry = useRetry(['/api/companies', companyId, 'shifts', 'active']);
+  const statsRetry = useRetry(["/api/companies", companyId, "stats"]);
+  const shiftsRetry = useRetry(["/api/companies", companyId, "shifts", "active"]);
 
   // Loading state
   if (authLoading || statsLoading || shiftsLoading || completedLoading) {
@@ -211,7 +217,7 @@ export default function Dashboard() {
   if (statsError) {
     return (
       <ErrorState
-        message={getContextErrorMessage('dashboard', 'stats')}
+        message={getContextErrorMessage("dashboard", "stats")}
         onRetry={() => statsRetry.retry()}
       />
     );
@@ -220,7 +226,7 @@ export default function Dashboard() {
   if (shiftsError) {
     return (
       <ErrorState
-        message={getContextErrorMessage('shifts', 'fetch')}
+        message={getContextErrorMessage("shifts", "fetch")}
         onRetry={() => shiftsRetry.retry()}
       />
     );
@@ -250,15 +256,15 @@ export default function Dashboard() {
   return (
     <div className="h-full relative pt-5 pr-5 pb-5" data-testid="page-dashboard">
       <div className="flex flex-col gap-5">
-      {/* Stats */}
-      <DashboardStats 
-        totalEmployees={stats?.totalEmployees || 0}
-        activeShifts={stats?.activeShifts || 0}
-        completedShifts={stats?.completedShifts || 0}
-        exceptions={stats?.exceptions || 0}
-      />
+        {/* Stats */}
+        <DashboardStats 
+          totalEmployees={stats?.totalEmployees || 0}
+          activeShifts={stats?.activeShifts || 0}
+          completedShifts={stats?.completedShifts || 0}
+          exceptions={stats?.exceptions || 0}
+        />
 
-      {/* Main Content */}
+        {/* Main Content */}
         <div className="flex gap-4">
           {/* Left side - Tables */}
           <div className="flex flex-col gap-4 flex-1">
@@ -269,8 +275,8 @@ export default function Dashboard() {
             <ShiftsTable 
               title="Завершенные смены"
               shifts={completedShiftsTableData}
-                />
-        </div>
+            />
+          </div>
 
           {/* Right side - Analytics */}
           <div className="w-[267px] shrink-0">

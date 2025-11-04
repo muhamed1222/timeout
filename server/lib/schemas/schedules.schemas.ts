@@ -2,8 +2,8 @@
  * Schedule validation schemas
  */
 
-import { z } from 'zod';
-import { uuidSchema } from './common.schemas.js';
+import { z } from "zod";
+import { uuidSchema } from "./common.schemas.js";
 
 /**
  * Create schedule template schema
@@ -40,4 +40,6 @@ export const assignScheduleSchema = z.object({
 export const scheduleIdParamSchema = z.object({
   id: uuidSchema,
 });
+
+
 

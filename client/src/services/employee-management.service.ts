@@ -1,10 +1,10 @@
 // Сервис для управления сотрудниками
-import { Employee, EmployeeInvite } from '@shared/types';
-import { apiService } from './api.service';
+import { Employee, EmployeeInvite } from "@shared/types";
+import { apiService } from "./api.service";
 
 export interface EmployeeSearchCriteria {
   companyId: string;
-  status?: 'active' | 'inactive' | 'terminated';
+  status?: "active" | "inactive" | "terminated";
   searchQuery?: string;
   limit?: number;
   offset?: number;
@@ -21,7 +21,7 @@ export interface EmployeeDisplayData {
   id: string;
   fullName: string;
   position: string;
-  status: 'active' | 'inactive' | 'terminated';
+  status: "active" | "inactive" | "terminated";
   timezone: string;
   telegramUserId?: string;
   hasTelegram: boolean;
@@ -46,8 +46,8 @@ export class EmployeeManagementService {
       const response = await apiService.get<any>(`/companies/${companyId}/employees`);
       return response.data || response || [];
     } catch (error) {
-      console.error('Error fetching employees:', error);
-      throw new Error('Не удалось загрузить список сотрудников');
+      console.error("Error fetching employees:", error);
+      throw new Error("Не удалось загрузить список сотрудников");
     }
   }
 
@@ -57,8 +57,8 @@ export class EmployeeManagementService {
       const response = await apiService.get<any>(`/companies/${companyId}/invites`);
       return response.data || response || [];
     } catch (error) {
-      console.error('Error fetching invites:', error);
-      throw new Error('Не удалось загрузить список приглашений');
+      console.error("Error fetching invites:", error);
+      throw new Error("Не удалось загрузить список приглашений");
     }
   }
 
@@ -68,19 +68,19 @@ export class EmployeeManagementService {
       id: employee.id,
       fullName: employee.full_name,
       position: employee.position,
-      status: employee.status as 'active' | 'inactive' | 'terminated',
-      timezone: employee.tz || 'UTC',
+      status: employee.status as "active" | "inactive" | "terminated",
+      timezone: employee.tz || "UTC",
       telegramUserId: employee.telegram_user_id,
       hasTelegram: !!employee.telegram_user_id,
-      createdAt: employee.created_at
+      createdAt: employee.created_at,
     }));
   }
 
   // Трансформация приглашений для отображения
   transformInvitesForDisplay(invites: EmployeeInvite[]): InviteDisplayData[] {
     return invites.map(invite => {
-      const code = (invite as any).code || '';
-      const fullName = (invite as any).full_name || '';
+      const code = (invite as any).code || "";
+      const fullName = (invite as any).full_name || "";
       const expiresAt = invite.expires_at || (invite as any).created_at || new Date().toISOString();
       
       return {
@@ -91,14 +91,14 @@ export class EmployeeManagementService {
         expiresAt,
         isExpired: invite.expires_at ? new Date(invite.expires_at) < new Date() : false,
         deepLink: `https://t.me/your_bot?start=${code}`,
-        qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://t.me/your_bot?start=${code}`
+        qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://t.me/your_bot?start=${code}`,
       };
     });
   }
 
   // Фильтрация сотрудников
   filterEmployees(employees: EmployeeDisplayData[], criteria: {
-    status?: 'active' | 'inactive' | 'terminated';
+    status?: "active" | "inactive" | "terminated";
     searchQuery?: string;
   }): EmployeeDisplayData[] {
     let filtered = employees;
@@ -113,7 +113,7 @@ export class EmployeeManagementService {
       const query = criteria.searchQuery.toLowerCase();
       filtered = filtered.filter(emp =>
         emp.fullName.toLowerCase().includes(query) ||
-        emp.position.toLowerCase().includes(query)
+        emp.position.toLowerCase().includes(query),
       );
     }
 
@@ -124,9 +124,9 @@ export class EmployeeManagementService {
   getEmployeeStats(employees: EmployeeDisplayData[]): EmployeeStats {
     return {
       total: employees.length,
-      active: employees.filter(emp => emp.status === 'active').length,
-      inactive: employees.filter(emp => emp.status === 'inactive').length,
-      terminated: employees.filter(emp => emp.status === 'terminated').length
+      active: employees.filter(emp => emp.status === "active").length,
+      inactive: employees.filter(emp => emp.status === "inactive").length,
+      terminated: employees.filter(emp => emp.status === "terminated").length,
     };
   }
 
@@ -145,8 +145,8 @@ export class EmployeeManagementService {
       const response = await apiService.post<Employee>(`/companies/${companyId}/employees`, data);
       return response;
     } catch (error) {
-      console.error('Error creating employee:', error);
-      throw new Error('Не удалось создать сотрудника');
+      console.error("Error creating employee:", error);
+      throw new Error("Не удалось создать сотрудника");
     }
   }
 
@@ -155,14 +155,14 @@ export class EmployeeManagementService {
     fullName?: string;
     position?: string;
     timezone?: string;
-    status?: 'active' | 'inactive' | 'terminated';
+    status?: "active" | "inactive" | "terminated";
   }): Promise<Employee> {
     try {
       const response = await apiService.patch<Employee>(`/employees/${employeeId}`, data);
       return response;
     } catch (error) {
-      console.error('Error updating employee:', error);
-      throw new Error('Не удалось обновить данные сотрудника');
+      console.error("Error updating employee:", error);
+      throw new Error("Не удалось обновить данные сотрудника");
     }
   }
 
@@ -171,8 +171,8 @@ export class EmployeeManagementService {
     try {
       await apiService.delete(`/employees/${employeeId}`);
     } catch (error) {
-      console.error('Error deleting employee:', error);
-      throw new Error('Не удалось удалить сотрудника');
+      console.error("Error deleting employee:", error);
+      throw new Error("Не удалось удалить сотрудника");
     }
   }
 
@@ -186,8 +186,8 @@ export class EmployeeManagementService {
       const response = await apiService.post<EmployeeInvite>(`/companies/${companyId}/invites`, data);
       return response;
     } catch (error) {
-      console.error('Error creating invite:', error);
-      throw new Error('Не удалось создать приглашение');
+      console.error("Error creating invite:", error);
+      throw new Error("Не удалось создать приглашение");
     }
   }
 
@@ -196,8 +196,8 @@ export class EmployeeManagementService {
     try {
       await apiService.delete(`/companies/${companyId}/invites/${inviteId}`);
     } catch (error) {
-      console.error('Error cancelling invite:', error);
-      throw new Error('Не удалось отменить приглашение');
+      console.error("Error cancelling invite:", error);
+      throw new Error("Не удалось отменить приглашение");
     }
   }
 
@@ -215,8 +215,8 @@ export class EmployeeManagementService {
       }>(`/employee-invites/${inviteCode}/link`);
       return response;
     } catch (error) {
-      console.error('Error fetching invite link:', error);
-      throw new Error('Не удалось получить ссылку-приглашение');
+      console.error("Error fetching invite link:", error);
+      throw new Error("Не удалось получить ссылку-приглашение");
     }
   }
 
@@ -225,8 +225,8 @@ export class EmployeeManagementService {
     try {
       await navigator.clipboard.writeText(text);
     } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      throw new Error('Не удалось скопировать в буфер обмена');
+      console.error("Error copying to clipboard:", error);
+      throw new Error("Не удалось скопировать в буфер обмена");
     }
   }
 
@@ -242,7 +242,7 @@ export class EmployeeManagementService {
     try {
       const [employees, invites] = await Promise.all([
         this.getEmployees(companyId),
-        this.getInvites(companyId)
+        this.getInvites(companyId),
       ]);
 
       const transformedEmployees = this.transformEmployeesForDisplay(employees);
@@ -256,11 +256,11 @@ export class EmployeeManagementService {
         transformedEmployees,
         transformedInvites,
         employeeStats,
-        activeInvites
+        activeInvites,
       };
     } catch (error) {
-      console.error('Error fetching employee page data:', error);
-      throw new Error('Не удалось загрузить данные страницы сотрудников');
+      console.error("Error fetching employee page data:", error);
+      throw new Error("Не удалось загрузить данные страницы сотрудников");
     }
   }
 
@@ -268,16 +268,24 @@ export class EmployeeManagementService {
   async searchEmployees(companyId: string, criteria: EmployeeSearchCriteria): Promise<Employee[]> {
     try {
       const params = new URLSearchParams();
-      if (criteria.status) params.append('status', criteria.status);
-      if (criteria.searchQuery) params.append('search', criteria.searchQuery);
-      if (criteria.limit) params.append('limit', criteria.limit.toString());
-      if (criteria.offset) params.append('offset', criteria.offset.toString());
+      if (criteria.status) {
+        params.append("status", criteria.status);
+      }
+      if (criteria.searchQuery) {
+        params.append("search", criteria.searchQuery);
+      }
+      if (criteria.limit) {
+        params.append("limit", criteria.limit.toString());
+      }
+      if (criteria.offset) {
+        params.append("offset", criteria.offset.toString());
+      }
 
       const response = await apiService.get<Employee[]>(`/companies/${companyId}/employees/search?${params}`);
       return response;
     } catch (error) {
-      console.error('Error searching employees:', error);
-      throw new Error('Не удалось выполнить поиск сотрудников');
+      console.error("Error searching employees:", error);
+      throw new Error("Не удалось выполнить поиск сотрудников");
     }
   }
 }

@@ -51,3 +51,5 @@ If you find references to removed code:
 2. Replace `infrastructure/repositories` → `repositories/`
 3. Replace `application/services` → `services/`
 
+
+

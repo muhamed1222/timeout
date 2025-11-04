@@ -1,7 +1,7 @@
 // Сервис для аутентификации
 
-import { supabase } from '../../lib/supabase';
-import { RegisterData } from '@shared/types/entities/auth';
+import { supabase } from "../../lib/supabase";
+import { RegisterData } from "@shared/types/entities/auth";
 
 export class AuthService {
   // Вход в систему

@@ -13,7 +13,7 @@ import {
   AlertCircle, 
   Search,
   Inbox,
-  type LucideIcon
+  type LucideIcon,
 } from "lucide-react";
 
 interface EmptyStateProps {
@@ -38,7 +38,7 @@ export function EmptyState({
     <div 
       className={cn(
         "flex flex-col items-center justify-center py-12 px-4 text-center",
-        className
+        className,
       )}
       role="status"
       aria-label="Empty state"
@@ -129,7 +129,7 @@ export function NoReportsEmpty() {
 
 export function ErrorState({ 
   onRetry,
-  message = "Произошла ошибка при загрузке данных" 
+  message = "Произошла ошибка при загрузке данных", 
 }: { 
   onRetry?: () => void;
   message?: string;

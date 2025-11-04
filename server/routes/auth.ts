@@ -20,7 +20,7 @@ const registerAdminSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   company_name: z.string().min(1),
-  full_name: z.string().min(1)
+  full_name: z.string().min(1),
 });
 
 // Register new admin user with company
@@ -31,7 +31,7 @@ router.post("/register", authLimiter, async (req, res) => {
     
     if (!hasServiceRoleKey) {
       return res.status(500).json({ 
-        error: "Server configuration error: SUPABASE_SERVICE_ROLE_KEY is required for admin registration" 
+        error: "Server configuration error: SUPABASE_SERVICE_ROLE_KEY is required for admin registration", 
       });
     }
     
@@ -43,13 +43,13 @@ router.post("/register", authLimiter, async (req, res) => {
       email_confirm: true,
       user_metadata: {
         company_id: company.id,
-        full_name
-      }
+        full_name,
+      },
     });
     
     if (authError) {
       await repositories.company.delete(company.id);
-      if (authError.message.includes('already registered')) {
+      if (authError.message.includes("already registered")) {
         return res.status(400).json({ error: "Пользователь с таким email уже зарегистрирован" });
       }
       logger.error("Supabase auth error", authError, { email, company_name });
@@ -66,7 +66,7 @@ router.post("/register", authLimiter, async (req, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
         error: "Ошибка валидации", 
-        details: error.errors 
+        details: error.errors, 
       });
     }
     logger.error("Error during registration", error);

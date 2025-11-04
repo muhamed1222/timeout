@@ -4,7 +4,7 @@ import { logger } from "../lib/logger.js";
 import { violationsCounter, monitoringRunsCounter, monitoringDuration } from "../lib/metrics.js";
 
 export interface ShiftViolation {
-  type: 'late_start' | 'early_end' | 'missed_shift' | 'long_break' | 'no_break_end';
+  type: "late_start" | "early_end" | "missed_shift" | "long_break" | "no_break_end";
   employeeId: string;
   shiftId?: string;
   shiftDate: string; // YYYY-MM-DD format
@@ -55,25 +55,25 @@ export class ShiftMonitor {
 
     // Check for late start or missed shift
     const plannedStart = new Date(shift.planned_start_at);
-    const shiftDate = plannedStart.toISOString().split('T')[0];
+    const shiftDate = plannedStart.toISOString().split("T")[0];
     
-    if (shift.status === 'planned') {
+    if (shift.status === "planned") {
       // Check for missed shift (never started)
       const timeSinceStart = now.getTime() - plannedStart.getTime();
       const minutesLate = timeSinceStart / (1000 * 60);
       
       if (minutesLate > this.MISSED_SHIFT_THRESHOLD) {
         violations.push({
-          type: 'missed_shift',
+          type: "missed_shift",
           employeeId: employee.id,
           shiftId: shift.id,
           shiftDate,
           details: {
             planned: plannedStart,
             actual: undefined,
-            threshold: this.MISSED_SHIFT_THRESHOLD
+            threshold: this.MISSED_SHIFT_THRESHOLD,
           },
-          severity: 3
+          severity: 3,
         });
       }
     } else if (workIntervals.length > 0) {
@@ -84,7 +84,7 @@ export class ShiftMonitor {
       
       if (minutesLate > this.LATE_THRESHOLD) {
         violations.push({
-          type: 'late_start',
+          type: "late_start",
           employeeId: employee.id,
           shiftId: shift.id,
           shiftDate,
@@ -92,15 +92,15 @@ export class ShiftMonitor {
             planned: plannedStart,
             actual: actualStart,
             threshold: this.LATE_THRESHOLD,
-            minutesLate: Math.floor(minutesLate)
+            minutesLate: Math.floor(minutesLate),
           },
-          severity: minutesLate > 30 ? 2 : 1
+          severity: minutesLate > 30 ? 2 : 1,
         });
       }
     }
 
     // Check for early end (if shift is completed)
-    if (shift.status === 'completed' && workIntervals.length > 0) {
+    if (shift.status === "completed" && workIntervals.length > 0) {
       const lastInterval = workIntervals[workIntervals.length - 1];
       if (lastInterval.end_at) {
         const plannedEnd = new Date(shift.planned_end_at);
@@ -109,7 +109,7 @@ export class ShiftMonitor {
         
         if (minutesEarly > this.EARLY_END_THRESHOLD) {
           violations.push({
-            type: 'early_end',
+            type: "early_end",
             employeeId: employee.id,
             shiftId: shift.id,
             shiftDate,
@@ -117,9 +117,9 @@ export class ShiftMonitor {
               planned: plannedEnd,
               actual: actualEnd,
               threshold: this.EARLY_END_THRESHOLD,
-              minutesEarly: Math.floor(minutesEarly)
+              minutesEarly: Math.floor(minutesEarly),
             },
-            severity: minutesEarly > 30 ? 2 : 1
+            severity: minutesEarly > 30 ? 2 : 1,
           });
         }
       }
@@ -132,7 +132,7 @@ export class ShiftMonitor {
         
         if (breakDuration > this.LONG_BREAK_THRESHOLD) {
           violations.push({
-            type: 'long_break',
+            type: "long_break",
             employeeId: employee.id,
             shiftId: shift.id,
             shiftDate,
@@ -140,9 +140,9 @@ export class ShiftMonitor {
               breakStart: new Date(breakInterval.start_at),
               breakEnd: new Date(breakInterval.end_at),
               duration: Math.floor(breakDuration),
-              threshold: this.LONG_BREAK_THRESHOLD
+              threshold: this.LONG_BREAK_THRESHOLD,
             },
-            severity: breakDuration > 180 ? 3 : 2
+            severity: breakDuration > 180 ? 3 : 2,
           });
         }
       } else if (breakInterval.start_at && !breakInterval.end_at) {
@@ -151,16 +151,16 @@ export class ShiftMonitor {
         
         if (breakDuration > this.LONG_BREAK_THRESHOLD) {
           violations.push({
-            type: 'no_break_end',
+            type: "no_break_end",
             employeeId: employee.id,
             shiftId: shift.id,
             shiftDate,
             details: {
               breakStart: new Date(breakInterval.start_at),
               duration: Math.floor(breakDuration),
-              threshold: this.LONG_BREAK_THRESHOLD
+              threshold: this.LONG_BREAK_THRESHOLD,
             },
-            severity: 3
+            severity: 3,
           });
         }
       }
@@ -186,7 +186,7 @@ export class ShiftMonitor {
           ex.employee_id === violation.employeeId &&
           ex.date === violation.shiftDate &&
           ex.kind === violation.type &&
-          !ex.resolved_at
+          !ex.resolved_at,
         );
 
         if (!alreadyExists) {
@@ -199,11 +199,11 @@ export class ShiftMonitor {
             
             // Map violation type to rule code
             const ruleCodeMap: Record<string, string> = {
-              'late_start': 'late',
-              'early_end': 'early_end',
-              'missed_shift': 'missed_shift',
-              'long_break': 'long_break',
-              'no_break_end': 'no_break_end'
+              "late_start": "late",
+              "early_end": "early_end",
+              "missed_shift": "missed_shift",
+              "long_break": "long_break",
+              "no_break_end": "no_break_end",
             };
             
             const ruleCode = ruleCodeMap[violation.type];
@@ -221,14 +221,14 @@ export class ShiftMonitor {
 
             // Create violation record
             // Convert penalty_percent to string (PostgreSQL numeric requires string)
-            const penaltyValue = rule.penalty_percent ? String(rule.penalty_percent) : '0';
+            const penaltyValue = rule.penalty_percent ? String(rule.penalty_percent) : "0";
             const createdViolation = await repositories.violation.createViolation({
               employee_id: violation.employeeId,
               company_id: employee.company_id,
               rule_id: rule.id,
-              source: 'auto',
+              source: "auto",
               reason: `Auto-detected: ${violation.type}`,
-              penalty: penaltyValue
+              penalty: penaltyValue,
             } as any);
 
             violationId = createdViolation.id;
@@ -237,12 +237,12 @@ export class ShiftMonitor {
             violationsCounter.labels(
               violation.type,
               String(rule.penalty_percent || 0),
-              'auto'
+              "auto",
             ).inc();
             logger.info("Created violation", { 
               violationType: violation.type, 
               employeeId: violation.employeeId,
-              violationId
+              violationId,
             });
 
             // Recalculate employee rating for current period
@@ -255,7 +255,7 @@ export class ShiftMonitor {
               periodStart,
               periodEnd,
               repositories.violation,
-              repositories.employee
+              repositories.employee,
             );
 
             logger.info("Updated rating for employee", { employeeId: violation.employeeId });
@@ -273,9 +273,9 @@ export class ShiftMonitor {
             details: {
               shiftId: violation.shiftId,
               ...violation.details,
-              detectedAt: new Date().toISOString()
+              detectedAt: new Date().toISOString(),
             },
-            violation_id: violationId
+            violation_id: violationId,
           };
 
           await repositories.exception.create(exception);
@@ -283,7 +283,7 @@ export class ShiftMonitor {
             violationType: violation.type, 
             employeeId: violation.employeeId,
             violationId: violationId || undefined,
-            linked: !!violationId
+            linked: !!violationId,
           });
         }
       } catch (error) {
@@ -309,22 +309,22 @@ export class ShiftMonitor {
       logger.info("Processed company shifts", { 
         companyId, 
         violationsFound: violations.length, 
-        exceptionsCreated 
+        exceptionsCreated, 
       });
       
       // Track successful monitoring run
-      monitoringRunsCounter.labels('success').inc();
+      monitoringRunsCounter.labels("success").inc();
       timer();
       
       return {
         violationsFound: violations.length,
-        exceptionsCreated
+        exceptionsCreated,
       };
     } catch (error) {
       logger.error("Failed to process shifts for company", { companyId, error });
       
       // Track failed monitoring run
-      monitoringRunsCounter.labels('error').inc();
+      monitoringRunsCounter.labels("error").inc();
       timer();
       
       return { violationsFound: 0, exceptionsCreated: 0 };
@@ -362,20 +362,20 @@ export class ShiftMonitor {
       logger.info("Global shift monitoring completed", { 
         companiesProcessed: companies.length, 
         totalViolations, 
-        totalExceptions 
+        totalExceptions, 
       });
       
       return {
         companiesProcessed: companies.length,
         totalViolations,
-        totalExceptions
+        totalExceptions,
       };
     } catch (error) {
       logger.error("Failed to run global monitoring", { error });
       return {
         companiesProcessed: 0,
         totalViolations: 0,
-        totalExceptions: 0
+        totalExceptions: 0,
       };
     }
   }

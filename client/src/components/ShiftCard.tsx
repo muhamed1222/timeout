@@ -30,7 +30,7 @@ export default function ShiftCard({
   lastReport,
   employeeId,
   onViewDetails,
-  onSendMessage 
+  onSendMessage, 
 }: ShiftCardProps) {
   const prefetchEmployee = usePrefetchEmployee();
   const prefetchStats = usePrefetchEmployeeStats();
@@ -43,21 +43,21 @@ export default function ShiftCard({
   };
 
   const handleViewDetails = () => {
-    console.log('View details clicked for', employeeName);
+    console.log("View details clicked for", employeeName);
     onViewDetails?.();
   };
 
   const handleSendMessage = () => {
-    console.log('Send message clicked for', employeeName);
+    console.log("Send message clicked for", employeeName);
     onSendMessage?.();
   };
 
   return (
     <Card 
       className="hover-elevate" 
-      data-testid={`card-shift-${employeeName.toLowerCase().replace(' ', '-')}`}
+      data-testid={`card-shift-${employeeName.toLowerCase().replace(" ", "-")}`}
       role="article"
-      aria-labelledby={`shift-${employeeName.toLowerCase().replace(' ', '-')}-title`}
+      aria-labelledby={`shift-${employeeName.toLowerCase().replace(" ", "-")}-title`}
       onMouseEnter={handleMouseEnter}
     >
       <CardHeader className="pb-3">
@@ -65,7 +65,7 @@ export default function ShiftCard({
           <EmployeeAvatar name={employeeName} image={employeeImage} />
           <div className="flex-1 min-w-0">
             <h3 
-              id={`shift-${employeeName.toLowerCase().replace(' ', '-')}-title`}
+              id={`shift-${employeeName.toLowerCase().replace(" ", "-")}-title`}
               className="font-semibold text-sm truncate"
             >
               {employeeName}

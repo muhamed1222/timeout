@@ -171,7 +171,7 @@ export default function Help() {
                   <div
                     key={item.id}
                     className={`bg-white rounded-[12px] p-3 flex flex-col gap-2 ${
-                      index < faqItems.length - 1 ? 'mb-0' : ''
+                      index < faqItems.length - 1 ? "mb-0" : ""
                     }`}
                   >
                     <button

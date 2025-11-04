@@ -16,7 +16,7 @@ interface EmployeeData {
   activeShift?: any;
   workIntervals: any[];
   breakIntervals: any[];
-  status: 'off_work' | 'working' | 'on_break' | 'unknown';
+  status: "off_work" | "working" | "on_break" | "unknown";
 }
 
 // Mock Telegram WebApp for development
@@ -25,7 +25,7 @@ const mockTelegramWebApp = {
   initDataUnsafe: { user: { id: 123456789 } },
   ready: () => {},
   expand: () => {},
-  close: () => {}
+  close: () => {},
 };
 
 export default function WebAppPage() {
@@ -51,7 +51,7 @@ export default function WebAppPage() {
         },
         () => {
           setLocation("unknown");
-        }
+        },
       );
     } else {
       setLocation("not_supported");
@@ -59,76 +59,76 @@ export default function WebAppPage() {
   }, []);
 
   const { data: employeeData, isLoading } = useQuery<EmployeeData>({
-    queryKey: ['/api/webapp/employee', telegramId],
-    enabled: !!telegramId
+    queryKey: ["/api/webapp/employee", telegramId],
+    enabled: !!telegramId,
   });
 
   const startShiftMutation = useMutation({
     mutationFn: () => {
       const tg = (window as any).Telegram?.WebApp || mockTelegramWebApp;
-      return fetch('/api/webapp/shift/start', {
-        method: 'POST',
+      return fetch("/api/webapp/shift/start", {
+        method: "POST",
         headers: { 
-          'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': tg.initData || ''
+          "Content-Type": "application/json",
+          "X-Telegram-Init-Data": tg.initData || "",
         },
-        body: JSON.stringify({ telegramId })
+        body: JSON.stringify({ telegramId }),
       }).then(res => res.json());
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/webapp/employee', telegramId] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["/api/webapp/employee", telegramId] });
+    },
   });
 
   const endShiftMutation = useMutation({
     mutationFn: () => {
       const tg = (window as any).Telegram?.WebApp || mockTelegramWebApp;
-      return fetch('/api/webapp/shift/end', {
-        method: 'POST',
+      return fetch("/api/webapp/shift/end", {
+        method: "POST",
         headers: { 
-          'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': tg.initData || ''
+          "Content-Type": "application/json",
+          "X-Telegram-Init-Data": tg.initData || "",
         },
-        body: JSON.stringify({ telegramId })
+        body: JSON.stringify({ telegramId }),
       }).then(res => res.json());
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/webapp/employee', telegramId] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["/api/webapp/employee", telegramId] });
+    },
   });
 
   const startBreakMutation = useMutation({
     mutationFn: () => {
       const tg = (window as any).Telegram?.WebApp || mockTelegramWebApp;
-      return fetch('/api/webapp/break/start', {
-        method: 'POST',
+      return fetch("/api/webapp/break/start", {
+        method: "POST",
         headers: { 
-          'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': tg.initData || ''
+          "Content-Type": "application/json",
+          "X-Telegram-Init-Data": tg.initData || "",
         },
-        body: JSON.stringify({ telegramId })
+        body: JSON.stringify({ telegramId }),
       }).then(res => res.json());
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/webapp/employee', telegramId] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["/api/webapp/employee", telegramId] });
+    },
   });
 
   const endBreakMutation = useMutation({
     mutationFn: () => {
       const tg = (window as any).Telegram?.WebApp || mockTelegramWebApp;
-      return fetch('/api/webapp/break/end', {
-        method: 'POST',
+      return fetch("/api/webapp/break/end", {
+        method: "POST",
         headers: { 
-          'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': tg.initData || ''
+          "Content-Type": "application/json",
+          "X-Telegram-Init-Data": tg.initData || "",
         },
-        body: JSON.stringify({ telegramId })
+        body: JSON.stringify({ telegramId }),
       }).then(res => res.json());
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/webapp/employee', telegramId] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["/api/webapp/employee", telegramId] });
+    },
   });
 
   if (isLoading) {
@@ -172,11 +172,11 @@ export default function WebAppPage() {
 
   const getStatusBadge = () => {
     switch (status) {
-      case 'working':
+      case "working":
         return <Badge className="bg-green-500" data-testid="badge-status">🟢 На работе</Badge>;
-      case 'on_break':
+      case "on_break":
         return <Badge className="bg-yellow-500" data-testid="badge-status">🟡 На перерыве</Badge>;
-      case 'off_work':
+      case "off_work":
         return <Badge variant="secondary" data-testid="badge-status">⚫ Не на работе</Badge>;
       default:
         return <Badge variant="outline" data-testid="badge-status">❓ Неизвестно</Badge>;
@@ -188,10 +188,10 @@ export default function WebAppPage() {
     const activeWork = workIntervals.find(wi => wi.start_at && !wi.end_at);
     
     if (activeBreak) {
-      return { type: 'break', start: activeBreak.start_at };
+      return { type: "break", start: activeBreak.start_at };
     }
     if (activeWork) {
-      return { type: 'work', start: activeWork.start_at };
+      return { type: "work", start: activeWork.start_at };
     }
     return null;
   };
@@ -222,17 +222,17 @@ export default function WebAppPage() {
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Запланировано:</span>
                 <span data-testid="text-planned-time">
-                  {format(new Date(activeShift.planned_start_at), 'HH:mm', { locale: ru })} - 
-                  {format(new Date(activeShift.planned_end_at), 'HH:mm', { locale: ru })}
+                  {format(new Date(activeShift.planned_start_at), "HH:mm", { locale: ru })} - 
+                  {format(new Date(activeShift.planned_end_at), "HH:mm", { locale: ru })}
                 </span>
               </div>
               {currentInterval && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    {currentInterval.type === 'work' ? 'Работаем с:' : 'На перерыве с:'}
+                    {currentInterval.type === "work" ? "Работаем с:" : "На перерыве с:"}
                   </span>
                   <span data-testid="text-current-time">
-                    {format(new Date(currentInterval.start), 'HH:mm', { locale: ru })}
+                    {format(new Date(currentInterval.start), "HH:mm", { locale: ru })}
                   </span>
                 </div>
               )}
@@ -243,7 +243,7 @@ export default function WebAppPage() {
         {/* Action Buttons */}
         <Card>
           <CardContent className="p-4 space-y-3">
-            {status === 'off_work' && (
+            {status === "off_work" && (
               <Button
                 onClick={() => startShiftMutation.mutate()}
                 disabled={startShiftMutation.isPending}
@@ -252,11 +252,11 @@ export default function WebAppPage() {
                 data-testid="button-start-shift"
               >
                 <Play className="h-4 w-4 mr-2" />
-                {startShiftMutation.isPending ? 'Начинаем...' : 'Начать смену'}
+                {startShiftMutation.isPending ? "Начинаем..." : "Начать смену"}
               </Button>
             )}
 
-            {status === 'working' && (
+            {status === "working" && (
               <>
                 <Button
                   onClick={() => startBreakMutation.mutate()}
@@ -267,7 +267,7 @@ export default function WebAppPage() {
                   data-testid="button-start-break"
                 >
                   <Coffee className="h-4 w-4 mr-2" />
-                  {startBreakMutation.isPending ? 'Начинаем...' : 'Начать перерыв'}
+                  {startBreakMutation.isPending ? "Начинаем..." : "Начать перерыв"}
                 </Button>
                 <Button
                   onClick={() => endShiftMutation.mutate()}
@@ -278,12 +278,12 @@ export default function WebAppPage() {
                   data-testid="button-end-shift"
                 >
                   <Square className="h-4 w-4 mr-2" />
-                  {endShiftMutation.isPending ? 'Завершаем...' : 'Завершить смену'}
+                  {endShiftMutation.isPending ? "Завершаем..." : "Завершить смену"}
                 </Button>
               </>
             )}
 
-            {status === 'on_break' && (
+            {status === "on_break" && (
               <Button
                 onClick={() => endBreakMutation.mutate()}
                 disabled={endBreakMutation.isPending}
@@ -292,7 +292,7 @@ export default function WebAppPage() {
                 data-testid="button-end-break"
               >
                 <StopCircle className="h-4 w-4 mr-2" />
-                {endBreakMutation.isPending ? 'Возвращаемся...' : 'Закончить перерыв'}
+                {endBreakMutation.isPending ? "Возвращаемся..." : "Закончить перерыв"}
               </Button>
             )}
           </CardContent>
@@ -322,7 +322,7 @@ export default function WebAppPage() {
         )}
 
         {/* Debug Info (only in development) */}
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <Card className="border-dashed">
             <CardHeader className="pb-3">
               <CardTitle className="text-xs text-muted-foreground">Debug Info</CardTitle>

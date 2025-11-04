@@ -55,40 +55,40 @@ export default function Reports() {
   const { companyId, loading: authLoading } = useAuth();
 
   const { data: reports = [], isLoading, error } = useQuery<DailyReport[]>({
-    queryKey: ['/api/companies', companyId, 'daily-reports'],
+    queryKey: ["/api/companies", companyId, "daily-reports"],
     enabled: !!companyId,
   });
 
-  const reportsRetry = useRetry(['/api/companies', companyId, 'daily-reports']);
+  const reportsRetry = useRetry(["/api/companies", companyId, "daily-reports"]);
 
   const handleExport = () => {
     if (!filteredReports.length) {
       toast({
         title: "Нет данных",
         description: "Нет отчетов для экспорта",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
     const data = filteredReports.map(report => ({
-      Дата: format(new Date(report.shift.planned_start_at), 'dd.MM.yyyy', { locale: ru }),
+      Дата: format(new Date(report.shift.planned_start_at), "dd.MM.yyyy", { locale: ru }),
       Сотрудник: report.employee.full_name,
-      Должность: report.employee.position || '-',
-      Отчет: report.done_items ? report.done_items.join('; ') : '-',
-      Примечания: report.blockers || '-',
-      Отправлен: format(new Date(report.submitted_at), 'dd.MM.yyyy HH:mm', { locale: ru })
+      Должность: report.employee.position || "-",
+      Отчет: report.done_items ? report.done_items.join("; ") : "-",
+      Примечания: report.blockers || "-",
+      Отправлен: format(new Date(report.submitted_at), "dd.MM.yyyy HH:mm", { locale: ru }),
     }));
     
     const csv = [
-      Object.keys(data[0]).join(','),
-      ...data.map(row => Object.values(row).map(v => `"${v}"`).join(','))
-    ].join('\n');
+      Object.keys(data[0]).join(","),
+      ...data.map(row => Object.values(row).map(v => `"${v}"`).join(",")),
+    ].join("\n");
     
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `reports_${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.download = `reports_${format(new Date(), "yyyy-MM-dd")}.csv`;
     link.click();
     
     toast({
@@ -115,15 +115,17 @@ export default function Reports() {
   });
 
   const formatDateRange = (range: DateRange | undefined): string => {
-    if (!range || (!range.from && !range.to)) return "Выбрать дату";
+    if (!range || (!range.from && !range.to)) {
+      return "Выбрать дату";
+    }
     if (range.from && range.to) {
-      return `${format(range.from, 'dd.MM.yyyy', { locale: ru })}-${format(range.to, 'dd.MM.yyyy', { locale: ru })}`;
+      return `${format(range.from, "dd.MM.yyyy", { locale: ru })}-${format(range.to, "dd.MM.yyyy", { locale: ru })}`;
     }
     if (range.from) {
-      return `${format(range.from, 'dd.MM.yyyy', { locale: ru })}-...`;
+      return `${format(range.from, "dd.MM.yyyy", { locale: ru })}-...`;
     }
     if (range.to) {
-      return `...-${format(range.to, 'dd.MM.yyyy', { locale: ru })}`;
+      return `...-${format(range.to, "dd.MM.yyyy", { locale: ru })}`;
     }
     return "Выбрать дату";
   };
@@ -131,7 +133,7 @@ export default function Reports() {
   // Группируем отчеты по датам
   const groupedReports = filteredReports.reduce((acc, report) => {
     const reportDate = startOfDay(new Date(report.shift.planned_start_at));
-    const dateKey = format(reportDate, 'yyyy-MM-dd');
+    const dateKey = format(reportDate, "yyyy-MM-dd");
     
     if (!acc[dateKey]) {
       acc[dateKey] = [];
@@ -142,19 +144,23 @@ export default function Reports() {
 
   const getDateLabel = (dateStr: string): string => {
     const date = parseISO(dateStr);
-    if (isToday(date)) return 'Сегодня';
-    if (isYesterday(date)) return 'Вчера';
-    return format(date, 'dd MMMM yyyy', { locale: ru });
+    if (isToday(date)) {
+      return "Сегодня";
+    }
+    if (isYesterday(date)) {
+      return "Вчера";
+    }
+    return format(date, "dd MMMM yyyy", { locale: ru });
   };
 
   const formatReportDate = (dateStr: string): string => {
     const date = parseISO(dateStr);
-    const dayName = format(date, 'EEEE', { locale: ru });
-    return `Отчет за ${format(date, 'dd.MM.yy')}. ${dayName.charAt(0).toUpperCase() + dayName.slice(1)}`;
+    const dayName = format(date, "EEEE", { locale: ru });
+    return `Отчет за ${format(date, "dd.MM.yy")}. ${dayName.charAt(0).toUpperCase() + dayName.slice(1)}`;
   };
 
   const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+    return name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
   };
 
   // Loading state
@@ -166,7 +172,7 @@ export default function Reports() {
   if (error) {
     return (
       <ErrorState
-        message={getContextErrorMessage('dashboard', 'fetch')}
+        message={getContextErrorMessage("dashboard", "fetch")}
         onRetry={() => reportsRetry.retry()}
       />
     );
@@ -271,10 +277,10 @@ export default function Reports() {
                           {report.employee.full_name}
                         </div>
                         <div className="text-sm text-[#e16546] leading-[1.2]">
-                          {report.employee.position || 'Сотрудник'}
-        </div>
-        </div>
-      </div>
+                          {report.employee.position || "Сотрудник"}
+                        </div>
+                      </div>
+                    </div>
 
                     {/* Текст отчета */}
                     <div className="flex flex-col text-sm text-black leading-[1.2]">
@@ -284,7 +290,7 @@ export default function Reports() {
                       {report.done_items && report.done_items.length > 0 && (
                         <>
                           {report.done_items.map((item, index) => (
-                            <p key={index} className={index < (report.done_items?.length ?? 0) - 1 ? 'mb-[10px]' : ''}>
+                            <p key={index} className={index < (report.done_items?.length ?? 0) - 1 ? "mb-[10px]" : ""}>
                               {index + 1}. {item}
                             </p>
                           ))}
@@ -293,14 +299,14 @@ export default function Reports() {
                       {report.blockers && (
                         <p className="mt-[10px]">
                           {report.done_items && report.done_items.length > 0 ? report.done_items.length + 1 : 1}. {report.blockers}
-                  </p>
+                        </p>
                       )}
-                </div>
-              </div>
+                    </div>
+                  </div>
                 ))}
               </div>
-                </div>
-        ))}
+            </div>
+          ))}
       </div>
 
       {filteredReports.length === 0 && (

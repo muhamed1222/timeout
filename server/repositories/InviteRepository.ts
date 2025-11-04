@@ -1,8 +1,8 @@
-import { BaseRepository } from './BaseRepository.js';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import * as schema from '../../shared/schema.js';
-import type { EmployeeInvite, InsertEmployeeInvite } from '../../shared/schema.js';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { BaseRepository } from "./BaseRepository.js";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import * as schema from "../../shared/schema.js";
+import type { EmployeeInvite, InsertEmployeeInvite } from "../../shared/schema.js";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 /**
  * Repository for Employee Invites
@@ -19,7 +19,7 @@ export class InviteRepository extends BaseRepository<EmployeeInvite, InsertEmplo
     const results = await this.db
       .select()
       .from(this.table)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .where(eq((this.table as any).code, code))
       .limit(1);
 
@@ -33,9 +33,9 @@ export class InviteRepository extends BaseRepository<EmployeeInvite, InsertEmplo
     const results = await this.db
       .select()
       .from(this.table)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .where(eq((this.table as any).company_id, companyId))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .orderBy(desc((this.table as any).created_at));
 
     return results as EmployeeInvite[];
@@ -50,13 +50,13 @@ export class InviteRepository extends BaseRepository<EmployeeInvite, InsertEmplo
       .from(this.table)
       .where(
         and(
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           eq((this.table as any).company_id, companyId),
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-          sql`${(this.table as any).used_by_employee} IS NULL`
-        )
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sql`${(this.table as any).used_by_employee} IS NULL`,
+        ),
       )
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .orderBy(desc((this.table as any).created_at));
 
     return results as EmployeeInvite[];
@@ -70,15 +70,15 @@ export class InviteRepository extends BaseRepository<EmployeeInvite, InsertEmplo
       .update(this.table)
       .set({
         used_by_employee: employeeId,
-        used_at: sql`now()`
+        used_at: sql`now()`,
       } as any)
       .where(
         and(
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           eq((this.table as any).code, code),
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-          sql`${(this.table as any).used_by_employee} IS NULL`
-        )
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sql`${(this.table as any).used_by_employee} IS NULL`,
+        ),
       )
       .returning();
 
@@ -92,7 +92,7 @@ export class InviteRepository extends BaseRepository<EmployeeInvite, InsertEmplo
     const results = await this.db
       .update(this.table)
       .set(updates as any)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .where(eq((this.table as any).code, code))
       .returning();
 
@@ -108,11 +108,11 @@ export class InviteRepository extends BaseRepository<EmployeeInvite, InsertEmplo
       .delete(this.table)
       .where(
         and(
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           sql`${(this.table as any).created_at} < ${twoMinutesAgo.toISOString()}`,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-          sql`${(this.table as any).used_by_employee} IS NULL`
-        )
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sql`${(this.table as any).used_by_employee} IS NULL`,
+        ),
       );
 
     return (result as { rowCount?: number }).rowCount ?? 0;

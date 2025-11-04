@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -9,9 +9,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Copy, Check } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+} from "@/components/ui/dialog";
+import { Copy, Check } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface QRCodeModalProps {
   open: boolean;
@@ -40,14 +40,14 @@ export function QRCodeModal({
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
         toast({
-          title: 'Скопировано',
-          description: 'Ссылка скопирована в буфер обмена',
+          title: "Скопировано",
+          description: "Ссылка скопирована в буфер обмена",
         });
       } catch {
         toast({
-          title: 'Ошибка',
-          description: 'Не удалось скопировать ссылку',
-          variant: 'destructive',
+          title: "Ошибка",
+          description: "Не удалось скопировать ссылку",
+          variant: "destructive",
         });
       }
     }
@@ -58,7 +58,9 @@ export function QRCodeModal({
     onOpenChange(false);
   }, [onOpenChange]);
 
-  if (!inviteData) return null;
+  if (!inviteData) {
+    return null;
+  }
 
   // Генерируем QR-код через API
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(inviteData.link)}`;
@@ -88,7 +90,7 @@ export function QRCodeModal({
                 Сотрудник: {inviteData.full_name}
               </h3>
               <p className="text-sm text-muted-foreground">
-                Должность: {inviteData.position || 'Не указана'}
+                Должность: {inviteData.position || "Не указана"}
               </p>
               <p className="text-xs text-muted-foreground">
                 Код приглашения: {inviteData.code}

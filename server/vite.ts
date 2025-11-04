@@ -39,7 +39,7 @@ export async function setupVite(app: Express, server: Server) {
     const url = req.originalUrl;
 
     // Skip API routes - let them be handled by the API middleware
-    if (url.startsWith('/api/')) {
+    if (url.startsWith("/api/")) {
       return next();
     }
 
@@ -54,7 +54,7 @@ export async function setupVite(app: Express, server: Server) {
       // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
-        `src="/src/main.tsx"`,
+        "src=\"/src/main.tsx\"",
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
       const page = await vite.transformIndexHtml(url, template);

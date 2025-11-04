@@ -1,6 +1,6 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Button } from './ui/button';
-import { AlertCircle } from 'lucide-react';
+import React, { Component, ErrorInfo, ReactNode } from "react";
+import { Button } from "./ui/button";
+import { AlertCircle } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -22,10 +22,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
+    console.error("Uncaught error:", error, errorInfo);
     
     // Send to error tracking service (e.g., Sentry)
-    if (typeof window !== 'undefined' && (window as any).Sentry) {
+    if (typeof window !== "undefined" && (window as any).Sentry) {
       (window as any).Sentry.captureException(error, {
         contexts: {
           react: {
@@ -38,7 +38,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private handleReset = () => {
     this.setState({ hasError: false, error: null });
-    window.location.href = '/';
+    window.location.href = "/";
   };
 
   private handleReload = () => {
@@ -52,7 +52,7 @@ export class ErrorBoundary extends Component<Props, State> {
       sessionStorage.clear();
       window.location.reload();
     } catch (error) {
-      console.error('Failed to clear cache:', error);
+      console.error("Failed to clear cache:", error);
       window.location.reload();
     }
   };
@@ -116,7 +116,7 @@ export class ErrorBoundary extends Component<Props, State> {
 // Компонент для отображения ошибок загрузки данных
 export function ErrorState({ 
   message = "Не удалось загрузить данные",
-  onRetry 
+  onRetry, 
 }: { 
   message?: string;
   onRetry?: () => void;
@@ -140,7 +140,7 @@ export function ErrorState({
 // Компонент для пустых состояний
 export function EmptyState({ 
   message = "Нет данных для отображения",
-  icon: Icon = AlertCircle
+  icon: Icon = AlertCircle,
 }: { 
   message?: string;
   icon?: React.ElementType;

@@ -3,44 +3,44 @@
  * Provides live updates for dashboard, shifts, violations, etc.
  */
 
-import { Server as HTTPServer } from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
-import { logger } from './logger.js';
-import { parse } from 'url';
+import { Server as HTTPServer } from "http";
+import { WebSocketServer, WebSocket } from "ws";
+import { logger } from "./logger.js";
+import { parse } from "url";
 
 export type WebSocketEventType =
   // Shift events
-  | 'shift.started'
-  | 'shift.ended'
-  | 'shift.paused'
-  | 'shift.cancelled'
-  | 'shift.updated'
+  | "shift.started"
+  | "shift.ended"
+  | "shift.paused"
+  | "shift.cancelled"
+  | "shift.updated"
   
   // Break events
-  | 'break.started'
-  | 'break.ended'
+  | "break.started"
+  | "break.ended"
   
   // Violation events
-  | 'violation.created'
-  | 'violation.detected'
+  | "violation.created"
+  | "violation.detected"
   
   // Exception events
-  | 'exception.created'
-  | 'exception.resolved'
+  | "exception.created"
+  | "exception.resolved"
   
   // Employee events
-  | 'employee.created'
-  | 'employee.updated'
-  | 'employee.status_changed'
+  | "employee.created"
+  | "employee.updated"
+  | "employee.status_changed"
   
   // Rating events
-  | 'rating.updated'
+  | "rating.updated"
   
   // Dashboard events
-  | 'dashboard.stats_updated'
+  | "dashboard.stats_updated"
   
   // System events
-  | 'system.notification';
+  | "system.notification";
 
 export interface WebSocketEvent<T = any> {
   type: WebSocketEventType;
@@ -70,38 +70,38 @@ class WebSocketManager {
   initialize(server: HTTPServer): void {
     this.wss = new WebSocketServer({ 
       server,
-      path: '/ws',
+      path: "/ws",
       // Verify client origin in production
       verifyClient: (info: { origin: string; secure: boolean; req: any }) => {
         const origin = info.origin || info.req.headers.origin;
         
         // In production, verify origin
-        if (process.env.NODE_ENV === 'production') {
+        if (process.env.NODE_ENV === "production") {
           const allowedOrigins = [
             process.env.FRONTEND_URL,
             process.env.APP_URL,
           ].filter(Boolean);
           
-          return allowedOrigins.some(allowed => origin?.startsWith(allowed || ''));
+          return allowedOrigins.some(allowed => origin?.startsWith(allowed || ""));
         }
         
         return true;
-      }
+      },
     });
 
-    this.wss.on('connection', this.handleConnection.bind(this));
+    this.wss.on("connection", this.handleConnection.bind(this));
     
     // Start heartbeat (ping/pong) to detect dead connections
     this.startHeartbeat();
     
-    logger.info('WebSocket server initialized on /ws');
+    logger.info("WebSocket server initialized on /ws");
   }
 
   /**
    * Handle new WebSocket connection
    */
   private handleConnection(ws: WebSocket, request: any): void {
-    const { query } = parse(request.url || '', true);
+    const { query } = parse(request.url || "", true);
     
     const client: WebSocketClient = {
       ws,
@@ -114,7 +114,7 @@ class WebSocketManager {
     
     this.clients.set(ws, client);
     
-    logger.info('WebSocket client connected', {
+    logger.info("WebSocket client connected", {
       userId: client.userId,
       companyId: client.companyId,
       clientsCount: this.clients.size,
@@ -122,18 +122,18 @@ class WebSocketManager {
     
     // Send welcome message
     this.sendToClient(ws, {
-      type: 'system.notification',
-      data: { message: 'Connected to WebSocket server' },
+      type: "system.notification",
+      data: { message: "Connected to WebSocket server" },
       timestamp: Date.now(),
     });
 
     // Handle messages from client
-    ws.on('message', (data: Buffer) => {
+    ws.on("message", (data: Buffer) => {
       this.handleMessage(ws, data);
     });
 
     // Handle pong (heartbeat response)
-    ws.on('pong', () => {
+    ws.on("pong", () => {
       const client = this.clients.get(ws);
       if (client) {
         client.isAlive = true;
@@ -141,12 +141,12 @@ class WebSocketManager {
     });
 
     // Handle disconnect
-    ws.on('close', () => {
+    ws.on("close", () => {
       this.handleDisconnect(ws);
     });
 
-    ws.on('error', (error) => {
-      logger.error('WebSocket error', error);
+    ws.on("error", (error) => {
+      logger.error("WebSocket error", error);
       this.handleDisconnect(ws);
     });
   }
@@ -159,10 +159,12 @@ class WebSocketManager {
       const message = JSON.parse(data.toString());
       const client = this.clients.get(ws);
       
-      if (!client) return;
+      if (!client) {
+        return;
+      }
 
       // Handle subscription requests
-      if (message.type === 'subscribe') {
+      if (message.type === "subscribe") {
         const channels = Array.isArray(message.channels) 
           ? message.channels 
           : [message.channels];
@@ -171,20 +173,20 @@ class WebSocketManager {
           client.subscriptions.add(channel);
         });
         
-        logger.debug('Client subscribed', {
+        logger.debug("Client subscribed", {
           userId: client.userId,
           channels,
         });
         
         this.sendToClient(ws, {
-          type: 'system.notification',
-          data: { message: `Subscribed to ${channels.join(', ')}` },
+          type: "system.notification",
+          data: { message: `Subscribed to ${channels.join(", ")}` },
           timestamp: Date.now(),
         });
       }
       
       // Handle unsubscribe requests
-      if (message.type === 'unsubscribe') {
+      if (message.type === "unsubscribe") {
         const channels = Array.isArray(message.channels) 
           ? message.channels 
           : [message.channels];
@@ -193,13 +195,13 @@ class WebSocketManager {
           client.subscriptions.delete(channel);
         });
         
-        logger.debug('Client unsubscribed', {
+        logger.debug("Client unsubscribed", {
           userId: client.userId,
           channels,
         });
       }
     } catch (error) {
-      logger.error('Error handling WebSocket message', error);
+      logger.error("Error handling WebSocket message", error);
     }
   }
 
@@ -210,7 +212,7 @@ class WebSocketManager {
     const client = this.clients.get(ws);
     
     if (client) {
-      logger.info('WebSocket client disconnected', {
+      logger.info("WebSocket client disconnected", {
         userId: client.userId,
         companyId: client.companyId,
         clientsCount: this.clients.size - 1,
@@ -227,7 +229,7 @@ class WebSocketManager {
     this.pingInterval = setInterval(() => {
       this.clients.forEach((client, ws) => {
         if (!client.isAlive) {
-          logger.debug('Terminating dead WebSocket connection');
+          logger.debug("Terminating dead WebSocket connection");
           ws.terminate();
           return;
         }
@@ -256,7 +258,7 @@ class WebSocketManager {
       this.sendToClient(ws, event);
     });
     
-    logger.debug('Broadcasted event', {
+    logger.debug("Broadcasted event", {
       type: event.type,
       recipientCount: this.getRecipientCount(event),
     });
@@ -275,7 +277,7 @@ class WebSocketManager {
       }
     });
     
-    logger.debug('Broadcasted to company', {
+    logger.debug("Broadcasted to company", {
       companyId,
       type: event.type,
       recipientCount: count,
@@ -317,7 +319,7 @@ class WebSocketManager {
       }
     });
     
-    logger.debug('Broadcasted to channel', {
+    logger.debug("Broadcasted to channel", {
       channel,
       type: event.type,
       recipientCount: count,
@@ -332,7 +334,7 @@ class WebSocketManager {
       try {
         ws.send(JSON.stringify(event));
       } catch (error) {
-        logger.error('Error sending WebSocket message', error);
+        logger.error("Error sending WebSocket message", error);
       }
     }
   }
@@ -363,7 +365,7 @@ class WebSocketManager {
     totalConnections: number;
     connectionsByCompany: Record<string, number>;
     connectionsByUser: Record<string, number>;
-  } {
+    } {
     const stats = {
       totalConnections: this.clients.size,
       connectionsByCompany: {} as Record<string, number>,
@@ -396,8 +398,8 @@ class WebSocketManager {
     // Close all connections
     this.clients.forEach((client, ws) => {
       this.sendToClient(ws, {
-        type: 'system.notification',
-        data: { message: 'Server is shutting down' },
+        type: "system.notification",
+        data: { message: "Server is shutting down" },
         timestamp: Date.now(),
       });
       
@@ -408,7 +410,7 @@ class WebSocketManager {
       this.wss.close();
     }
     
-    logger.info('WebSocket server shut down');
+    logger.info("WebSocket server shut down");
   }
 }
 
@@ -419,7 +421,7 @@ export const wsManager = new WebSocketManager();
  * Helper functions for common events
  */
 
-import type { ShiftResponse, ViolationResponse, DashboardStatsResponse } from '../../shared/types/api.js';
+import type { ShiftResponse, ViolationResponse, DashboardStatsResponse } from "../../shared/types/api.js";
 
 interface EmployeeStatusData {
   employeeId: string;
@@ -429,7 +431,7 @@ interface EmployeeStatusData {
 
 export function notifyShiftStarted(companyId: string, shiftData: ShiftResponse): void {
   wsManager.broadcastToCompany(companyId, {
-    type: 'shift.started',
+    type: "shift.started",
     data: shiftData,
     timestamp: Date.now(),
     companyId,
@@ -438,7 +440,7 @@ export function notifyShiftStarted(companyId: string, shiftData: ShiftResponse):
 
 export function notifyShiftEnded(companyId: string, shiftData: ShiftResponse): void {
   wsManager.broadcastToCompany(companyId, {
-    type: 'shift.ended',
+    type: "shift.ended",
     data: shiftData,
     timestamp: Date.now(),
     companyId,
@@ -447,7 +449,7 @@ export function notifyShiftEnded(companyId: string, shiftData: ShiftResponse): v
 
 export function notifyViolationDetected(companyId: string, violationData: ViolationResponse): void {
   wsManager.broadcastToCompany(companyId, {
-    type: 'violation.detected',
+    type: "violation.detected",
     data: violationData,
     timestamp: Date.now(),
     companyId,
@@ -456,7 +458,7 @@ export function notifyViolationDetected(companyId: string, violationData: Violat
 
 export function notifyDashboardStatsUpdated(companyId: string, stats: DashboardStatsResponse): void {
   wsManager.broadcastToCompany(companyId, {
-    type: 'dashboard.stats_updated',
+    type: "dashboard.stats_updated",
     data: stats,
     timestamp: Date.now(),
     companyId,
@@ -466,10 +468,10 @@ export function notifyDashboardStatsUpdated(companyId: string, stats: DashboardS
 export function notifyEmployeeStatusChanged(
   companyId: string, 
   employeeId: string, 
-  statusData: EmployeeStatusData
+  statusData: EmployeeStatusData,
 ): void {
   wsManager.broadcastToCompany(companyId, {
-    type: 'employee.status_changed',
+    type: "employee.status_changed",
     data: statusData,
     timestamp: Date.now(),
     companyId,

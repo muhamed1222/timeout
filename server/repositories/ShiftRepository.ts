@@ -1,6 +1,6 @@
-import { BaseRepository } from './BaseRepository.js';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import * as schema from '../../shared/schema.js';
+import { BaseRepository } from "./BaseRepository.js";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import * as schema from "../../shared/schema.js";
 import type {
   Shift,
   InsertShift,
@@ -10,9 +10,9 @@ import type {
   InsertBreakInterval,
   DailyReport,
   InsertDailyReport,
-  Employee
-} from '../../shared/schema.js';
-import { eq, and, gte, lte, sql } from 'drizzle-orm';
+  Employee,
+} from "../../shared/schema.js";
+import { eq, and, gte, lte, sql } from "drizzle-orm";
 
 /**
  * Repository for Shifts, Work Intervals, Break Intervals, and Daily Reports
@@ -29,9 +29,9 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
     const results = await this.db
       .select()
       .from(this.table)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .where(eq((this.table as any).employee_id, employeeId))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .orderBy(sql`${(this.table as any).planned_start_at} DESC`)
       .limit(limit);
     
@@ -42,14 +42,16 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
    * Find shifts by multiple employee IDs (optimized to avoid N+1 queries)
    */
   async findByEmployeeIds(employeeIds: string[]): Promise<Shift[]> {
-    if (employeeIds.length === 0) return [];
+    if (employeeIds.length === 0) {
+      return [];
+    }
     
     const results = await this.db
       .select()
       .from(this.table)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .where(sql`${(this.table as any).employee_id} = ANY(${employeeIds})`)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .orderBy(sql`${(this.table as any).planned_start_at} DESC`);
     
     return results as Shift[];
@@ -61,31 +63,31 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
   async findByEmployeeIdAndDateRange(
     employeeId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): Promise<Shift[]> {
     const results = await this.db
       .select()
       .from(this.table)
       .where(
         and(
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           eq((this.table as any).employee_id, employeeId),
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           gte((this.table as any).planned_start_at, startDate),
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-          lte((this.table as any).planned_start_at, endDate)
-        )
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          lte((this.table as any).planned_start_at, endDate),
+        ),
       )
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .orderBy(sql`${(this.table as any).planned_start_at} DESC`);
 
     return results as Shift[];
   }
 
   /**
-   * Find active shifts by company ID
+   * Find active shifts by company ID with employee data
    */
-  async findActiveByCompanyId(companyId: string): Promise<(Shift & { employee: Employee })[]> {
+  async findActiveByCompanyId(companyId: string): Promise<(Shift & { employee: Pick<Employee, "id" | "full_name" | "position" | "photo_url" | "avatar_id"> })[]> {
     const results = await this.db
       .select({
         id: schema.shift.id,
@@ -98,25 +100,22 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
         created_at: schema.shift.created_at,
         employee: {
           id: schema.employee.id,
-          company_id: schema.employee.company_id,
           full_name: schema.employee.full_name,
           position: schema.employee.position,
-          telegram_user_id: schema.employee.telegram_user_id,
-          status: schema.employee.status,
-          tz: schema.employee.tz,
-          created_at: schema.employee.created_at
-        }
+          photo_url: schema.employee.photo_url,
+          avatar_id: schema.employee.avatar_id,
+        },
       })
       .from(schema.shift)
       .innerJoin(schema.employee, eq(schema.shift.employee_id, schema.employee.id))
       .where(
         and(
           eq(schema.employee.company_id, companyId),
-          eq(schema.shift.status, 'active')
-        )
+          eq(schema.shift.status, "active"),
+        ),
       );
 
-    return results as (Shift & { employee: Employee })[];
+    return results as (Shift & { employee: Pick<Employee, "id" | "full_name" | "position" | "photo_url" | "avatar_id"> })[];
   }
 
   /**
@@ -133,13 +132,13 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
       .from(this.table)
       .where(
         and(
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           eq((this.table as any).employee_id, employeeId),
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           sql`${(this.table as any).planned_start_at} >= ${today.toISOString()}`,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-          sql`${(this.table as any).planned_start_at} <= ${tomorrow.toISOString()}`
-        )
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sql`${(this.table as any).planned_start_at} <= ${tomorrow.toISOString()}`,
+        ),
       )
       .limit(1);
 
@@ -155,13 +154,13 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
       .from(this.table)
       .where(
         and(
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           eq((this.table as any).employee_id, employeeId),
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-          eq((this.table as any).status, status)
-        )
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          eq((this.table as any).status, status),
+        ),
       )
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .orderBy(sql`${(this.table as any).planned_start_at} DESC`);
 
     return results as Shift[];
@@ -178,7 +177,7 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
       .values(interval as any)
       .returning();
 
-    return results[0] as WorkInterval;
+    return results[0];
   }
 
   /**
@@ -218,7 +217,7 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
       .values(interval as any)
       .returning();
 
-    return results[0] as BreakInterval;
+    return results[0];
   }
 
   /**
@@ -258,7 +257,7 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
       .values(report as any)
       .returning();
 
-    return results[0] as DailyReport;
+    return results[0];
   }
 
   /**
@@ -279,7 +278,7 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
    */
   async findDailyReportsByCompanyId(
     companyId: string,
-    limit = 50
+    limit = 50,
   ): Promise<(DailyReport & { shift: Shift; employee: Employee })[]> {
     const results = await this.db
       .select({
@@ -300,7 +299,7 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
           actual_start_at: schema.shift.actual_start_at,
           actual_end_at: schema.shift.actual_end_at,
           status: schema.shift.status,
-          created_at: schema.shift.created_at
+          created_at: schema.shift.created_at,
         },
         employee: {
           id: schema.employee.id,
@@ -310,8 +309,8 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
           telegram_user_id: schema.employee.telegram_user_id,
           status: schema.employee.status,
           tz: schema.employee.tz,
-          created_at: schema.employee.created_at
-        }
+          created_at: schema.employee.created_at,
+        },
       })
       .from(schema.daily_report)
       .innerJoin(schema.shift, eq(schema.daily_report.shift_id, schema.shift.id))

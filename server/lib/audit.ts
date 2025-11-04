@@ -3,66 +3,66 @@
  * Tracks all important actions for security and compliance
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { logger } from './logger.js';
-// Storage not used in this file - audit logs are handled by AuditRepository elsewhere
+import { Request, Response, NextFunction } from "express";
+import { logger } from "./logger.js";
+import { repositories } from "../repositories/index.js";
 
 export type AuditAction = 
   // Auth actions
-  | 'auth.login'
-  | 'auth.logout'
-  | 'auth.register'
-  | 'auth.password_reset'
+  | "auth.login"
+  | "auth.logout"
+  | "auth.register"
+  | "auth.password_reset"
   
   // Company actions
-  | 'company.create'
-  | 'company.update'
-  | 'company.delete'
+  | "company.create"
+  | "company.update"
+  | "company.delete"
   
   // Employee actions
-  | 'employee.create'
-  | 'employee.update'
-  | 'employee.delete'
-  | 'employee.telegram_link'
-  | 'employee.telegram_unlink'
+  | "employee.create"
+  | "employee.update"
+  | "employee.delete"
+  | "employee.telegram_link"
+  | "employee.telegram_unlink"
   
   // Shift actions
-  | 'shift.create'
-  | 'shift.update'
-  | 'shift.start'
-  | 'shift.end'
-  | 'shift.cancel'
+  | "shift.create"
+  | "shift.update"
+  | "shift.start"
+  | "shift.end"
+  | "shift.cancel"
   
   // Break actions
-  | 'break.start'
-  | 'break.end'
+  | "break.start"
+  | "break.end"
   
   // Violation actions
-  | 'violation.create'
-  | 'violation.update'
-  | 'violation.delete'
+  | "violation.create"
+  | "violation.update"
+  | "violation.delete"
   
   // Exception actions
-  | 'exception.create'
-  | 'exception.resolve'
-  | 'exception.reject'
+  | "exception.create"
+  | "exception.resolve"
+  | "exception.reject"
   
   // Settings actions
-  | 'settings.update'
-  | 'violation_rule.create'
-  | 'violation_rule.update'
-  | 'violation_rule.delete';
+  | "settings.update"
+  | "violation_rule.create"
+  | "violation_rule.update"
+  | "violation_rule.delete";
 
 export interface AuditLogEntry {
   action: AuditAction;
   actor_id?: string;
-  actor_type: 'user' | 'employee' | 'system' | 'bot';
+  actor_type: "user" | "employee" | "system" | "bot";
   actor_ip?: string;
   company_id?: string;
   resource_type?: string;
   resource_id?: string;
   details?: Record<string, unknown>;
-  result: 'success' | 'failure';
+  result: "success" | "failure";
   error_message?: string;
   timestamp: Date;
   user_agent?: string;
@@ -72,22 +72,55 @@ class AuditLogger {
   /**
    * Log an audit event
    */
-  async log(entry: Omit<AuditLogEntry, 'timestamp'>): Promise<void> {
+  async log(entry: Omit<AuditLogEntry, "timestamp">): Promise<void> {
     const logEntry: AuditLogEntry = {
       ...entry,
       timestamp: new Date(),
     };
     
-    // Log to Winston logger
-    logger.info('AUDIT', logEntry);
+    // Log to Winston logger (fallback)
+    logger.info("AUDIT", logEntry);
     
-    // In production, this would also write to:
-    // - Dedicated audit log table
-    // - External audit service (e.g., AWS CloudTrail)
-    // - SIEM system
-    
-    // For now, we'll just log to Winston
-    // TODO: Implement database audit log table
+    // Write to database audit log table
+    try {
+      // Format actor as "actor_type:actor_id" or just "actor_type" if no ID
+      const actor = entry.actor_id 
+        ? `${entry.actor_type}:${entry.actor_id}`
+        : entry.actor_type;
+      
+      // Format entity as "resource_type:resource_id" or just "resource_type"
+      const entity = entry.resource_id
+        ? `${entry.resource_type || "unknown"}:${entry.resource_id}`
+        : entry.resource_type || "system";
+      
+      // Include all additional details in payload
+      const payload: Record<string, unknown> = {
+        ...entry.details,
+        actor_type: entry.actor_type,
+        actor_ip: entry.actor_ip,
+        company_id: entry.company_id,
+        result: entry.result,
+      };
+      
+      if (entry.error_message) {
+        payload.error_message = entry.error_message;
+      }
+      
+      if (entry.user_agent) {
+        payload.user_agent = entry.user_agent;
+      }
+      
+      // Write to database
+      await repositories.audit.log(actor, entry.action, entity, payload);
+    } catch (error) {
+      // If database write fails, log error but don't fail the request
+      logger.error("Failed to write audit log to database", error, {
+        action: entry.action,
+        actor_type: entry.actor_type,
+        actor_id: entry.actor_id,
+      });
+      // Winston logging above will still work as fallback
+    }
   }
   
   /**
@@ -99,13 +132,13 @@ class AuditLogger {
     email?: string;
     ip?: string;
     userAgent?: string;
-    result: 'success' | 'failure';
+    result: "success" | "failure";
     error?: string;
   }): Promise<void> {
     await this.log({
       action: params.action,
       actor_id: params.userId,
-      actor_type: 'user',
+      actor_type: "user",
       actor_ip: params.ip,
       details: { email: params.email },
       result: params.result,
@@ -120,7 +153,7 @@ class AuditLogger {
   async logResourceChange(params: {
     action: AuditAction;
     actorId?: string;
-    actorType: 'user' | 'employee' | 'system' | 'bot';
+    actorType: "user" | "employee" | "system" | "bot";
     companyId?: string;
     resourceType: string;
     resourceId: string;
@@ -137,7 +170,7 @@ class AuditLogger {
       resource_type: params.resourceType,
       resource_id: params.resourceId,
       details: params.changes,
-      result: 'success',
+      result: "success",
       user_agent: params.userAgent,
     });
   }
@@ -148,7 +181,7 @@ class AuditLogger {
   async logFailure(params: {
     action: AuditAction;
     actorId?: string;
-    actorType: 'user' | 'employee' | 'system' | 'bot';
+    actorType: "user" | "employee" | "system" | "bot";
     error: string;
     details?: Record<string, unknown>;
     ip?: string;
@@ -159,7 +192,7 @@ class AuditLogger {
       actor_type: params.actorType,
       actor_ip: params.ip,
       details: params.details,
-      result: 'failure',
+      result: "failure",
       error_message: params.error,
     });
   }
@@ -189,7 +222,7 @@ export function auditMiddleware(options?: {
 }) {
   return async (req: Request, res: Response, next: NextFunction) => {
     // Skip for GET requests (read-only)
-    if (req.method === 'GET') {
+    if (req.method === "GET") {
       return next();
     }
     
@@ -203,7 +236,7 @@ export function auditMiddleware(options?: {
     };
     
     // Capture response finish event
-    res.on('finish', async () => {
+    res.on("finish", async () => {
       try {
         // Only audit successful operations (2xx status codes)
         if (res.statusCode < 200 || res.statusCode >= 300) {
@@ -239,7 +272,7 @@ export function auditMiddleware(options?: {
         
         // Get actor info (from auth middleware)
         const actorId = (req as any).user?.id || (req as any).employee?.id;
-        const actorType = (req as any).user ? 'user' : (req as any).employee ? 'employee' : 'system';
+        const actorType = (req as any).user ? "user" : (req as any).employee ? "employee" : "system";
         const companyId = (req as any).user?.company_id || (req as any).employee?.company_id;
         
         // Log the audit event
@@ -247,7 +280,7 @@ export function auditMiddleware(options?: {
           action,
           actor_id: actorId,
           actor_type: actorType,
-          actor_ip: req.ip || req.headers['x-forwarded-for'] as string,
+          actor_ip: req.ip || req.headers["x-forwarded-for"] as string,
           company_id: companyId,
           resource_type: resource?.type,
           resource_id: resource?.id,
@@ -257,11 +290,11 @@ export function auditMiddleware(options?: {
             body: req.body,
             response: responseBody,
           },
-          result: 'success',
-          user_agent: req.headers['user-agent'],
+          result: "success",
+          user_agent: req.headers["user-agent"],
         });
       } catch (error) {
-        logger.error('Error in audit middleware', error);
+        logger.error("Error in audit middleware", error);
         // Don't fail the request if audit logging fails
       }
     });
@@ -277,50 +310,92 @@ function deriveActionFromRoute(req: Request): AuditAction | null {
   const { method, path } = req;
   
   // Auth routes
-  if (path.includes('/auth/login')) return 'auth.login';
-  if (path.includes('/auth/logout')) return 'auth.logout';
-  if (path.includes('/auth/register')) return 'auth.register';
+  if (path.includes("/auth/login")) {
+    return "auth.login";
+  }
+  if (path.includes("/auth/logout")) {
+    return "auth.logout";
+  }
+  if (path.includes("/auth/register")) {
+    return "auth.register";
+  }
   
   // Company routes
-  if (path.includes('/companies')) {
-    if (method === 'POST') return 'company.create';
-    if (method === 'PUT' || method === 'PATCH') return 'company.update';
-    if (method === 'DELETE') return 'company.delete';
+  if (path.includes("/companies")) {
+    if (method === "POST") {
+      return "company.create";
+    }
+    if (method === "PUT" || method === "PATCH") {
+      return "company.update";
+    }
+    if (method === "DELETE") {
+      return "company.delete";
+    }
   }
   
   // Employee routes
-  if (path.includes('/employees')) {
-    if (method === 'POST') return 'employee.create';
-    if (method === 'PUT' || method === 'PATCH') return 'employee.update';
-    if (method === 'DELETE') return 'employee.delete';
+  if (path.includes("/employees")) {
+    if (method === "POST") {
+      return "employee.create";
+    }
+    if (method === "PUT" || method === "PATCH") {
+      return "employee.update";
+    }
+    if (method === "DELETE") {
+      return "employee.delete";
+    }
   }
   
   // Shift routes
-  if (path.includes('/shifts')) {
-    if (path.includes('/start')) return 'shift.start';
-    if (path.includes('/end')) return 'shift.end';
-    if (path.includes('/cancel')) return 'shift.cancel';
-    if (method === 'POST') return 'shift.create';
-    if (method === 'PUT' || method === 'PATCH') return 'shift.update';
+  if (path.includes("/shifts")) {
+    if (path.includes("/start")) {
+      return "shift.start";
+    }
+    if (path.includes("/end")) {
+      return "shift.end";
+    }
+    if (path.includes("/cancel")) {
+      return "shift.cancel";
+    }
+    if (method === "POST") {
+      return "shift.create";
+    }
+    if (method === "PUT" || method === "PATCH") {
+      return "shift.update";
+    }
   }
   
   // Break routes
-  if (path.includes('/breaks')) {
-    if (path.includes('/start')) return 'break.start';
-    if (path.includes('/end')) return 'break.end';
+  if (path.includes("/breaks")) {
+    if (path.includes("/start")) {
+      return "break.start";
+    }
+    if (path.includes("/end")) {
+      return "break.end";
+    }
   }
   
   // Violation routes
-  if (path.includes('/violations')) {
-    if (method === 'POST') return 'violation.create';
-    if (method === 'PUT' || method === 'PATCH') return 'violation.update';
-    if (method === 'DELETE') return 'violation.delete';
+  if (path.includes("/violations")) {
+    if (method === "POST") {
+      return "violation.create";
+    }
+    if (method === "PUT" || method === "PATCH") {
+      return "violation.update";
+    }
+    if (method === "DELETE") {
+      return "violation.delete";
+    }
   }
   
   // Exception routes
-  if (path.includes('/exceptions')) {
-    if (path.includes('/resolve')) return 'exception.resolve';
-    if (method === 'POST') return 'exception.create';
+  if (path.includes("/exceptions")) {
+    if (path.includes("/resolve")) {
+      return "exception.resolve";
+    }
+    if (method === "POST") {
+      return "exception.create";
+    }
   }
   
   return null;
@@ -332,24 +407,24 @@ function deriveActionFromRoute(req: Request): AuditAction | null {
 function deriveResourceFromRoute(req: Request): { type: string; id: string } | null {
   const { path, params } = req;
   
-  if (path.includes('/companies') && params.id) {
-    return { type: 'company', id: params.id };
+  if (path.includes("/companies") && params.id) {
+    return { type: "company", id: params.id };
   }
   
-  if (path.includes('/employees') && params.id) {
-    return { type: 'employee', id: params.id };
+  if (path.includes("/employees") && params.id) {
+    return { type: "employee", id: params.id };
   }
   
-  if (path.includes('/shifts') && params.id) {
-    return { type: 'shift', id: params.id };
+  if (path.includes("/shifts") && params.id) {
+    return { type: "shift", id: params.id };
   }
   
-  if (path.includes('/violations') && params.id) {
-    return { type: 'violation', id: params.id };
+  if (path.includes("/violations") && params.id) {
+    return { type: "violation", id: params.id };
   }
   
-  if (path.includes('/exceptions') && params.id) {
-    return { type: 'exception', id: params.id };
+  if (path.includes("/exceptions") && params.id) {
+    return { type: "exception", id: params.id };
   }
   
   return null;

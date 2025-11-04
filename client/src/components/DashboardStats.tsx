@@ -12,7 +12,7 @@ function StatCard({ title, value, icon: Icon, hasSecondaryIcon }: StatCardProps)
   return (
     <div 
       className="bg-[#f8f8f8] rounded-[20px] p-4 h-[180px] flex flex-col justify-between flex-1"
-      data-testid={`stat-card-${title.toLowerCase().replace(' ', '-')}`}
+      data-testid={`stat-card-${title.toLowerCase().replace(" ", "-")}`}
     >
       <div className="flex items-start justify-between">
         <div className="bg-white rounded-[40px] size-[50px] flex items-center justify-center">
@@ -49,10 +49,10 @@ export default function DashboardStats({
   activeShifts, 
   completedShifts, 
   exceptions,
-  onViewExceptions 
+  onViewExceptions, 
 }: DashboardStatsProps) {
   const handleViewExceptions = () => {
-    console.log('View exceptions clicked');
+    console.log("View exceptions clicked");
     onViewExceptions?.();
   };
 
@@ -74,12 +74,12 @@ export default function DashboardStats({
         value={completedShifts}
         icon={Flag}
       />
-        <StatCard
-          title="Нарушения"
-          value={exceptions}
-          icon={AlertTriangle}
+      <StatCard
+        title="Нарушения"
+        value={exceptions}
+        icon={AlertTriangle}
         hasSecondaryIcon
-        />
+      />
       {/* Live region for screen reader announcements */}
       <div 
         role="status" 

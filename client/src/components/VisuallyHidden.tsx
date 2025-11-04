@@ -4,25 +4,25 @@
  * Hides content visually while keeping it accessible to screen readers
  */
 
-import React from 'react';
+import React from "react";
 
 interface VisuallyHiddenProps {
   children: React.ReactNode;
   as?: keyof JSX.IntrinsicElements;
 }
 
-export function VisuallyHidden({ children, as: Component = 'span' }: VisuallyHiddenProps) {
+export function VisuallyHidden({ children, as: Component = "span" }: VisuallyHiddenProps) {
   return (
     <Component
       style={{
-        position: 'absolute',
-        width: '1px',
-        height: '1px',
+        position: "absolute",
+        width: "1px",
+        height: "1px",
         padding: 0,
-        margin: '-1px',
-        overflow: 'hidden',
-        clip: 'rect(0, 0, 0, 0)',
-        whiteSpace: 'nowrap',
+        margin: "-1px",
+        overflow: "hidden",
+        clip: "rect(0, 0, 0, 0)",
+        whiteSpace: "nowrap",
         border: 0,
       }}
     >
@@ -47,6 +47,8 @@ export function VisuallyHidden({ children, as: Component = 'span' }: VisuallyHid
  *   border-width: 0;
  * }
  */
+
+
 
 
 

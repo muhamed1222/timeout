@@ -48,13 +48,13 @@ export function validateEnv(): Env {
     if (error instanceof z.ZodError) {
       logger.error("Environment variable validation failed", error);
       // Use console.error for critical startup errors that need to be visible
-      // eslint-disable-next-line no-console
+       
       console.error("\n❌ Missing or invalid environment variables:");
       error.errors.forEach((err) => {
-        // eslint-disable-next-line no-console
+         
         console.error(`  - ${err.path.join(".")}: ${err.message}`);
       });
-      // eslint-disable-next-line no-console
+       
       console.error("\nPlease check your .env.local file or environment configuration.\n");
     }
     process.exit(1);

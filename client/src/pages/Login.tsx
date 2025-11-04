@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { supabase } from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 import {
   Form,
   FormControl,
@@ -12,23 +12,23 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { LogIn, Copy, Check, Loader2, Mail } from 'lucide-react';
+} from "@/components/ui/form";
+import { LogIn, Copy, Check, Loader2, Mail } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().email('Введите корректный email'),
-  password: z.string().min(6, 'Пароль должен содержать минимум 6 символов'),
+  email: z.string().email("Введите корректный email"),
+  password: z.string().min(6, "Пароль должен содержать минимум 6 символов"),
 });
 
 const registerSchema = z.object({
-  full_name: z.string().min(1, 'Введите полное имя'),
-  company_name: z.string().min(1, 'Введите название компании'),
-  email: z.string().email('Введите корректный email'),
-  password: z.string().min(6, 'Пароль должен содержать минимум 6 символов'),
-  password_confirm: z.string().min(6, 'Подтвердите пароль'),
+  full_name: z.string().min(1, "Введите полное имя"),
+  company_name: z.string().min(1, "Введите название компании"),
+  email: z.string().email("Введите корректный email"),
+  password: z.string().min(6, "Пароль должен содержать минимум 6 символов"),
+  password_confirm: z.string().min(6, "Подтвердите пароль"),
 }).refine((data) => data.password === data.password_confirm, {
-  message: 'Пароли не совпадают',
-  path: ['password_confirm'],
+  message: "Пароли не совпадают",
+  path: ["password_confirm"],
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -39,8 +39,8 @@ export default function Login() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [authMode, setAuthMode] = useState<'oauth' | 'manual'>('oauth');
-  const [manualMode, setManualMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<"oauth" | "manual">("oauth");
+  const [manualMode, setManualMode] = useState<"login" | "register">("login");
 
   // Обработка возврата из OAuth потока
   useEffect(() => {
@@ -49,49 +49,49 @@ export default function Login() {
       const urlParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       
-      const error = urlParams.get('error') || hashParams.get('error');
-      const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
-      const type = hashParams.get('type');
+      const error = urlParams.get("error") || hashParams.get("error");
+      const errorDescription = urlParams.get("error_description") || hashParams.get("error_description");
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const type = hashParams.get("type");
 
-      console.log('OAuth callback params:', { 
+      console.log("OAuth callback params:", { 
         error, 
-        accessToken: accessToken ? 'present' : 'missing', 
-        refreshToken: refreshToken ? 'present' : 'missing',
+        accessToken: accessToken ? "present" : "missing", 
+        refreshToken: refreshToken ? "present" : "missing",
         type,
-        hash: window.location.hash.substring(0, 100)
+        hash: window.location.hash.substring(0, 100),
       });
 
       // Обработка ошибок
       if (error) {
         // Маппинг кодов ошибок на понятные сообщения
         const errorMessages: Record<string, string> = {
-          'invalid_state': 'Неверный запрос. Попробуйте войти снова.',
-          'missing_code': 'Не получен код авторизации от Яндекс.',
-          'server_config': 'OAuth не настроен на сервере. Обратитесь к администратору.',
-          'token_exchange_failed': 'Не удалось обменять код на токен. Проверьте настройки OAuth.',
-          'no_access_token': 'Не получен токен доступа от Яндекс.',
-          'user_info_failed': 'Не удалось получить информацию о пользователе из Яндекс.',
-          'no_email': 'В вашем аккаунте Яндекс не указан email. Укажите email в настройках аккаунта.',
-          'user_creation_failed': 'Не удалось создать пользователя. Попробуйте позже.',
-          'session_creation_failed': 'Не удалось создать сессию. Попробуйте войти снова.',
-          'session_failed': 'Не удалось создать сессию. Попробуйте войти снова.',
-          'server_error': 'Ошибка на сервере. Попробуйте позже.',
-          'unknown_error': 'Произошла неизвестная ошибка. Попробуйте позже.',
+          "invalid_state": "Неверный запрос. Попробуйте войти снова.",
+          "missing_code": "Не получен код авторизации от Яндекс.",
+          "server_config": "OAuth не настроен на сервере. Обратитесь к администратору.",
+          "token_exchange_failed": "Не удалось обменять код на токен. Проверьте настройки OAuth.",
+          "no_access_token": "Не получен токен доступа от Яндекс.",
+          "user_info_failed": "Не удалось получить информацию о пользователе из Яндекс.",
+          "no_email": "В вашем аккаунте Яндекс не указан email. Укажите email в настройках аккаунта.",
+          "user_creation_failed": "Не удалось создать пользователя. Попробуйте позже.",
+          "session_creation_failed": "Не удалось создать сессию. Попробуйте войти снова.",
+          "session_failed": "Не удалось создать сессию. Попробуйте войти снова.",
+          "server_error": "Ошибка на сервере. Попробуйте позже.",
+          "unknown_error": "Произошла неизвестная ошибка. Попробуйте позже.",
         };
         
-        const errorMessage = errorMessages[error] || errorDescription || 'Не удалось авторизоваться через Яндекс';
+        const errorMessage = errorMessages[error] || errorDescription || "Не удалось авторизоваться через Яндекс";
         
-        console.error('Yandex OAuth error:', { error, errorDescription });
+        console.error("Yandex OAuth error:", { error, errorDescription });
         
         toast({
-          variant: 'destructive',
-          title: 'Ошибка авторизации',
+          variant: "destructive",
+          title: "Ошибка авторизации",
           description: errorMessage,
         });
         // Очищаем URL от параметров ошибки
-        window.history.replaceState({}, '', '/login');
+        window.history.replaceState({}, "", "/login");
         setIsLoading(false);
         return;
       }
@@ -99,56 +99,56 @@ export default function Login() {
       // Если есть токен в hash (возврат с сервера после OAuth)
       // Обрабатываем токены независимо от типа, так как сервер может вернуть разные форматы
       if (accessToken) {
-        console.log('Setting session with access token', { 
+        console.log("Setting session with access token", { 
           hasRefreshToken: !!refreshToken,
-          type 
+          type, 
         });
         
         try {
           // Устанавливаем сессию через Supabase
           const { data: { session }, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
-            refresh_token: refreshToken || '',
+            refresh_token: refreshToken || "",
           });
 
           if (sessionError) {
-            console.error('Session error:', sessionError);
+            console.error("Session error:", sessionError);
             toast({
-              variant: 'destructive',
-              title: 'Ошибка',
-              description: sessionError.message || 'Не удалось установить сессию',
+              variant: "destructive",
+              title: "Ошибка",
+              description: sessionError.message || "Не удалось установить сессию",
             });
-            window.history.replaceState({}, '', '/login');
+            window.history.replaceState({}, "", "/login");
             setIsLoading(false);
             return;
           }
 
           if (session?.user) {
-            console.log('Session established successfully', { userId: session.user.id });
+            console.log("Session established successfully", { userId: session.user.id });
             toast({
-              title: 'Успешный вход',
-              description: 'Добро пожаловать!',
+              title: "Успешный вход",
+              description: "Добро пожаловать!",
             });
             // Очищаем URL от OAuth параметров
-            window.history.replaceState({}, '', '/');
-            setLocation('/');
+            window.history.replaceState({}, "", "/");
+            setLocation("/");
           } else {
-            console.warn('No user in session after setSession');
+            console.warn("No user in session after setSession");
             toast({
-              variant: 'destructive',
-              title: 'Ошибка',
-              description: 'Сессия не содержит данные пользователя',
+              variant: "destructive",
+              title: "Ошибка",
+              description: "Сессия не содержит данные пользователя",
             });
-            window.history.replaceState({}, '', '/login');
+            window.history.replaceState({}, "", "/login");
           }
         } catch (err: any) {
-          console.error('Exception setting session:', err);
+          console.error("Exception setting session:", err);
           toast({
-            variant: 'destructive',
-            title: 'Ошибка',
-            description: err.message || 'Не удалось установить сессию',
+            variant: "destructive",
+            title: "Ошибка",
+            description: err.message || "Не удалось установить сессию",
           });
-          window.history.replaceState({}, '', '/login');
+          window.history.replaceState({}, "", "/login");
         } finally {
           setIsLoading(false);
         }
@@ -163,8 +163,8 @@ export default function Login() {
   }, [toast, setLocation]);
 
   const demoCredentials = {
-    email: 'demo@timeout.app',
-    password: 'Demo1234!',
+    email: "demo@timeout.app",
+    password: "Demo1234!",
   };
 
   const copyToClipboard = async (text: string, field: string) => {
@@ -172,44 +172,44 @@ export default function Login() {
       await navigator.clipboard.writeText(text);
       setCopiedField(field);
       toast({
-        title: 'Скопировано',
-        description: `${field === 'email' ? 'Email' : 'Пароль'} скопирован в буфер обмена`,
+        title: "Скопировано",
+        description: `${field === "email" ? "Email" : "Пароль"} скопирован в буфер обмена`,
       });
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {
       toast({
-        variant: 'destructive',
-        title: 'Ошибка',
-        description: 'Не удалось скопировать в буфер обмена',
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Не удалось скопировать в буфер обмена",
       });
     }
   };
 
   const fillDemoCredentials = () => {
-    loginForm.setValue('email', demoCredentials.email);
-    loginForm.setValue('password', demoCredentials.password);
+    loginForm.setValue("email", demoCredentials.email);
+    loginForm.setValue("password", demoCredentials.password);
     toast({
-      title: 'Данные заполнены',
-      description: 'Демо-данные автоматически заполнены',
+      title: "Данные заполнены",
+      description: "Демо-данные автоматически заполнены",
     });
   };
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
     },
   });
 
   const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      full_name: '',
-      company_name: '',
-      email: '',
-      password: '',
-      password_confirm: '',
+      full_name: "",
+      company_name: "",
+      email: "",
+      password: "",
+      password_confirm: "",
     },
   });
 
@@ -223,8 +223,8 @@ export default function Login() {
 
       if (error) {
         toast({
-          variant: 'destructive',
-          title: 'Ошибка входа',
+          variant: "destructive",
+          title: "Ошибка входа",
           description: error.message,
         });
         return;
@@ -232,16 +232,16 @@ export default function Login() {
 
       if (data.user) {
         toast({
-          title: 'Успешный вход',
-          description: 'Добро пожаловать!',
+          title: "Успешный вход",
+          description: "Добро пожаловать!",
         });
-        setLocation('/');
+        setLocation("/");
       }
     } catch (error) {
       toast({
-        variant: 'destructive',
-        title: 'Ошибка',
-        description: 'Произошла непредвиденная ошибка',
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Произошла непредвиденная ошибка",
       });
     } finally {
       setIsLoading(false);
@@ -251,10 +251,10 @@ export default function Login() {
   async function onRegisterSubmit(values: RegisterFormValues) {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email: values.email,
@@ -267,26 +267,26 @@ export default function Login() {
       // Проверяем статус и Content-Type перед парсингом JSON
       if (!response.ok) {
         // Пытаемся прочитать JSON с ошибкой, если есть
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
           try {
             const errorData = await response.json();
             toast({
-              variant: 'destructive',
-              title: 'Ошибка регистрации',
-              description: errorData.error || 'Произошла ошибка при регистрации',
+              variant: "destructive",
+              title: "Ошибка регистрации",
+              description: errorData.error || "Произошла ошибка при регистрации",
             });
             return;
           } catch (jsonError) {
             // Не удалось распарсить JSON
-            console.error('Failed to parse error response:', jsonError);
+            console.error("Failed to parse error response:", jsonError);
           }
         }
         
         // Если JSON не удалось прочитать или это не JSON
         toast({
-          variant: 'destructive',
-          title: 'Ошибка регистрации',
+          variant: "destructive",
+          title: "Ошибка регистрации",
           description: `Ошибка сервера: ${response.status} ${response.statusText}`,
         });
         return;
@@ -297,8 +297,8 @@ export default function Login() {
 
       if (data.error) {
         toast({
-          variant: 'destructive',
-          title: 'Ошибка',
+          variant: "destructive",
+          title: "Ошибка",
           description: data.error,
         });
         return;
@@ -311,8 +311,8 @@ export default function Login() {
 
       if (authError) {
         toast({
-          variant: 'destructive',
-          title: 'Ошибка входа',
+          variant: "destructive",
+          title: "Ошибка входа",
           description: authError.message,
         });
         return;
@@ -320,16 +320,16 @@ export default function Login() {
 
       if (authData.user) {
         toast({
-          title: 'Регистрация успешна',
-          description: 'Добро пожаловать!',
+          title: "Регистрация успешна",
+          description: "Добро пожаловать!",
         });
-        setLocation('/');
+        setLocation("/");
       }
     } catch (error) {
       toast({
-        variant: 'destructive',
-        title: 'Ошибка',
-        description: 'Произошла непредвиденная ошибка',
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Произошла непредвиденная ошибка",
       });
     } finally {
       setIsLoading(false);
@@ -341,15 +341,15 @@ export default function Login() {
       setIsLoading(true);
       
       // Редиректим на серверный endpoint для OAuth
-      window.location.href = '/api/auth/yandex';
+      window.location.href = "/api/auth/yandex";
       
       // Пользователь будет перенаправлен на Яндекс, затем обратно на callback
       // Loading state будет сброшен после возврата
     } catch (error) {
       toast({
-        variant: 'destructive',
-        title: 'Ошибка',
-        description: 'Произошла непредвиденная ошибка при авторизации',
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Произошла непредвиденная ошибка при авторизации",
       });
       setIsLoading(false);
     }
@@ -363,20 +363,20 @@ export default function Login() {
             <div className="flex items-center gap-2">
               <LogIn className="h-6 w-6 text-[#e16546]" />
               <h1 className="text-[30px] font-semibold text-[#1a1a1a]">
-                {authMode === 'oauth' ? 'Вход в систему' : manualMode === 'login' ? 'Вход в систему' : 'Регистрация'}
+                {authMode === "oauth" ? "Вход в систему" : manualMode === "login" ? "Вход в систему" : "Регистрация"}
               </h1>
             </div>
             <p className="text-sm text-[#565656] leading-[1.2]">
-              {authMode === 'oauth' 
-                ? 'Войдите через Яндекс или используйте ручной ввод'
-                : manualMode === 'login'
-                  ? 'Введите ваши данные для входа в панель управления'
-                  : 'Создайте аккаунт администратора и компанию'}
+              {authMode === "oauth" 
+                ? "Войдите через Яндекс или используйте ручной ввод"
+                : manualMode === "login"
+                  ? "Введите ваши данные для входа в панель управления"
+                  : "Создайте аккаунт администратора и компанию"}
             </p>
           </div>
 
           {/* OAuth Section */}
-          {authMode === 'oauth' && (
+          {authMode === "oauth" && (
             <>
               <button
                 type="button"
@@ -409,8 +409,8 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => {
-                  setAuthMode('manual');
-                  setManualMode('login');
+                  setAuthMode("manual");
+                  setManualMode("login");
                 }}
                 className="w-full bg-[#f8f8f8] px-[17px] py-3 rounded-[40px] text-sm font-medium text-[#565656] leading-[1.2] hover:bg-[#eeeeee] transition-colors inline-flex items-center justify-center gap-2"
                 data-testid="button-manual-auth"
@@ -422,28 +422,28 @@ export default function Login() {
           )}
 
           {/* Manual Auth Section */}
-          {authMode === 'manual' && (
+          {authMode === "manual" && (
             <>
               {/* Toggle between login and register */}
               <div className="flex items-center gap-2 bg-[#f8f8f8] rounded-[20px] p-1">
                 <button
                   type="button"
-                  onClick={() => setManualMode('login')}
+                  onClick={() => setManualMode("login")}
                   className={`flex-1 px-4 py-2 rounded-[20px] text-sm font-medium transition-colors ${
-                    manualMode === 'login'
-                      ? 'bg-white text-[#e16546] shadow-sm'
-                      : 'bg-transparent text-[#565656] hover:text-[#1a1a1a]'
+                    manualMode === "login"
+                      ? "bg-white text-[#e16546] shadow-sm"
+                      : "bg-transparent text-[#565656] hover:text-[#1a1a1a]"
                   }`}
                 >
                   Вход
                 </button>
                 <button
                   type="button"
-                  onClick={() => setManualMode('register')}
+                  onClick={() => setManualMode("register")}
                   className={`flex-1 px-4 py-2 rounded-[20px] text-sm font-medium transition-colors ${
-                    manualMode === 'register'
-                      ? 'bg-white text-[#e16546] shadow-sm'
-                      : 'bg-transparent text-[#565656] hover:text-[#1a1a1a]'
+                    manualMode === "register"
+                      ? "bg-white text-[#e16546] shadow-sm"
+                      : "bg-transparent text-[#565656] hover:text-[#1a1a1a]"
                   }`}
                 >
                   Регистрация
@@ -451,7 +451,7 @@ export default function Login() {
               </div>
 
               {/* Login Form */}
-              {manualMode === 'login' && (
+              {manualMode === "login" && (
                 <>
                   <Form {...loginForm}>
                     <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="flex flex-col gap-4">
@@ -505,7 +505,7 @@ export default function Login() {
                             Вход...
                           </>
                         ) : (
-                          'Войти'
+                          "Войти"
                         )}
                       </button>
                     </form>
@@ -524,9 +524,9 @@ export default function Login() {
                           <code className="bg-white px-2 py-1 rounded-[8px] text-xs text-[#1a1a1a]">{demoCredentials.email}</code>
                           <button
                             className="h-6 w-6 p-0 hover:bg-white/50 rounded transition-colors flex items-center justify-center"
-                            onClick={() => copyToClipboard(demoCredentials.email, 'email')}
+                            onClick={() => copyToClipboard(demoCredentials.email, "email")}
                           >
-                            {copiedField === 'email' ? (
+                            {copiedField === "email" ? (
                               <Check className="h-3 w-3 text-[#4ade80]" />
                             ) : (
                               <Copy className="h-3 w-3 text-[#565656]" />
@@ -540,9 +540,9 @@ export default function Login() {
                           <code className="bg-white px-2 py-1 rounded-[8px] text-xs text-[#1a1a1a]">{demoCredentials.password}</code>
                           <button
                             className="h-6 w-6 p-0 hover:bg-white/50 rounded transition-colors flex items-center justify-center"
-                            onClick={() => copyToClipboard(demoCredentials.password, 'password')}
+                            onClick={() => copyToClipboard(demoCredentials.password, "password")}
                           >
-                            {copiedField === 'password' ? (
+                            {copiedField === "password" ? (
                               <Check className="h-3 w-3 text-[#4ade80]" />
                             ) : (
                               <Copy className="h-3 w-3 text-[#565656]" />
@@ -562,7 +562,7 @@ export default function Login() {
               )}
 
               {/* Register Form */}
-              {manualMode === 'register' && (
+              {manualMode === "register" && (
                 <Form {...registerForm}>
                   <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="flex flex-col gap-4">
                     <FormField
@@ -672,7 +672,7 @@ export default function Login() {
                           Регистрация...
                         </>
                       ) : (
-                        'Зарегистрироваться'
+                        "Зарегистрироваться"
                       )}
                     </button>
                   </form>
@@ -682,7 +682,7 @@ export default function Login() {
               {/* Back to OAuth button */}
               <button
                 type="button"
-                onClick={() => setAuthMode('oauth')}
+                onClick={() => setAuthMode("oauth")}
                 className="text-center text-sm text-[#565656] hover:text-[#1a1a1a] transition-colors"
               >
                 ← Вернуться к выбору способа входа

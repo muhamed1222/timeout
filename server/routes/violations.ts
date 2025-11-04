@@ -9,64 +9,64 @@ import { violationsCounter } from "../lib/metrics.js";
 
 const router = Router();
 
-router.post('/', validateBody(createViolationSchema), asyncHandler(async (req, res) => {
+router.post("/", validateBody(createViolationSchema), asyncHandler(async (req, res) => {
   const validatedData = req.body;
 
-  void logger.info('Creating violation', {
+  void logger.info("Creating violation", {
     employeeId: validatedData.employee_id,
     companyId: validatedData.company_id,
     ruleId: validatedData.rule_id,
-    source: validatedData.source
+    source: validatedData.source,
   });
 
   try {
     const employee = await findOrThrow(
       () => repositories.employee.findById(validatedData.employee_id),
-      'Employee'
+      "Employee",
     );
     
     const rule = await findOrThrow(
       () => repositories.violation.findById(validatedData.rule_id),
-      'Violation rule'
+      "Violation rule",
     );
     
-    void logger.info('Found employee and rule', {
+    void logger.info("Found employee and rule", {
       employeeCompanyId: employee.company_id,
       ruleCompanyId: rule.company_id,
-      rulePenalty: rule.penalty_percent
+      rulePenalty: rule.penalty_percent,
     });
     
-    validateCompanyScope(employee.company_id, validatedData.company_id, 'Employee company mismatch');
-    validateCompanyScope(rule.company_id, validatedData.company_id, 'Rule company mismatch');
+    validateCompanyScope(employee.company_id, validatedData.company_id, "Employee company mismatch");
+    validateCompanyScope(rule.company_id, validatedData.company_id, "Rule company mismatch");
     
     await findOrThrow(
       () => repositories.company.findById(validatedData.company_id),
-      'Company'
+      "Company",
     );
 
     // Convert penalty_percent to string (PostgreSQL numeric requires string)
     // penalty_percent is already a string from PostgreSQL numeric type, but ensure it's valid
     let penaltyValue: string;
     if (rule.penalty_percent === null || rule.penalty_percent === undefined) {
-      penaltyValue = '0';
-    } else if (typeof rule.penalty_percent === 'number') {
+      penaltyValue = "0";
+    } else if (typeof rule.penalty_percent === "number") {
       penaltyValue = String(rule.penalty_percent);
     } else {
       penaltyValue = String(rule.penalty_percent);
     }
-    void logger.info('Creating violation with penalty', { penalty: penaltyValue, originalType: typeof rule.penalty_percent, originalValue: rule.penalty_percent });
+    void logger.info("Creating violation with penalty", { penalty: penaltyValue, originalType: typeof rule.penalty_percent, originalValue: rule.penalty_percent });
 
     // Prepare violation data
-    const violationData: any = {
+    const violationData: Partial<InsertViolations> = {
       employee_id: validatedData.employee_id,
       company_id: validatedData.company_id,
       rule_id: validatedData.rule_id,
-      source: validatedData.source ?? 'manual',
+      source: validatedData.source ?? "manual",
       penalty: penaltyValue,
     };
 
     // Add optional fields only if they have values
-    if (validatedData.reason && validatedData.reason.trim()) {
+    if (validatedData.reason?.trim()) {
       violationData.reason = validatedData.reason.trim();
     }
 
@@ -74,34 +74,34 @@ router.post('/', validateBody(createViolationSchema), asyncHandler(async (req, r
       violationData.created_by = validatedData.created_by;
     }
 
-    void logger.info('Violation data prepared', { 
+    void logger.info("Violation data prepared", { 
       hasReason: !!violationData.reason,
       hasCreatedBy: !!violationData.created_by,
-      penalty: violationData.penalty
+      penalty: violationData.penalty,
     });
 
     const violation = await repositories.violation.createViolation(violationData);
 
-    void logger.info('Violation created', { violationId: violation.id });
+    void logger.info("Violation created", { violationId: violation.id });
 
     // Track violation in Prometheus metrics
     try {
       violationsCounter.labels(
-        rule.code ?? 'other',
+        rule.code ?? "other",
         String(rule.penalty_percent ?? 0),
-        validatedData.source ?? 'manual'
+        validatedData.source ?? "manual",
       ).inc();
     } catch (error) {
-      logger.error('Error tracking violation metrics', { error });
+      logger.error("Error tracking violation metrics", { error });
     }
 
     // Update rating for current month
     try {
       const { start: periodStart, end: periodEnd } = getCurrentMonthPeriod();
-      void logger.info('Updating rating', { 
+      void logger.info("Updating rating", { 
         periodStart: periodStart.toISOString(), 
         periodEnd: periodEnd.toISOString(), 
-        employeeId: violation.employee_id 
+        employeeId: violation.employee_id, 
       });
       
       const updatedRating = await repositories.rating.updateFromViolations(
@@ -109,20 +109,20 @@ router.post('/', validateBody(createViolationSchema), asyncHandler(async (req, r
         periodStart,
         periodEnd,
         repositories.violation,
-        repositories.employee
+        repositories.employee,
       );
       
-      void logger.info('Rating updated successfully', { 
+      void logger.info("Rating updated successfully", { 
         rating: updatedRating.rating, 
         status: updatedRating.status,
-        employeeId: violation.employee_id
+        employeeId: violation.employee_id,
       });
     } catch (error) {
-      logger.error('Error updating rating from violations', { 
+      logger.error("Error updating rating from violations", { 
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         violationId: violation.id,
-        employeeId: violation.employee_id
+        employeeId: violation.employee_id,
       });
       // Log but don't fail - violation is already created
     }
@@ -130,23 +130,23 @@ router.post('/', validateBody(createViolationSchema), asyncHandler(async (req, r
     try {
       await invalidateCompanyStatsByEmployeeId(violation.employee_id);
     } catch (error) {
-      logger.error('Error invalidating cache', { error });
+      logger.error("Error invalidating cache", { error });
     }
 
-    void logger.info('Violation creation completed successfully', { violationId: violation.id });
+    void logger.info("Violation creation completed successfully", { violationId: violation.id });
     res.json(violation);
   } catch (error) {
-    logger.error('Error in violation creation', {
+    logger.error("Error in violation creation", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
-      validatedData
+      validatedData,
     });
     throw error; // Re-throw to let asyncHandler handle it
   }
 }));
 
 // Get violations by company
-router.get('/company/:companyId', asyncHandler(async (req, res) => {
+router.get("/company/:companyId", asyncHandler(async (req, res) => {
   const { companyId } = req.params;
   const { periodStart, periodEnd } = req.query;
 
@@ -168,9 +168,9 @@ router.get('/company/:companyId', asyncHandler(async (req, res) => {
       return {
         ...violation,
         employee: employee ? { id: employee.id, full_name: employee.full_name } : null,
-        rule: rule ? { id: rule.id, name: rule.name, code: rule.code } : null
+        rule: rule ? { id: rule.id, name: rule.name, code: rule.code } : null,
       };
-    })
+    }),
   );
 
   res.json(violationsWithDetails);

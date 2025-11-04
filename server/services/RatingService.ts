@@ -32,7 +32,7 @@ export class RatingService {
       logger.info("Violation rule created", { 
         ruleId: rule.id, 
         companyId: data.company_id,
-        code: data.code 
+        code: data.code, 
       });
       
       return rule;
@@ -104,15 +104,15 @@ export class RatingService {
       
       await this.recalculateEmployeeRating(
         data.employee_id,
-        periodStart.toISOString().split('T')[0],
-        periodEnd.toISOString().split('T')[0]
+        periodStart.toISOString().split("T")[0],
+        periodEnd.toISOString().split("T")[0],
       );
       
       logger.info("Violation created", { 
         violationId: violation.id, 
         employeeId: data.employee_id,
         ruleId: data.rule_id,
-        source: data.source 
+        source: data.source, 
       });
       
       return violation;
@@ -136,7 +136,9 @@ export class RatingService {
         const end = new Date(periodEnd);
         
         violations = allViolations.filter(v => {
-          if (!v.created_at) return false;
+          if (!v.created_at) {
+            return false;
+          }
           const date = new Date(v.created_at);
           return date >= start && date <= end;
         });
@@ -146,7 +148,7 @@ export class RatingService {
         employeeId, 
         count: violations.length,
         periodStart,
-        periodEnd 
+        periodEnd, 
       });
       
       return violations;
@@ -162,7 +164,7 @@ export class RatingService {
   async recalculateEmployeeRating(
     employeeId: string,
     periodStart: string,
-    periodEnd: string
+    periodEnd: string,
   ) {
     try {
       const employee = await this.repositories.employee.findById(employeeId);
@@ -181,7 +183,7 @@ export class RatingService {
       let totalPenalty = 0;
       for (const violation of violations) {
         const rule: any = rulesMap.get(violation.rule_id);
-        if (rule && rule.is_active) {
+        if (rule?.is_active) {
           totalPenalty += Number(rule.penalty_percent);
         }
       }
@@ -195,12 +197,12 @@ export class RatingService {
       // Update or create rating record
       const existingRating = await this.repositories.rating.findByEmployeeAndPeriod(employeeId, new Date(periodStart), new Date(periodEnd));
       
-      const status = rating >= 80 ? 'active' : rating >= 50 ? 'warning' : 'terminated';
+      const status = rating >= 80 ? "active" : rating >= 50 ? "warning" : "terminated";
       
       if (existingRating) {
         await this.repositories.rating.update(existingRating.id, {
           rating: rating.toString(),
-          status
+          status,
         });
       } else {
         await this.repositories.rating.create({
@@ -209,13 +211,13 @@ export class RatingService {
           period_start: periodStart,
           period_end: periodEnd,
           rating: rating.toString(),
-          status
+          status,
         });
       }
       
       // Update employee status if critical
-      if (isBlocked && employee.status !== 'terminated') {
-        await this.repositories.employee.update(employeeId, { status: 'terminated' } as any);
+      if (isBlocked && employee.status !== "terminated") {
+        await this.repositories.employee.update(employeeId, { status: "terminated" } as any);
       }
       
       logger.info("Rating recalculated", { 
@@ -224,7 +226,7 @@ export class RatingService {
         periodEnd,
         rating,
         violationsCount: violations.length,
-        isBlocked 
+        isBlocked, 
       });
       
       return { rating, violationsCount: violations.length, isBlocked };
@@ -240,12 +242,12 @@ export class RatingService {
   async recalculateCompanyRatings(
     companyId: string,
     periodStart?: string,
-    periodEnd?: string
+    periodEnd?: string,
   ) {
     try {
       const now = new Date();
-      const start = periodStart || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      const end = periodEnd || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      const start = periodStart || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      const end = periodEnd || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
       
       const employees = await this.repositories.employee.findByCompanyId(companyId);
       
@@ -259,7 +261,7 @@ export class RatingService {
         companyId, 
         periodStart: start,
         periodEnd: end,
-        employeesProcessed: results.length 
+        employeesProcessed: results.length, 
       });
       
       return results;
@@ -285,8 +287,8 @@ export class RatingService {
             ...rating,
             employee: {
               full_name: employee.full_name,
-              position: employee.position
-            }
+              position: employee.position,
+            },
           });
         }
       }
@@ -297,7 +299,7 @@ export class RatingService {
         companyId, 
         periodStart,
         periodEnd,
-        count: enrichedRatings.length 
+        count: enrichedRatings.length, 
       });
       
       return enrichedRatings;

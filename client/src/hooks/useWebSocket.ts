@@ -3,26 +3,26 @@
  * Provides real-time updates for dashboard and other components
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from "react";
 
 export type WebSocketEventType =
-  | 'shift.started'
-  | 'shift.ended'
-  | 'shift.paused'
-  | 'shift.cancelled'
-  | 'shift.updated'
-  | 'break.started'
-  | 'break.ended'
-  | 'violation.created'
-  | 'violation.detected'
-  | 'exception.created'
-  | 'exception.resolved'
-  | 'employee.created'
-  | 'employee.updated'
-  | 'employee.status_changed'
-  | 'rating.updated'
-  | 'dashboard.stats_updated'
-  | 'system.notification';
+  | "shift.started"
+  | "shift.ended"
+  | "shift.paused"
+  | "shift.cancelled"
+  | "shift.updated"
+  | "break.started"
+  | "break.ended"
+  | "violation.created"
+  | "violation.detected"
+  | "exception.created"
+  | "exception.resolved"
+  | "employee.created"
+  | "employee.updated"
+  | "employee.status_changed"
+  | "rating.updated"
+  | "dashboard.stats_updated"
+  | "system.notification";
 
 export interface WebSocketEvent<T = unknown> {
   type: WebSocketEventType;
@@ -148,20 +148,26 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const eventHandlersRef = useRef<Map<WebSocketEventType, Set<(event: WebSocketEvent) => void>>>(
-    new Map()
+    new Map(),
   );
 
   /**
    * Build WebSocket URL with query params
    */
   const buildUrl = useCallback(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
     const params = new URLSearchParams();
     
-    if (userId) params.append('userId', userId);
-    if (companyId) params.append('companyId', companyId);
-    if (employeeId) params.append('employeeId', employeeId);
+    if (userId) {
+      params.append("userId", userId);
+    }
+    if (companyId) {
+      params.append("companyId", companyId);
+    }
+    if (employeeId) {
+      params.append("employeeId", employeeId);
+    }
     
     return `${protocol}//${host}/ws?${params.toString()}`;
   }, [userId, companyId, employeeId]);
@@ -175,7 +181,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       const ws = new WebSocket(url);
 
       ws.onopen = () => {
-        console.log('[WebSocket] Connected');
+        console.log("[WebSocket] Connected");
         setIsConnected(true);
         setError(null);
         reconnectAttemptsRef.current = 0;
@@ -183,7 +189,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         // Subscribe to channels
         if (channels.length > 0) {
           ws.send(JSON.stringify({
-            type: 'subscribe',
+            type: "subscribe",
             channels,
           }));
         }
@@ -199,18 +205,18 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
           const handlers = eventHandlersRef.current.get(data.type);
           handlers?.forEach(handler => handler(data));
         } catch (err) {
-          console.error('[WebSocket] Error parsing message', err);
+          console.error("[WebSocket] Error parsing message", err);
         }
       };
 
       ws.onerror = (event) => {
-        console.error('[WebSocket] Error', event);
+        console.error("[WebSocket] Error", event);
         setError(event);
         onError?.(event);
       };
 
       ws.onclose = () => {
-        console.log('[WebSocket] Disconnected');
+        console.log("[WebSocket] Disconnected");
         setIsConnected(false);
         onDisconnect?.();
         
@@ -218,7 +224,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectAttemptsRef.current++;
           console.log(
-            `[WebSocket] Reconnecting (${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`
+            `[WebSocket] Reconnecting (${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`,
           );
           
           reconnectTimeoutRef.current = setTimeout(() => {
@@ -229,7 +235,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
       wsRef.current = ws;
     } catch (err) {
-      console.error('[WebSocket] Connection error', err);
+      console.error("[WebSocket] Connection error", err);
     }
   }, [
     buildUrl,
@@ -263,7 +269,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
    */
   const subscribe = useCallback((
     eventType: WebSocketEventType,
-    handler: (event: WebSocketEvent) => void
+    handler: (event: WebSocketEvent) => void,
   ) => {
     if (!eventHandlersRef.current.has(eventType)) {
       eventHandlersRef.current.set(eventType, new Set());
@@ -284,7 +290,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   const subscribeToChannel = useCallback((channel: string) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
-        type: 'subscribe',
+        type: "subscribe",
         channels: [channel],
       }));
     }
@@ -296,7 +302,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   const unsubscribeFromChannel = useCallback((channel: string) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
-        type: 'unsubscribe',
+        type: "unsubscribe",
         channels: [channel],
       }));
     }
@@ -337,7 +343,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 export function useWebSocketEvent<T = unknown>(
   eventType: WebSocketEventType,
   handler: (data: T) => void,
-  options: UseWebSocketOptions = {}
+  options: UseWebSocketOptions = {},
 ): UseWebSocketReturn {
   const ws = useWebSocket(options);
   
@@ -364,9 +370,9 @@ interface DashboardStats {
  */
 export function useDashboardUpdates(
   companyId: string,
-  onStatsUpdate: (stats: DashboardStats) => void
+  onStatsUpdate: (stats: DashboardStats) => void,
 ): UseWebSocketReturn {
-  return useWebSocketEvent<DashboardStats>('dashboard.stats_updated', onStatsUpdate, {
+  return useWebSocketEvent<DashboardStats>("dashboard.stats_updated", onStatsUpdate, {
     companyId,
   });
 }
@@ -374,7 +380,7 @@ export function useDashboardUpdates(
 interface Shift {
   id: string;
   employee_id: string;
-  status: 'planned' | 'active' | 'completed' | 'cancelled';
+  status: "planned" | "active" | "completed" | "cancelled";
   planned_start_at: string;
   planned_end_at: string;
   actual_start_at?: string;
@@ -386,16 +392,16 @@ interface Shift {
  */
 export function useShiftUpdates(
   companyId: string,
-  onShiftUpdate: (shift: Shift) => void
+  onShiftUpdate: (shift: Shift) => void,
 ): UseWebSocketReturn {
   const ws = useWebSocket({ companyId });
   
   useEffect(() => {
     const unsubscribers = [
-      ws.subscribe('shift.started', (e) => onShiftUpdate(e.data as Shift)),
-      ws.subscribe('shift.ended', (e) => onShiftUpdate(e.data as Shift)),
-      ws.subscribe('shift.paused', (e) => onShiftUpdate(e.data as Shift)),
-      ws.subscribe('shift.updated', (e) => onShiftUpdate(e.data as Shift)),
+      ws.subscribe("shift.started", (e) => onShiftUpdate(e.data as Shift)),
+      ws.subscribe("shift.ended", (e) => onShiftUpdate(e.data as Shift)),
+      ws.subscribe("shift.paused", (e) => onShiftUpdate(e.data as Shift)),
+      ws.subscribe("shift.updated", (e) => onShiftUpdate(e.data as Shift)),
     ];
     
     return () => {
@@ -411,7 +417,7 @@ interface Violation {
   employee_id: string;
   company_id: string;
   rule_id: string;
-  source: 'auto' | 'manual';
+  source: "auto" | "manual";
   reason?: string;
   detected_at: string;
 }
@@ -421,9 +427,9 @@ interface Violation {
  */
 export function useViolationUpdates(
   companyId: string,
-  onViolation: (violation: Violation) => void
+  onViolation: (violation: Violation) => void,
 ): UseWebSocketReturn {
-  return useWebSocketEvent<Violation>('violation.detected', onViolation, {
+  return useWebSocketEvent<Violation>("violation.detected", onViolation, {
     companyId,
   });
 }

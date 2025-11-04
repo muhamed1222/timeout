@@ -46,7 +46,7 @@ function startInviteCleanup(): void {
   }, 30 * 1000); // Каждые 30 секунд
 }
 
-import { requestTimeout } from './middleware/timeout.js';
+import { requestTimeout } from "./middleware/timeout.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Apply request timeout middleware (before everything else)

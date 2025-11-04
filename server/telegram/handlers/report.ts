@@ -1,16 +1,16 @@
-import { Context } from 'telegraf';
-import { SessionData } from '../types.js';
-import { repositories } from '../../repositories/index.js';
-import { logger } from '../../lib/logger.js';
+import { Context } from "telegraf";
+import { SessionData } from "../types.js";
+import { repositories } from "../../repositories/index.js";
+import { logger } from "../../lib/logger.js";
 
 export async function handleReport(ctx: Context & { session: SessionData }, shiftId?: string) {
   const reportShiftId = shiftId || ctx.session.waitingForReport;
   
   if (!reportShiftId) {
-    return ctx.reply('❌ Ошибка: смена для отчёта не найдена');
+    return ctx.reply("❌ Ошибка: смена для отчёта не найдена");
   }
 
-  const text = ctx.message && 'text' in ctx.message ? ctx.message.text : undefined;
+  const text = ctx.message && "text" in ctx.message ? ctx.message.text : undefined;
   
   if (!text || text.trim().length < 10) {
     return ctx.reply(`
@@ -23,7 +23,7 @@ export async function handleReport(ctx: Context & { session: SessionData }, shif
 • Встретился с клиентом Y
 • Подготовил документы Z
 • Проблемы: задержка поставки материалов
-    `, { parse_mode: 'Markdown' });
+    `, { parse_mode: "Markdown" });
   }
 
   try {
@@ -31,7 +31,7 @@ export async function handleReport(ctx: Context & { session: SessionData }, shif
     await repositories.shift.createDailyReport({
       shift_id: reportShiftId,
       done_items: [text.trim()],
-      submitted_at: new Date()
+      submitted_at: new Date(),
     });
 
     // Очищаем сессию
@@ -47,10 +47,10 @@ export async function handleReport(ctx: Context & { session: SessionData }, shif
 *Доступные команды:*
 /status - Текущий статус
 /help - Справка
-    `, { parse_mode: 'Markdown' });
+    `, { parse_mode: "Markdown" });
 
   } catch (error) {
-    logger.error('Error saving report', error);
-    ctx.reply('❌ Ошибка сохранения отчёта. Попробуйте позже.');
+    logger.error("Error saving report", error);
+    ctx.reply("❌ Ошибка сохранения отчёта. Попробуйте позже.");
   }
 }

@@ -1,19 +1,15 @@
 import { createHmac } from "crypto";
 import { logger } from "../lib/logger.js";
+import type { TelegramUser } from "../../shared/types/api.js";
 
-export interface TelegramUser {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-  language_code?: string;
-}
+// Re-export for backward compatibility
+export type { TelegramUser };
 
 export function validateTelegramWebAppData(initData: string, botToken: string): TelegramUser | null {
   try {
     const urlParams = new URLSearchParams(initData);
-    const hash = urlParams.get('hash');
-    urlParams.delete('hash');
+    const hash = urlParams.get("hash");
+    urlParams.delete("hash");
     
     if (!hash) {
       return null;
@@ -22,16 +18,16 @@ export function validateTelegramWebAppData(initData: string, botToken: string): 
     const dataCheckString = Array.from(urlParams.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, value]) => `${key}=${value}`)
-      .join('\n');
+      .join("\n");
 
-    const secretKey = createHmac('sha256', 'WebAppData').update(botToken).digest();
-    const calculatedHash = createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+    const secretKey = createHmac("sha256", "WebAppData").update(botToken).digest();
+    const calculatedHash = createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
 
     if (calculatedHash !== hash) {
       return null;
     }
 
-    const userParam = urlParams.get('user');
+    const userParam = urlParams.get("user");
     if (!userParam) {
       return null;
     }
@@ -47,7 +43,7 @@ export function validateTelegramWebAppData(initData: string, botToken: string): 
 export function extractTelegramUserFromInitData(initData: string): TelegramUser | null {
   try {
     const urlParams = new URLSearchParams(initData);
-    const userParam = urlParams.get('user');
+    const userParam = urlParams.get("user");
     
     if (!userParam) {
       return null;

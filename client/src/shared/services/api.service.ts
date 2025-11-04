@@ -4,12 +4,12 @@ import {
   API_BASE_URL,
   HTTP_METHODS,
   HTTP_STATUS,
-} from '../constants/api.constants';
+} from "../constants/api.constants";
 // AppError не найден, создаем локально
 export class AppError extends Error {
   constructor(message: string, public status?: number) {
     super(message);
-    this.name = 'AppError';
+    this.name = "AppError";
   }
 }
 
@@ -22,13 +22,13 @@ class ApiService {
 
   private async request<T>(
     endpoint: string,
-    options: any = {}
+    options: any = {},
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
 
     const config: any = {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options.headers,
       },
       ...options,
@@ -42,7 +42,7 @@ class ApiService {
         throw new AppError(
           errorData.error || `HTTP ${response.status}`,
           errorData.message || response.statusText,
-          { status: response.status, endpoint }
+          { status: response.status, endpoint },
         );
       }
 
@@ -59,9 +59,9 @@ class ApiService {
 
       // Сетевые ошибки
       throw new AppError(
-        'NETWORK_ERROR',
-        'Ошибка сети. Проверьте подключение к интернету.',
-        { originalError: error, endpoint }
+        "NETWORK_ERROR",
+        "Ошибка сети. Проверьте подключение к интернету.",
+        { originalError: error, endpoint },
       );
     }
   }
@@ -104,7 +104,7 @@ class ApiService {
   // Построение URL с параметрами
   private buildUrlWithParams(
     endpoint: string,
-    params: Record<string, any>
+    params: Record<string, any>,
   ): string {
     const url = new URL(endpoint, window.location.origin);
 
@@ -121,10 +121,10 @@ class ApiService {
   async uploadFile<T>(
     endpoint: string,
     file: File,
-    additionalData?: Record<string, any>
+    additionalData?: Record<string, any>,
   ): Promise<T> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     if (additionalData) {
       Object.entries(additionalData).forEach(([key, value]) => {
@@ -144,16 +144,16 @@ class ApiService {
     const response = await fetch(`${this.baseURL}${endpoint}`);
 
     if (!response.ok) {
-      throw new AppError('DOWNLOAD_ERROR', 'Ошибка при скачивании файла', {
+      throw new AppError("DOWNLOAD_ERROR", "Ошибка при скачивании файла", {
         status: response.status,
       });
     }
 
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = filename || 'download';
+    link.download = filename || "download";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

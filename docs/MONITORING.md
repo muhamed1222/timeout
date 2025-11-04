@@ -221,13 +221,142 @@ groups:
 
 ### Sentry Alerts
 
-Configure in Sentry dashboard:
-1. Go to **Alerts** → **Create Alert Rule**
-2. Set conditions:
-   - Error rate > threshold
-   - Specific error types
-   - Performance degradation
-3. Configure notifications (email, Slack, etc.)
+#### Настройка критических алертов
+
+**1. Алерт на высокий уровень ошибок (Error Rate)**
+
+Перейдите в Sentry Dashboard → **Alerts** → **Create Alert Rule**:
+
+**Conditions:**
+- **Trigger:** When the number of events in a function is **greater than** `50` in `5 minutes`
+- **Filter:** `environment:production` AND `level:error`
+- **Aggregate:** Count of events
+
+**Actions:**
+- Send email notification
+- Send Slack notification (если настроен)
+- Создать PagerDuty incident (если критично)
+
+**2. Алерт на критические ошибки (500+ статусы)**
+
+**Conditions:**
+- **Trigger:** When the number of events in a function is **greater than** `10` in `5 minutes`
+- **Filter:** `environment:production` AND `level:error` AND `status_code:[500 TO 599]`
+- **Aggregate:** Count of events
+
+**Actions:**
+- Немедленное уведомление (email + Slack)
+- Создать задачу в Jira/Linear (опционально)
+
+**3. Алерт на деградацию производительности**
+
+**Conditions:**
+- **Trigger:** When the p95 transaction duration is **greater than** `2000ms` (2 секунды) in `5 minutes`
+- **Filter:** `environment:production` AND `transaction:api.*`
+- **Aggregate:** p95(transaction.duration)
+
+**Actions:**
+- Уведомление команде разработки
+- Логирование в мониторинг
+
+**4. Алерт на новые типы ошибок**
+
+**Conditions:**
+- **Trigger:** When a new issue is created
+- **Filter:** `environment:production` AND `level:error`
+- **Aggregate:** Issue creation
+
+**Actions:**
+- Уведомление о новой ошибке
+- Автоматическое создание задачи на исправление
+
+**5. Алерт на Database ошибки**
+
+**Conditions:**
+- **Trigger:** When the number of events is **greater than** `5` in `5 minutes`
+- **Filter:** `environment:production` AND (`message:*database*` OR `message:*DatabaseError*` OR `type:DatabaseError`)
+- **Aggregate:** Count of events
+
+**Actions:**
+- Критическое уведомление
+- Автоматическая проверка статуса БД
+
+**6. Алерт на Authentication ошибки**
+
+**Conditions:**
+- **Trigger:** When the number of events is **greater than** `20` in `10 minutes`
+- **Filter:** `environment:production` AND (`message:*auth*` OR `message:*login*` OR `message:*unauthorized*`)
+- **Aggregate:** Count of events
+
+**Actions:**
+- Уведомление о возможных проблемах с аутентификацией
+
+#### Настройка уведомлений
+
+**Email уведомления:**
+1. Перейдите в **Settings** → **Notifications**
+2. Добавьте email адреса для получения алертов
+3. Настройте частоту уведомлений (immediate, daily digest, weekly digest)
+
+**Slack интеграция:**
+1. Перейдите в **Settings** → **Integrations** → **Slack**
+2. Подключите Slack workspace
+3. Выберите канал для уведомлений
+4. Настройте формат сообщений
+
+**PagerDuty интеграция (для критичных алертов):**
+1. Перейдите в **Settings** → **Integrations** → **PagerDuty**
+2. Подключите PagerDuty service
+3. Настройте escalation policies
+
+#### Примеры правил алертов (JSON конфигурация)
+
+Для автоматизации можно создать конфигурационный файл:
+
+```json
+{
+  "alert_rules": [
+    {
+      "name": "High Error Rate",
+      "conditions": {
+        "aggregate": "count()",
+        "query": "environment:production level:error",
+        "threshold": 50,
+        "timeWindow": "5m"
+      },
+      "actions": ["email", "slack"]
+    },
+    {
+      "name": "Critical Server Errors",
+      "conditions": {
+        "aggregate": "count()",
+        "query": "environment:production level:error status_code:[500 TO 599]",
+        "threshold": 10,
+        "timeWindow": "5m"
+      },
+      "actions": ["email", "slack", "pagerduty"]
+    },
+    {
+      "name": "Performance Degradation",
+      "conditions": {
+        "aggregate": "p95(transaction.duration)",
+        "query": "environment:production transaction:api.*",
+        "threshold": 2000,
+        "timeWindow": "5m"
+      },
+      "actions": ["email", "slack"]
+    }
+  ]
+}
+```
+
+#### Мониторинг алертов
+
+После настройки алертов:
+1. Проверьте работу алертов, создав тестовую ошибку
+2. Проверьте получение уведомлений
+3. Настройте дашборды в Sentry для визуализации метрик
+4. Регулярно просматривайте статистику алертов
 
 ---
 

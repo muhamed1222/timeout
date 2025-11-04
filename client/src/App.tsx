@@ -77,18 +77,18 @@ function MainRouter() {
 
 function getPageTitle(location: string): string {
   const titles: Record<string, string> = {
-    '/': 'Дашборд',
-    '/exceptions': 'Нарушения',
-    '/rating': 'Рейтинг',
-    '/employees': 'Сотрудники',
-    '/reports': 'Отчеты',
-    '/settings': 'Настройки',
-    '/account/security': 'Пароль и безопасность',
-    '/legal': 'Юридическая информация',
-    '/help': 'Помощь и поддержка',
-    '/company': 'Настройки',
+    "/": "Дашборд",
+    "/exceptions": "Нарушения",
+    "/rating": "Рейтинг",
+    "/employees": "Сотрудники",
+    "/reports": "Отчеты",
+    "/settings": "Настройки",
+    "/account/security": "Пароль и безопасность",
+    "/legal": "Юридическая информация",
+    "/help": "Помощь и поддержка",
+    "/company": "Настройки",
   };
-  return titles[location] || 'Страница';
+  return titles[location] || "Страница";
 }
 
 function AppContent() {
@@ -108,10 +108,10 @@ function AppContent() {
     );
   }
 
-  const publicRoutes = ['/login', '/register', '/miniapp'];
+  const publicRoutes = ["/login", "/register", "/miniapp"];
   const isPublicRoute = publicRoutes.includes(location);
-  const isAuthPage = location === '/login' || location === '/register';
-  const isMiniAppPage = location === '/miniapp';
+  const isAuthPage = location === "/login" || location === "/register";
+  const isMiniAppPage = location === "/miniapp";
 
   if (user && isAuthPage) {
     return <Redirect to="/" />;
@@ -126,8 +126,8 @@ function AppContent() {
       <Switch>
         <Route path="/login" component={Login} />
         <Route path="/register">
-        <Redirect to="/login" />
-      </Route>
+          <Redirect to="/login" />
+        </Route>
       </Switch>
     );
   }
@@ -196,15 +196,15 @@ function AppContent() {
               />
             </div>
           </header>
-        <main
-          id="main-content"
-          className="flex-1 overflow-auto bg-[#FFFFFF]"
-          role="main"
-          aria-label="Основной контент"
-        >
-          <MainRouter />
-          <CommandPalette />
-        </main>
+          <main
+            id="main-content"
+            className="flex-1 overflow-auto bg-[#FFFFFF]"
+            role="main"
+            aria-label="Основной контент"
+          >
+            <MainRouter />
+            <CommandPalette />
+          </main>
         </div>
       </div>
     </SidebarProvider>

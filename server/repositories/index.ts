@@ -1,24 +1,24 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import * as schema from '../../shared/schema.js';
-import { CompanyRepository } from './CompanyRepository.js';
-import { EmployeeRepository } from './EmployeeRepository.js';
-import { RatingRepository } from './RatingRepository.js';
-import { ViolationRepository } from './ViolationRepository.js';
-import { ShiftRepository } from './ShiftRepository.js';
-import { ExceptionRepository } from './ExceptionRepository.js';
-import { ScheduleRepository } from './ScheduleRepository.js';
-import { InviteRepository } from './InviteRepository.js';
-import { ReminderRepository } from './ReminderRepository.js';
-import { AuditRepository } from './AuditRepository.js';
-import { createContainer } from '../lib/di/container.js';
-import { logger } from '../lib/logger.js';
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import * as schema from "../../shared/schema.js";
+import { CompanyRepository } from "./CompanyRepository.js";
+import { EmployeeRepository } from "./EmployeeRepository.js";
+import { RatingRepository } from "./RatingRepository.js";
+import { ViolationRepository } from "./ViolationRepository.js";
+import { ShiftRepository } from "./ShiftRepository.js";
+import { ExceptionRepository } from "./ExceptionRepository.js";
+import { ScheduleRepository } from "./ScheduleRepository.js";
+import { InviteRepository } from "./InviteRepository.js";
+import { ReminderRepository } from "./ReminderRepository.js";
+import { AuditRepository } from "./AuditRepository.js";
+import { createContainer } from "../lib/di/container.js";
+import { logger } from "../lib/logger.js";
 
 // Initialize database connection
 let connectionString = process.env.DATABASE_URL!;
 
 // Если используется pooler и он не работает, пробуем автоматически переключиться на прямое подключение
-if (connectionString.includes('pooler.supabase.com:6543')) {
+if (connectionString.includes("pooler.supabase.com:6543")) {
   // Извлекаем project ref и пароль
   const match = connectionString.match(/postgres\.([^:]+):([^@]+)@/);
   if (match) {
@@ -38,9 +38,9 @@ if (connectionString.includes('pooler.supabase.com:6543')) {
       // Пробуем подключиться (async, не блокируем)
       void Promise.race([
         testClient`SELECT 1`,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 2000)),
       ]).then(() => {
-        logger.info('[DB] Auto-switched to direct connection (db.{ref}.supabase.co)');
+        logger.info("[DB] Auto-switched to direct connection (db.{ref}.supabase.co)");
         connectionString = directUrl;
         void testClient.end();
       }).catch(() => {
@@ -54,7 +54,7 @@ if (connectionString.includes('pooler.supabase.com:6543')) {
 }
 
 const client = postgres(connectionString, { 
-  ssl: connectionString.includes('supabase') ? { rejectUnauthorized: false } : false,
+  ssl: connectionString.includes("supabase") ? { rejectUnauthorized: false } : false,
   connect_timeout: 10, // 10 seconds timeout for connection
   idle_timeout: 20, // 20 seconds timeout for idle connections
   max_lifetime: 60 * 30, // 30 minutes max lifetime
@@ -93,17 +93,17 @@ export const repositories = {
 createContainer({ repositories });
 
 // Export individual repositories for direct import
-export { CompanyRepository } from './CompanyRepository.js';
-export { EmployeeRepository } from './EmployeeRepository.js';
-export { RatingRepository } from './RatingRepository.js';
-export { ViolationRepository } from './ViolationRepository.js';
-export { ShiftRepository } from './ShiftRepository.js';
-export { ExceptionRepository } from './ExceptionRepository.js';
-export { ScheduleRepository } from './ScheduleRepository.js';
-export { InviteRepository } from './InviteRepository.js';
-export { ReminderRepository } from './ReminderRepository.js';
-export { AuditRepository } from './AuditRepository.js';
-export { BaseRepository } from './BaseRepository.js';
+export { CompanyRepository } from "./CompanyRepository.js";
+export { EmployeeRepository } from "./EmployeeRepository.js";
+export { RatingRepository } from "./RatingRepository.js";
+export { ViolationRepository } from "./ViolationRepository.js";
+export { ShiftRepository } from "./ShiftRepository.js";
+export { ExceptionRepository } from "./ExceptionRepository.js";
+export { ScheduleRepository } from "./ScheduleRepository.js";
+export { InviteRepository } from "./InviteRepository.js";
+export { ReminderRepository } from "./ReminderRepository.js";
+export { AuditRepository } from "./AuditRepository.js";
+export { BaseRepository } from "./BaseRepository.js";
 
 // Export db for custom queries  
 export { db };

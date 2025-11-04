@@ -27,7 +27,7 @@ export class EmployeeService {
       logger.info("Employee created", { 
         employeeId: employee.id, 
         companyId: employee.company_id,
-        fullName: employee.full_name 
+        fullName: employee.full_name, 
       });
       
       return employee;
@@ -107,7 +107,7 @@ export class EmployeeService {
         throw new Error("Employee not found");
       }
       
-      await this.repositories.employee.update(employeeId, { status: 'inactive' } as any);
+      await this.repositories.employee.update(employeeId, { status: "inactive" } as any);
       
       // Invalidate company stats cache
       await invalidateCompanyStatsByEmployeeId(employee.id);
@@ -143,12 +143,12 @@ export class EmployeeService {
   async linkTelegramAccount(employeeId: string, telegramUserId: string) {
     try {
       const employee = await this.repositories.employee.update(employeeId, {
-        telegram_user_id: telegramUserId
+        telegram_user_id: telegramUserId,
       });
       
       logger.info("Telegram account linked", { 
         employeeId, 
-        telegramUserId
+        telegramUserId,
       });
       
       return employee;
@@ -164,7 +164,7 @@ export class EmployeeService {
   async unlinkTelegramAccount(employeeId: string) {
     try {
       const employee = await this.repositories.employee.update(employeeId, {
-        telegram_user_id: null
+        telegram_user_id: null,
       });
       
       logger.info("Telegram account unlinked", { employeeId });
@@ -201,10 +201,10 @@ export class EmployeeService {
       const now = new Date();
       
       const activeShift = shifts.find(shift => 
-        shift.status === 'active' ||
-        (shift.status === 'planned' && 
+        shift.status === "active" ||
+        (shift.status === "planned" && 
          new Date(shift.planned_start_at) <= now &&
-         new Date(shift.planned_end_at) >= now)
+         new Date(shift.planned_end_at) >= now),
       );
       
       if (activeShift) {

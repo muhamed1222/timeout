@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, MessageSquare, LogIn, LogOut, Coffee } from "lucide-react";
 import EmployeeAvatar from "./EmployeeAvatar";
 
-export type ActivityType = 'shift_start' | 'shift_end' | 'break_start' | 'break_end' | 'report_submitted';
+export type ActivityType = "shift_start" | "shift_end" | "break_start" | "break_end" | "report_submitted";
 
 export interface ActivityItem {
   id: string;
@@ -22,32 +22,32 @@ interface RecentActivityProps {
 const activityConfig = {
   shift_start: {
     icon: LogIn,
-    color: 'text-shift-active',
-    bgColor: 'bg-shift-active/10'
+    color: "text-shift-active",
+    bgColor: "bg-shift-active/10",
   },
   shift_end: {
     icon: LogOut,
-    color: 'text-shift-done',
-    bgColor: 'bg-shift-done/10'
+    color: "text-shift-done",
+    bgColor: "bg-shift-done/10",
   },
   break_start: {
     icon: Coffee,
-    color: 'text-shift-break',
-    bgColor: 'bg-shift-break/10'
+    color: "text-shift-break",
+    bgColor: "bg-shift-break/10",
   },
   break_end: {
     icon: Coffee,
-    color: 'text-shift-active',
-    bgColor: 'bg-shift-active/10'
+    color: "text-shift-active",
+    bgColor: "bg-shift-active/10",
   },
   report_submitted: {
     icon: MessageSquare,
-    color: 'text-primary',
-    bgColor: 'bg-primary/10'
-  }
+    color: "text-primary",
+    bgColor: "bg-primary/10",
+  },
 };
 
-export default function RecentActivity({ activities, className = '' }: RecentActivityProps) {
+export default function RecentActivity({ activities, className = "" }: RecentActivityProps) {
   return (
     <Card className={className} data-testid="card-recent-activity">
       <CardHeader>

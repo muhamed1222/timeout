@@ -1,8 +1,8 @@
-import { BaseRepository } from './BaseRepository.js';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import * as schema from '../../shared/schema.js';
-import type { Exception, InsertException, Employee } from '../../shared/schema.js';
-import { eq, sql, and } from 'drizzle-orm';
+import { BaseRepository } from "./BaseRepository.js";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import * as schema from "../../shared/schema.js";
+import type { Exception, InsertException, Employee } from "../../shared/schema.js";
+import { eq, sql, and } from "drizzle-orm";
 
 /**
  * Repository for Exceptions
@@ -34,8 +34,8 @@ export class ExceptionRepository extends BaseRepository<Exception, InsertExcepti
           telegram_user_id: schema.employee.telegram_user_id,
           status: schema.employee.status,
           tz: schema.employee.tz,
-          created_at: schema.employee.created_at
-        }
+          created_at: schema.employee.created_at,
+        },
       })
       .from(schema.exception)
       .innerJoin(schema.employee, eq(schema.exception.employee_id, schema.employee.id))
@@ -52,9 +52,9 @@ export class ExceptionRepository extends BaseRepository<Exception, InsertExcepti
     const results = await this.db
       .select()
       .from(this.table)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .where(eq((this.table as any).employee_id, employeeId))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .orderBy(sql`${(this.table as any).date} DESC`);
 
     return results as Exception[];
@@ -82,16 +82,16 @@ export class ExceptionRepository extends BaseRepository<Exception, InsertExcepti
           telegram_user_id: schema.employee.telegram_user_id,
           status: schema.employee.status,
           tz: schema.employee.tz,
-          created_at: schema.employee.created_at
-        }
+          created_at: schema.employee.created_at,
+        },
       })
       .from(schema.exception)
       .innerJoin(schema.employee, eq(schema.exception.employee_id, schema.employee.id))
       .where(
         and(
           eq(schema.employee.company_id, companyId),
-          sql`${schema.exception.resolved_at} IS NULL`
-        )
+          sql`${schema.exception.resolved_at} IS NULL`,
+        ),
       )
       .orderBy(sql`${schema.exception.date} DESC`);
 
@@ -105,7 +105,7 @@ export class ExceptionRepository extends BaseRepository<Exception, InsertExcepti
     const results = await this.db
       .update(this.table)
       .set({ resolved_at: sql`now()` } as any)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .where(eq((this.table as any).id, id))
       .returning();
 

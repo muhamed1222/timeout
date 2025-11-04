@@ -143,6 +143,193 @@ describe('Employees API Integration', () => {
       expect(response.status).toBe(404);
     });
   });
+
+  describe('POST /api/employees/:id/photo', () => {
+    it('should upload photo for employee', async () => {
+      const employee = await createTestEmployee(companyId);
+      
+      // Create a small test image (1x1 pixel PNG) as base64
+      const testImageBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+      const response = await getRequest(app)
+        .post(`/api/employees/${employee.id}/photo`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ image: testImageBase64 });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('photo_url');
+      expect(response.body.photo_url).toBeTruthy();
+      expect(response.body).toHaveProperty('employee');
+      expect(response.body.employee.photo_url).toBe(response.body.photo_url);
+    });
+
+    it('should return 400 for invalid image format', async () => {
+      const employee = await createTestEmployee(companyId);
+      
+      const response = await getRequest(app)
+        .post(`/api/employees/${employee.id}/photo`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ image: 'invalid-data' });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should return 400 for missing image field', async () => {
+      const employee = await createTestEmployee(companyId);
+      
+      const response = await getRequest(app)
+        .post(`/api/employees/${employee.id}/photo`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({});
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should return 404 for non-existent employee', async () => {
+      const testImageBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+      const response = await getRequest(app)
+        .post('/api/employees/00000000-0000-0000-0000-000000000000/photo')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ image: testImageBase64 });
+
+      expect(response.status).toBe(404);
+    });
+
+    it('should return 401 without auth', async () => {
+      const employee = await createTestEmployee(companyId);
+      const testImageBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+      const response = await getRequest(app)
+        .post(`/api/employees/${employee.id}/photo`)
+        .send({ image: testImageBase64 });
+
+      expect(response.status).toBe(401);
+    });
+
+    it('should return 400 for file size exceeding limit', async () => {
+      const employee = await createTestEmployee(companyId);
+      
+      // Create a large base64 string (simulating >5MB image)
+      const largeBase64 = 'data:image/png;base64,' + 'A'.repeat(6 * 1024 * 1024); // 6MB
+
+      const response = await getRequest(app)
+        .post(`/api/employees/${employee.id}/photo`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ image: largeBase64 });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('File size exceeds');
+    });
+
+    it('should return 400 for unsupported image type', async () => {
+      const employee = await createTestEmployee(companyId);
+      
+      // GIF is not supported (only jpeg, png, webp)
+      const gifBase64 = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+      const response = await getRequest(app)
+        .post(`/api/employees/${employee.id}/photo`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ image: gifBase64 });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid file type');
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle empty employee list', async () => {
+      const response = await getRequest(app)
+        .get(`/api/companies/${companyId}/employees`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toBeInstanceOf(Array);
+      expect(response.body.length).toBe(0);
+    });
+
+    it('should handle update with empty object', async () => {
+      const employee = await createTestEmployee(companyId);
+      
+      const response = await getRequest(app)
+        .put(`/api/employees/${employee.id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({});
+
+      // Should succeed but not change anything
+      expect(response.status).toBe(200);
+    });
+
+    it('should handle update with only null values', async () => {
+      const employee = await createTestEmployee(companyId);
+      
+      const response = await getRequest(app)
+        .put(`/api/employees/${employee.id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ position: null });
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should handle very long employee name', async () => {
+      const longName = 'A'.repeat(500); // Very long name
+      
+      const response = await getRequest(app)
+        .post('/api/employees')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          company_id: companyId,
+          full_name: longName,
+          phone: '+15551234567',
+          role: 'employee' as const,
+          status: 'active' as const,
+        });
+
+      // Should either succeed or return validation error
+      expect([201, 400]).toContain(response.status);
+    });
+
+    it('should handle invalid UUID format', async () => {
+      const response = await getRequest(app)
+        .get('/api/employees/invalid-uuid-format')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should handle cross-company access attempt', async () => {
+      // Create another company
+      const { token: otherToken, company: otherCompany } = await createTestCompany();
+      const employee = await createTestEmployee(companyId);
+
+      // Try to access employee from other company
+      const response = await getRequest(app)
+        .get(`/api/employees/${employee.id}`)
+        .set('Authorization', `Bearer ${otherToken}`);
+
+      // Should be forbidden or not found
+      expect([403, 404]).toContain(response.status);
+    });
+
+    it('should handle employee with special characters in name', async () => {
+      const specialName = 'Test Employee <>&"\'`;';
+      
+      const response = await getRequest(app)
+        .post('/api/employees')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          company_id: companyId,
+          full_name: specialName,
+          phone: '+15551234567',
+          role: 'employee' as const,
+          status: 'active' as const,
+        });
+
+      expect([201, 400]).toContain(response.status);
+    });
+  });
 });
 
 

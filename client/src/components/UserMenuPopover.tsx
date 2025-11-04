@@ -6,7 +6,7 @@ import {
   HelpCircle, 
   LogOut,
   ChevronRight,
-  Settings
+  Settings,
 } from "lucide-react";
 import {
   Popover,
@@ -117,15 +117,15 @@ export function UserMenuPopover({ trigger }: UserMenuPopoverProps) {
                 key={item.id}
                 className={`
                   flex items-center justify-between
-                  ${!isLast ? 'border-b border-[#f8f8f8] pb-3' : ''}
+                  ${!isLast ? "border-b border-[#f8f8f8] pb-3" : ""}
                   cursor-pointer
                   group
                 `}
                 onClick={item.onClick}
               >
                 <div className="flex gap-1.5 items-center">
-                  <Icon className={`w-3.5 h-3.5 ${item.variant === 'danger' ? 'text-[#e16546]' : ''}`} />
-                  <span className={`text-sm leading-[1.2] ${item.variant === 'danger' ? 'text-[#e16546]' : 'text-black'}`}>
+                  <Icon className={`w-3.5 h-3.5 ${item.variant === "danger" ? "text-[#e16546]" : ""}`} />
+                  <span className={`text-sm leading-[1.2] ${item.variant === "danger" ? "text-[#e16546]" : "text-black"}`}>
                     {item.label}
                   </span>
                 </div>

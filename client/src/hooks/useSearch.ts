@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo } from "react";
 
 /**
  * Хук для поиска в массиве объектов
@@ -8,21 +8,25 @@ import { useState, useMemo } from 'react';
  */
 export function useSearch<T extends Record<string, any>>(
   data: T[],
-  searchFields: (keyof T)[]
+  searchFields: (keyof T)[],
 ) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
 
   const filteredData = useMemo(() => {
-    if (!query.trim()) return data;
+    if (!query.trim()) {
+      return data;
+    }
 
     const lowercaseQuery = query.toLowerCase();
 
     return data.filter((item) =>
       searchFields.some((field) => {
         const value = item[field];
-        if (value == null) return false;
+        if (value == null) {
+          return false;
+        }
         return String(value).toLowerCase().includes(lowercaseQuery);
-      })
+      }),
     );
   }, [data, query, searchFields]);
 

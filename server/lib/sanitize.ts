@@ -8,37 +8,41 @@
  * Sanitize text by escaping HTML special characters
  */
 export function sanitizeText(text: string): string {
-  if (typeof text !== 'string') return '';
+  if (typeof text !== "string") {
+    return "";
+  }
   
   return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;")
+    .replace(/\//g, "&#x2F;");
 }
 
 /**
  * Sanitize user input by removing potentially dangerous content
  */
 export function sanitizeUserInput(input: string): string {
-  if (typeof input !== 'string') return '';
+  if (typeof input !== "string") {
+    return "";
+  }
   
   let sanitized = input.trim();
   
   // Remove script tags
-  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
   
   // Remove event handlers
-  sanitized = sanitized.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
-  sanitized = sanitized.replace(/on\w+\s*=\s*[^\s>]*/gi, '');
+  sanitized = sanitized.replace(/on\w+\s*=\s*["'][^"']*["']/gi, "");
+  sanitized = sanitized.replace(/on\w+\s*=\s*[^\s>]*/gi, "");
   
   // Remove javascript: protocol
-  sanitized = sanitized.replace(/javascript:/gi, '');
+  sanitized = sanitized.replace(/javascript:/gi, "");
   
   // Remove data: protocol
-  sanitized = sanitized.replace(/data:/gi, '');
+  sanitized = sanitized.replace(/data:/gi, "");
   
   return sanitized;
 }
@@ -47,17 +51,19 @@ export function sanitizeUserInput(input: string): string {
  * Sanitize URL
  */
 export function sanitizeUrl(url: string): string {
-  if (typeof url !== 'string') return '';
+  if (typeof url !== "string") {
+    return "";
+  }
   
   const trimmed = url.trim().toLowerCase();
   
   if (
-    trimmed.startsWith('javascript:') ||
-    trimmed.startsWith('data:') ||
-    trimmed.startsWith('vbscript:') ||
-    trimmed.startsWith('file:')
+    trimmed.startsWith("javascript:") ||
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("vbscript:") ||
+    trimmed.startsWith("file:")
   ) {
-    return '';
+    return "";
   }
   
   return url;
@@ -67,13 +73,15 @@ export function sanitizeUrl(url: string): string {
  * Sanitize SQL input (basic protection - always use parameterized queries!)
  */
 export function sanitizeSqlInput(input: string): string {
-  if (typeof input !== 'string') return '';
+  if (typeof input !== "string") {
+    return "";
+  }
   
   return input
-    .replace(/['";]/g, '')
-    .replace(/--/g, '')
-    .replace(/\/\*/g, '')
-    .replace(/\*\//g, '')
+    .replace(/['";]/g, "")
+    .replace(/--/g, "")
+    .replace(/\/\*/g, "")
+    .replace(/\*\//g, "")
     .trim();
 }
 
@@ -81,12 +89,14 @@ export function sanitizeSqlInput(input: string): string {
  * Sanitize filename
  */
 export function sanitizeFilename(filename: string): string {
-  if (typeof filename !== 'string') return '';
+  if (typeof filename !== "string") {
+    return "";
+  }
   
   return filename
-    .replace(/[\/\\]/g, '')
-    .replace(/\.\./g, '')
-    .replace(/[<>:"|?*]/g, '')
+    .replace(/[\/\\]/g, "")
+    .replace(/\.\./g, "")
+    .replace(/[<>:"|?*]/g, "")
     .trim();
 }
 
@@ -99,13 +109,13 @@ export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
   for (const key in obj) {
     const value = obj[key];
     
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       sanitized[key] = sanitizeUserInput(value) as T[typeof key];
     } else if (Array.isArray(value)) {
       sanitized[key] = value.map((item: unknown) =>
-        typeof item === 'string' ? sanitizeUserInput(item) : item
+        typeof item === "string" ? sanitizeUserInput(item) : item,
       ) as T[typeof key];
-    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+    } else if (value && typeof value === "object" && !Array.isArray(value)) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       sanitized[key] = sanitizeObject(value as Record<string, unknown>) as any;
     } else {
@@ -120,7 +130,9 @@ export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
  * Check if string contains XSS patterns
  */
 export function containsXss(input: string): boolean {
-  if (typeof input !== 'string') return false;
+  if (typeof input !== "string") {
+    return false;
+  }
   
   const xssPatterns = [
     /<script/i,
@@ -143,7 +155,9 @@ export function containsXss(input: string): boolean {
  * Note: This is a basic check. Always use parameterized queries!
  */
 export function containsSqlInjection(input: string): boolean {
-  if (typeof input !== 'string') return false;
+  if (typeof input !== "string") {
+    return false;
+  }
   
   const sqlPatterns = [
     /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|SCRIPT)\b)/i,
@@ -161,18 +175,20 @@ export function containsSqlInjection(input: string): boolean {
  * Escapes special LIKE characters and removes dangerous patterns
  */
 export function sanitizeForLike(query: string): string {
-  if (typeof query !== 'string') return '';
+  if (typeof query !== "string") {
+    return "";
+  }
   
   // Remove SQL injection patterns
   if (containsSqlInjection(query)) {
-    throw new Error('Potentially dangerous SQL pattern detected');
+    throw new Error("Potentially dangerous SQL pattern detected");
   }
   
   // Escape LIKE special characters
   return query
-    .replace(/\\/g, '\\\\')
-    .replace(/%/g, '\\%')
-    .replace(/_/g, '\\_')
+    .replace(/\\/g, "\\\\")
+    .replace(/%/g, "\\%")
+    .replace(/_/g, "\\_")
     .trim();
 }
 
@@ -180,14 +196,16 @@ export function sanitizeForLike(query: string): string {
  * Sanitize email address
  */
 export function sanitizeEmail(email: string): string {
-  if (typeof email !== 'string') return '';
+  if (typeof email !== "string") {
+    return "";
+  }
   
   // Basic email validation and sanitization
   const trimmed = email.trim().toLowerCase();
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   
   if (!emailRegex.test(trimmed)) {
-    return '';
+    return "";
   }
   
   return trimmed;
@@ -197,23 +215,27 @@ export function sanitizeEmail(email: string): string {
  * Sanitize phone number (removes non-numeric characters except +)
  */
 export function sanitizePhone(phone: string): string {
-  if (typeof phone !== 'string') return '';
+  if (typeof phone !== "string") {
+    return "";
+  }
   
   // Keep only digits, +, spaces, and hyphens
-  return phone.replace(/[^\d+\-\s]/g, '').trim();
+  return phone.replace(/[^\d+\-\s]/g, "").trim();
 }
 
 /**
  * Sanitize UUID (ensures valid UUID format)
  */
 export function sanitizeUuid(uuid: string): string {
-  if (typeof uuid !== 'string') return '';
+  if (typeof uuid !== "string") {
+    return "";
+  }
   
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const trimmed = uuid.trim();
   
   if (!uuidRegex.test(trimmed)) {
-    return '';
+    return "";
   }
   
   return trimmed.toLowerCase();
@@ -235,10 +257,10 @@ export function deepSanitize<T>(input: T, options?: {
       return value; // Prevent stack overflow
     }
     
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       // Check for dangerous patterns
       if (containsSqlInjection(value)) {
-        throw new Error('Potentially dangerous SQL pattern detected in input');
+        throw new Error("Potentially dangerous SQL pattern detected in input");
       }
       if (containsXss(value)) {
         // Sanitize but don't throw - XSS might be intentional in some contexts
@@ -251,7 +273,7 @@ export function deepSanitize<T>(input: T, options?: {
       return value.map(item => sanitizeRecursive(item, depth + 1));
     }
     
-    if (value && typeof value === 'object') {
+    if (value && typeof value === "object") {
       const sanitized: Record<string, unknown> = {};
       for (const key in value) {
         if (Object.prototype.hasOwnProperty.call(value, key)) {

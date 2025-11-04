@@ -4,9 +4,10 @@
  * Uses async cache interface for Redis compatibility
  */
 
-import { cacheAsync } from '../cache.js';
-import { repositories } from '../../repositories/index.js';
-import { logger } from '../logger.js';
+import { cacheAsync } from "../cache.js";
+import { repositories } from "../../repositories/index.js";
+import { logger } from "../logger.js";
+import { cacheHits, cacheMisses } from "../metrics.js";
 
 /**
  * Invalidate company stats cache
@@ -38,10 +39,21 @@ export async function invalidateCompanyStatsByEmployeeId(employeeId: string): Pr
 
 /**
  * Invalidate company stats cache by shift
- * Extracts employee_id from shift and invalidates cache
+ * Extracts employee_id from shift and invalidates cache for both stats and active shifts
  */
 export async function invalidateCompanyStatsByShift(shift: { employee_id: string }): Promise<void> {
   await invalidateCompanyStatsByEmployeeId(shift.employee_id);
+  
+  // Also invalidate active shifts cache
+  try {
+    const employee = await repositories.employee.findById(shift.employee_id);
+    if (employee) {
+      await cacheAsync.delete(`company:${employee.company_id}:active-shifts`);
+      logger.debug(`Invalidated cache for active shifts: ${employee.company_id}`);
+    }
+  } catch (error) {
+    logger.error(`Error invalidating active shifts cache for employee ID ${shift.employee_id}`, error);
+  }
 }
 
 /**
@@ -53,18 +65,28 @@ export async function invalidateCompanyStatsByShift(shift: { employee_id: string
 export async function getOrSet<T>(
   key: string,
   fetcher: () => Promise<T>,
-  ttl: number = 300
+  ttl: number = 300,
 ): Promise<T> {
   try {
     // Try to get from cache
     const cached = await cacheAsync.get<T>(key);
     if (cached !== undefined) {
       logger.debug(`Cache hit for key: ${key}`);
+      
+      // Track cache hit metrics
+      const keyPrefix = key.split(':')[0];
+      cacheHits.labels(keyPrefix).inc();
+      
       return cached;
     }
 
     // Cache miss - fetch data
     logger.debug(`Cache miss for key: ${key}`);
+    
+    // Track cache miss metrics
+    const keyPrefix = key.split(':')[0];
+    cacheMisses.labels(keyPrefix).inc();
+    
     const data = await fetcher();
     
     // Cache the result

@@ -4,19 +4,19 @@ import {
   API_BASE_URL,
   HTTP_METHODS,
   HTTP_STATUS,
-} from '../constants/api.constants';
-import { supabase } from '../lib/supabase';
+} from "../constants/api.constants";
+import { supabase } from "../lib/supabase";
 // Типы для fetch API
 interface RequestInit {
   method?: string;
   headers?: Record<string, string>;
   body?: string;
-  cache?: 'default' | 'no-cache' | 'reload' | 'force-cache' | 'only-if-cached';
-  credentials?: 'omit' | 'same-origin' | 'include';
-  mode?: 'cors' | 'no-cors' | 'same-origin';
-  redirect?: 'follow' | 'error' | 'manual';
+  cache?: "default" | "no-cache" | "reload" | "force-cache" | "only-if-cached";
+  credentials?: "omit" | "same-origin" | "include";
+  mode?: "cors" | "no-cors" | "same-origin";
+  redirect?: "follow" | "error" | "manual";
   referrer?: string;
-  referrerPolicy?: 'no-referrer' | 'no-referrer-when-downgrade' | 'origin' | 'origin-when-cross-origin' | 'same-origin' | 'strict-origin' | 'strict-origin-when-cross-origin' | 'unsafe-url';
+  referrerPolicy?: "no-referrer" | "no-referrer-when-downgrade" | "origin" | "origin-when-cross-origin" | "same-origin" | "strict-origin" | "strict-origin-when-cross-origin" | "unsafe-url";
   signal?: AbortSignal;
 }
 
@@ -25,10 +25,10 @@ class AppError extends Error {
   constructor(
     public code: string,
     message: string,
-    public details?: Record<string, unknown>
+    public details?: Record<string, unknown>,
   ) {
     super(message);
-    this.name = 'AppError';
+    this.name = "AppError";
   }
 }
 
@@ -48,8 +48,8 @@ class ApiService {
   private loadTokensFromStorage(): void {
     // Ищем токен Supabase в localStorage
     const supabaseSession = this.getSupabaseToken();
-    this.authToken = supabaseSession || localStorage.getItem('auth_token');
-    this.csrfToken = localStorage.getItem('csrf_token');
+    this.authToken = supabaseSession || localStorage.getItem("auth_token");
+    this.csrfToken = localStorage.getItem("csrf_token");
   }
 
   /**
@@ -60,7 +60,7 @@ class ApiService {
       // Ищем ключ Supabase в localStorage (формат: sb-<project-id>-auth-token)
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('sb-') && key.includes('-auth-token')) {
+        if (key && key.startsWith("sb-") && key.includes("-auth-token")) {
           const data = localStorage.getItem(key);
           if (data) {
             const parsed = JSON.parse(data);
@@ -69,7 +69,7 @@ class ApiService {
         }
       }
     } catch (error) {
-      console.error('Error getting Supabase token:', error);
+      console.error("Error getting Supabase token:", error);
     }
     return null;
   }
@@ -79,7 +79,7 @@ class ApiService {
    */
   setAuthToken(token: string | null): void {
     this.authToken = token;
-    this.updateTokenInStorage('auth_token', token);
+    this.updateTokenInStorage("auth_token", token);
   }
 
   /**
@@ -87,7 +87,7 @@ class ApiService {
    */
   setCSRFToken(token: string | null): void {
     this.csrfToken = token;
-    this.updateTokenInStorage('csrf_token', token);
+    this.updateTokenInStorage("csrf_token", token);
   }
 
   /**
@@ -104,7 +104,7 @@ class ApiService {
   // Получение заголовков для запросов
   private async getHeaders(): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
 
     // Получаем токен из Supabase сессии
@@ -113,12 +113,12 @@ class ApiService {
 
     // Добавляем токен аутентификации
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     // Добавляем CSRF токен для изменяющих запросов
     if (this.csrfToken) {
-      headers['X-CSRF-Token'] = this.csrfToken;
+      headers["X-CSRF-Token"] = this.csrfToken;
     }
 
     return headers;
@@ -126,7 +126,7 @@ class ApiService {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
 
@@ -152,9 +152,9 @@ class ApiService {
         // и компонент App.tsx сделает редирект через роутер
         
         throw new AppError(
-          'UNAUTHORIZED',
-          'Сессия истекла. Пожалуйста, войдите снова.',
-          { status: response.status, endpoint }
+          "UNAUTHORIZED",
+          "Сессия истекла. Пожалуйста, войдите снова.",
+          { status: response.status, endpoint },
         );
       }
 
@@ -163,12 +163,12 @@ class ApiService {
         throw new AppError(
           errorData.error || `HTTP ${response.status}`,
           errorData.message || response.statusText,
-          { status: response.status, endpoint }
+          { status: response.status, endpoint },
         );
       }
 
       // Проверяем заголовок CSRF токена
-      const csrfToken = response.headers.get('X-CSRF-Token');
+      const csrfToken = response.headers.get("X-CSRF-Token");
       if (csrfToken) {
         this.setCSRFToken(csrfToken);
       }
@@ -186,9 +186,9 @@ class ApiService {
 
       // Сетевые ошибки
       throw new AppError(
-        'NETWORK_ERROR',
-        'Ошибка сети. Проверьте подключение к интернету.',
-        { originalError: error, endpoint }
+        "NETWORK_ERROR",
+        "Ошибка сети. Проверьте подключение к интернету.",
+        { originalError: error, endpoint },
       );
     }
   }
@@ -231,7 +231,7 @@ class ApiService {
   // Построение URL с параметрами
   private buildUrlWithParams(
     endpoint: string,
-    params: Record<string, string | number | boolean>
+    params: Record<string, string | number | boolean>,
   ): string {
     const url = new URL(endpoint, window.location.origin);
 
@@ -248,10 +248,10 @@ class ApiService {
   async uploadFile<T>(
     endpoint: string,
     file: File,
-    additionalData?: Record<string, string | number | boolean>
+    additionalData?: Record<string, string | number | boolean>,
   ): Promise<T> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     if (additionalData) {
       Object.entries(additionalData).forEach(([key, value]) => {
@@ -271,16 +271,16 @@ class ApiService {
     const response = await fetch(`${this.baseURL}${endpoint}`);
 
     if (!response.ok) {
-      throw new AppError('DOWNLOAD_ERROR', 'Ошибка при скачивании файла', {
+      throw new AppError("DOWNLOAD_ERROR", "Ошибка при скачивании файла", {
         status: response.status,
       });
     }
 
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = filename || 'download';
+    link.download = filename || "download";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
