@@ -248,6 +248,10 @@ router.post("/:companyId/generate-shifts", validateParams(companyIdInParamsSchem
       hasScheduleForPeriod = true;
 
       // Находим шаблон графика
+      if (!activeSchedule.schedule_id) {
+        logger.warn(`Active schedule has no schedule_id for employee: ${employee.id}`);
+        continue;
+      }
       const template = templatesMap.get(activeSchedule.schedule_id);
       if (!template) {
         logger.warn(`Template not found for schedule_id: ${activeSchedule.schedule_id}`);
@@ -413,9 +417,9 @@ router.get("/:companyId/exceptions", validateParams(companyIdInParamsSchema), as
   );
 
   // Combine exceptions and violations, sort by date
-  const allItems = [...exceptions, ...violationsAsExceptions].sort((a: ExceptionOrViolationItem, b: ExceptionOrViolationItem) => {
-    const dateA = new Date(a.detected_at || a.created_at || 0).getTime();
-    const dateB = new Date(b.detected_at || b.created_at || 0).getTime();
+  const allItems = [...exceptions, ...violationsAsExceptions].sort((a: any, b: any) => {
+    const dateA = new Date(a.detected_at || a.created_at || a.date || 0).getTime();
+    const dateB = new Date(b.detected_at || b.created_at || b.date || 0).getTime();
     return dateB - dateA; // newest first
   });
 
@@ -437,7 +441,8 @@ router.post("/:companyId/exceptions/:exceptionId/resolve", validateParams(except
 // Get daily reports by company
 router.get("/:companyId/daily-reports", validateParams(companyIdInParamsSchema), validateQuery(limitQuerySchema), asyncHandler(async (req, res) => {
   const { companyId } = req.params;
-  const limit = req.query.limit || 50;
+  const limit = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 
+                typeof req.query.limit === 'number' ? req.query.limit : 50;
   const reports = await repositories.shift.findDailyReportsByCompanyId(companyId, limit);
   res.json(reports);
 }));
@@ -456,8 +461,8 @@ router.get("/:companyId/ratings", validateParams(companyIdInParamsSchema), valid
 })), asyncHandler(async (req, res) => {
   const { companyId } = req.params;
   const { periodStart, periodEnd } = req.query;
-  const start = new Date(periodStart);
-  const end = new Date(periodEnd);
+  const start = new Date(typeof periodStart === 'string' ? periodStart : String(periodStart));
+  const end = new Date(typeof periodEnd === 'string' ? periodEnd : String(periodEnd));
   const ratings = await repositories.rating.findByCompanyId(companyId, start, end);
   res.json(ratings);
 }));
