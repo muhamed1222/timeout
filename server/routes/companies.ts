@@ -417,7 +417,7 @@ router.get("/:companyId/exceptions", validateParams(companyIdInParamsSchema), as
   );
 
   // Combine exceptions and violations, sort by date
-  const allItems = [...exceptions, ...violationsAsExceptions].sort((a: any, b: any) => {
+  const allItems: any[] = [...exceptions as any[], ...violationsAsExceptions].sort((a: any, b: any) => {
     const dateA = new Date(a.detected_at || a.created_at || a.date || 0).getTime();
     const dateB = new Date(b.detected_at || b.created_at || b.date || 0).getTime();
     return dateB - dateA; // newest first
