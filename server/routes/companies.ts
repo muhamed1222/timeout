@@ -368,25 +368,47 @@ router.get("/:companyId/exceptions", validateParams(companyIdInParamsSchema), as
   // Transform violations to match exception format for display
   const violationsAsExceptions = await Promise.all(
     violations.map(async (violation) => {
-      const employee = await repositories.employee.findById(violation.employee_id);
-      const rule = await repositories.violation.findById(violation.rule_id);
-        
-      return {
-        id: violation.id,
-        employee: {
-          id: employee?.id || violation.employee_id,
-          full_name: employee?.full_name || "Неизвестный сотрудник",
-        },
-        exception_type: "violation",
-        description: rule 
-          ? `Нарушение: ${rule.name}${violation.reason ? `. ${violation.reason}` : ""}`
-          : violation.reason || "Нарушение",
-        detected_at: violation.created_at || new Date().toISOString(),
-        severity: Number(violation.penalty) > 50 ? 3 : Number(violation.penalty) > 25 ? 2 : 1,
-        source: violation.source,
-        penalty: violation.penalty,
-        rule_name: rule?.name,
-      };
+      try {
+        const employee = await repositories.employee.findById(violation.employee_id);
+        const rule = violation.rule_id ? await repositories.violation.findById(violation.rule_id) : null;
+          
+        return {
+          id: violation.id,
+          employee: {
+            id: employee?.id || violation.employee_id,
+            full_name: employee?.full_name || "Неизвестный сотрудник",
+          },
+          exception_type: "violation",
+          description: rule 
+            ? `Нарушение: ${rule.name}${violation.reason ? `. ${violation.reason}` : ""}`
+            : violation.reason || "Нарушение",
+          detected_at: violation.created_at || new Date().toISOString(),
+          severity: Number(violation.penalty) > 50 ? 3 : Number(violation.penalty) > 25 ? 2 : 1,
+          source: violation.source,
+          penalty: violation.penalty,
+          rule_name: rule?.name,
+        };
+      } catch (error) {
+        // If there's an error fetching employee or rule, still return the violation
+        logger.warn("Error transforming violation to exception", {
+          violationId: violation.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return {
+          id: violation.id,
+          employee: {
+            id: violation.employee_id,
+            full_name: "Неизвестный сотрудник",
+          },
+          exception_type: "violation",
+          description: violation.reason || "Нарушение",
+          detected_at: violation.created_at || new Date().toISOString(),
+          severity: Number(violation.penalty) > 50 ? 3 : Number(violation.penalty) > 25 ? 2 : 1,
+          source: violation.source,
+          penalty: violation.penalty,
+          rule_name: null,
+        };
+      }
     }),
   );
 

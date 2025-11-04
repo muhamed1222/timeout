@@ -88,34 +88,89 @@ export class ShiftRepository extends BaseRepository<Shift, InsertShift> {
    * Find active shifts by company ID with employee data
    */
   async findActiveByCompanyId(companyId: string): Promise<(Shift & { employee: Pick<Employee, "id" | "full_name" | "position" | "photo_url" | "avatar_id"> })[]> {
-    const results = await this.db
-      .select({
-        id: schema.shift.id,
-        employee_id: schema.shift.employee_id,
-        planned_start_at: schema.shift.planned_start_at,
-        planned_end_at: schema.shift.planned_end_at,
-        actual_start_at: schema.shift.actual_start_at,
-        actual_end_at: schema.shift.actual_end_at,
-        status: schema.shift.status,
-        created_at: schema.shift.created_at,
+    try {
+      const results = await this.db
+        .select({
+          id: schema.shift.id,
+          employee_id: schema.shift.employee_id,
+          planned_start_at: schema.shift.planned_start_at,
+          planned_end_at: schema.shift.planned_end_at,
+          actual_start_at: schema.shift.actual_start_at,
+          actual_end_at: schema.shift.actual_end_at,
+          status: schema.shift.status,
+          created_at: schema.shift.created_at,
+          employee: {
+            id: schema.employee.id,
+            full_name: schema.employee.full_name,
+            position: schema.employee.position,
+            photo_url: schema.employee.photo_url,
+            avatar_id: schema.employee.avatar_id,
+          },
+        })
+        .from(schema.shift)
+        .innerJoin(schema.employee, eq(schema.shift.employee_id, schema.employee.id))
+        .where(
+          and(
+            eq(schema.employee.company_id, companyId),
+            eq(schema.shift.status, "active"),
+          ),
+        );
+
+      return results.map((row) => ({
+        ...row,
         employee: {
-          id: schema.employee.id,
-          full_name: schema.employee.full_name,
-          position: schema.employee.position,
-          photo_url: schema.employee.photo_url,
-          avatar_id: schema.employee.avatar_id,
+          ...row.employee,
+          photo_url: row.employee.photo_url ?? null,
+          avatar_id: row.employee.avatar_id ?? null,
         },
-      })
-      .from(schema.shift)
-      .innerJoin(schema.employee, eq(schema.shift.employee_id, schema.employee.id))
-      .where(
-        and(
-          eq(schema.employee.company_id, companyId),
-          eq(schema.shift.status, "active"),
-        ),
+      })) as (Shift & { employee: Pick<Employee, "id" | "full_name" | "position" | "photo_url" | "avatar_id"> })[];
+    } catch (error) {
+      // If error is due to missing columns (avatar_id or photo_url), try selecting without them
+      const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+      const isColumnError = errorMessage.includes("column") && (
+        errorMessage.includes("does not exist") ||
+        errorMessage.includes("не существует") ||
+        errorMessage.includes("avatar_id") ||
+        errorMessage.includes("photo_url")
       );
 
-    return results as (Shift & { employee: Pick<Employee, "id" | "full_name" | "position" | "photo_url" | "avatar_id"> })[];
+      if (isColumnError) {
+        const results = await this.db
+          .select({
+            id: schema.shift.id,
+            employee_id: schema.shift.employee_id,
+            planned_start_at: schema.shift.planned_start_at,
+            planned_end_at: schema.shift.planned_end_at,
+            actual_start_at: schema.shift.actual_start_at,
+            actual_end_at: schema.shift.actual_end_at,
+            status: schema.shift.status,
+            created_at: schema.shift.created_at,
+            employee: {
+              id: schema.employee.id,
+              full_name: schema.employee.full_name,
+              position: schema.employee.position,
+            },
+          })
+          .from(schema.shift)
+          .innerJoin(schema.employee, eq(schema.shift.employee_id, schema.employee.id))
+          .where(
+            and(
+              eq(schema.employee.company_id, companyId),
+              eq(schema.shift.status, "active"),
+            ),
+          );
+
+        return results.map((row) => ({
+          ...row,
+          employee: {
+            ...row.employee,
+            photo_url: null,
+            avatar_id: null,
+          },
+        })) as (Shift & { employee: Pick<Employee, "id" | "full_name" | "position" | "photo_url" | "avatar_id"> })[];
+      }
+      throw error;
+    }
   }
 
   /**
