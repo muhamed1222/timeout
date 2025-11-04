@@ -5,7 +5,8 @@
     "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["./shared/*"]
+      "@shared/*": ["./shared/*"],
+      "@outcasts/shared/*": ["./shared/*"]
     },
     "outDir": "./dist",
     "rootDir": ".",
@@ -27,10 +28,7 @@
     "noImplicitThis": true,
     "alwaysStrict": true
   },
-  "include": [
-    "server/**/*",
-    "shared/**/*"
-  ],
+  "include": ["server/**/*", "shared/**/*"],
   "exclude": [
     "node_modules",
     "dist",
@@ -42,4 +40,3 @@
     "shared/domain/**"
   ]
 }
-

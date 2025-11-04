@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
   "scripts": {
     "docs:tree": "node scripts/generate-repo-tree.mjs",
     "dev": "node concurrent-dev.cjs",
@@ -22,17 +27,17 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e",
-    "optimize:images": "tsx scripts/optimize-images.ts",
-    "db:backup": "./scripts/backup-database.sh production",
-    "db:restore": "./scripts/restore-database.sh",
-    "db:verify": "./scripts/verify-backup.sh",
+    "optimize:images": "tsx scripts/maintenance/optimize-images.ts",
+    "db:backup": "./scripts/db/backup-database.sh production",
+    "db:restore": "./scripts/db/restore-database.sh",
+    "db:verify": "./scripts/db/verify-backup.sh",
     "db:rollback": "./migrations/rollback.sh",
-    "db:health": "tsx scripts/check-database-health.ts",
-    "db:analyze-indexes": "tsx scripts/analyze-indexes.ts",
+    "db:health": "tsx scripts/monitor/check-database-health.ts",
+    "db:analyze-indexes": "tsx scripts/db/analyze-indexes.ts",
     "db:analyze-queries": "tsx scripts/analyze-slow-queries.ts",
     "prepare": "husky",
-    "lint": "eslint . --ext .ts,.tsx --max-warnings 500",
-    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "lint": "eslint . --config config/eslint.config.js --max-warnings 500",
+    "lint:fix": "eslint . --config config/eslint.config.js --fix",
     "format": "prettier --write \"**/*.{ts,tsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,json,md,yml,yaml}\"",
     "type-check": "tsc --noEmit",
@@ -164,7 +169,7 @@
   "lint-staged": {
     "*.{ts,tsx}": [
       "prettier --write",
-      "eslint --fix --max-warnings 500"
+      "eslint --config config/eslint.config.js --fix --max-warnings 500"
     ],
     "*.{json,md,yml,yaml}": [
       "prettier --write"
@@ -173,5 +178,6 @@
   "overrides": {
     "esbuild": "^0.25.11",
     "undici": "^6.19.8"
-  }
+  },
+  "config": {}
 }
