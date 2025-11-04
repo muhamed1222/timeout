@@ -275,8 +275,16 @@ router.get("/employees/:employeeId", validateParams(employeeIdInParamsSchema), v
   const { employeeId } = req.params;
   const { periodStart, periodEnd } = req.query;
   
-  const startDate = new Date(typeof periodStart === 'string' ? periodStart : String(periodStart));
-  const endDate = new Date(typeof periodEnd === 'string' ? periodEnd : String(periodEnd));
+  if (!periodStart || !periodEnd || typeof periodStart !== 'string' || typeof periodEnd !== 'string') {
+    throw new ValidationError("periodStart and periodEnd are required and must be strings");
+  }
+  
+  const startDate = new Date(periodStart);
+  const endDate = new Date(periodEnd);
+  
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    throw new ValidationError("Invalid date format for periodStart or periodEnd");
+  }
   
   const rating = await repositories.rating.findByEmployeeAndPeriod(employeeId, startDate, endDate);
   if (!rating) {
