@@ -1,13 +1,13 @@
 /**
  * Express Error Handler Middleware
- * 
+ *
  * Standardizes error handling across all routes
  */
 
 import { Request, Response, NextFunction } from "express";
 import { logger } from "./logger.js";
-import { 
-  AppError, 
+import {
+  AppError,
   ValidationError,
   UnauthorizedError,
   ForbiddenError,
@@ -18,7 +18,7 @@ import {
   InternalServerError,
   ServiceUnavailableError,
   DatabaseError,
-  isOperationalError, 
+  isOperationalError,
   normalizeError,
 } from "./errors.js";
 import * as Sentry from "@sentry/node";
@@ -47,8 +47,8 @@ export function errorHandler(
   error: unknown,
   req: Request,
   res: Response,
-  next: NextFunction,
-) {
+  _next: NextFunction,
+): void {
   // Normalize error to AppError
   const appError = normalizeError(error);
 
@@ -58,9 +58,15 @@ export function errorHandler(
     statusCode: appError.statusCode,
     path: req.path,
     method: req.method,
-    userId: (req as any).user?.id || (req as any).userId,
-    companyId: (req as any).companyId || req.params?.companyId || req.body?.company_id,
-    ip: req.ip || req.headers["x-forwarded-for"] || req.connection?.remoteAddress,
+    userId:
+      (req as Record<string, unknown>).user?.id ??
+      (req as Record<string, unknown>).userId,
+    companyId:
+      (req as Record<string, unknown>).companyId ??
+      req.params?.companyId ??
+      req.body?.company_id,
+    ip:
+      req.ip ?? req.headers["x-forwarded-for"] ?? req.connection?.remoteAddress,
     userAgent: req.headers["user-agent"],
     query: Object.keys(req.query).length > 0 ? req.query : undefined,
     params: Object.keys(req.params).length > 0 ? req.params : undefined,
@@ -96,13 +102,14 @@ export function errorHandler(
   }
 
   // Send error response
-  const statusCode = appError.statusCode || 500;
+  const statusCode = appError.statusCode ?? 500;
   const response = appError.toJSON();
 
   // Don't expose internal error details in production for non-operational errors
   if (!isOperationalError(appError) && process.env.NODE_ENV === "production") {
-    response.error.message = "Internal server error";
-    delete response.error.details;
+    const errorObj = response.error as Record<string, unknown>;
+    errorObj.message = "Internal server error";
+    delete errorObj.details;
   }
 
   res.status(statusCode).json(response);
@@ -112,11 +119,20 @@ export function errorHandler(
  * Async route handler wrapper
  * Automatically catches errors and passes them to error handler
  */
-export function asyncHandler(
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<void | Response>,
-) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
+type AsyncRouteHandler = (
+  _req: Request,
+  _res: Response,
+  _next: NextFunction,
+) => Promise<void | Response>;
+type SyncRouteHandler = (
+  _req: Request,
+  _res: Response,
+  _next: NextFunction,
+) => void;
+
+export function asyncHandler(fn: AsyncRouteHandler): SyncRouteHandler {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    void Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
 
@@ -127,8 +143,8 @@ export function asyncHandler(
 export function notFoundHandler(
   req: Request,
   res: Response,
-  next: NextFunction,
-) {
+  _next: NextFunction,
+): void {
   res.status(404).json({
     error: {
       message: `Route ${req.method} ${req.path} not found`,
@@ -137,4 +153,3 @@ export function notFoundHandler(
     },
   });
 }
-
