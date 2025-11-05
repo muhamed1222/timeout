@@ -155,7 +155,3 @@ Before deploying a new feature:
 - [ARIA Authoring Practices](https://www.w3.org/WAI/ARIA/apg/)
 - [WebAIM Contrast Checker](https://webaim.org/resources/contrastchecker/)
 - [A11y Project Checklist](https://www.a11yproject.com/checklist/)
-
-
-
-

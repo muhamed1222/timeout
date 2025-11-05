@@ -24,9 +24,9 @@ export const createViolationRuleSchema = z.object({
   company_id: uuidSchema,
   code: z.string().min(1).max(50),
   name: z.string().min(1).max(200),
-  penalty_percent: z.union([z.string().regex(/^\d+$/), z.number()]).transform((v) =>
-    typeof v === "number" ? v.toString() : v,
-  ),
+  penalty_percent: z
+    .union([z.string().regex(/^\d+$/), z.number()])
+    .transform((v) => (typeof v === "number" ? v.toString() : v)),
   auto_detectable: z.boolean().default(false),
   is_active: z.boolean().default(true),
 });
@@ -37,9 +37,10 @@ export const createViolationRuleSchema = z.object({
 export const updateViolationRuleSchema = z.object({
   code: z.string().min(1).max(50).optional(),
   name: z.string().min(1).max(200).optional(),
-  penalty_percent: z.union([z.string().regex(/^\d+$/), z.number()]).transform((v) =>
-    typeof v === "number" ? v.toString() : v,
-  ).optional(),
+  penalty_percent: z
+    .union([z.string().regex(/^\d+$/), z.number()])
+    .transform((v) => (typeof v === "number" ? v.toString() : v))
+    .optional(),
   auto_detectable: z.boolean().optional(),
   is_active: z.boolean().optional(),
 });
@@ -50,7 +51,3 @@ export const updateViolationRuleSchema = z.object({
 export const violationRuleIdParamSchema = z.object({
   id: uuidSchema,
 });
-
-
-
-

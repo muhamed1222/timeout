@@ -43,7 +43,3 @@ export const acceptInviteSchema = z.object({
 export const inviteIdParamSchema = z.object({
   id: uuidSchema,
 });
-
-
-
-

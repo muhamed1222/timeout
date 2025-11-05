@@ -33,13 +33,17 @@ export const loginSchema = z.object({
 
 export const registerSchema = z.object({
   email: z.string().email("Invalid email format"),
-  password: z.string()
+  password: z
+    .string()
     .min(8, "Password must be at least 8 characters")
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
     .regex(/[0-9]/, "Password must contain at least one number"),
   full_name: z.string().min(2, "Name must be at least 2 characters").max(100),
-  company_name: z.string().min(2, "Company name must be at least 2 characters").max(100),
+  company_name: z
+    .string()
+    .min(2, "Company name must be at least 2 characters")
+    .max(100),
 });
 
 // ============================================================================
@@ -50,11 +54,19 @@ export const createCompanySchema = z.object({
   name: z.string().min(2).max(100),
   industry: z.string().optional(),
   timezone: z.string().default("UTC"),
-  settings: z.object({
-    working_hours_start: z.string().regex(/^\d{2}:\d{2}$/).default("09:00"),
-    working_hours_end: z.string().regex(/^\d{2}:\d{2}$/).default("18:00"),
-    break_duration_minutes: z.number().int().min(0).max(120).default(60),
-  }).optional(),
+  settings: z
+    .object({
+      working_hours_start: z
+        .string()
+        .regex(/^\d{2}:\d{2}$/)
+        .default("09:00"),
+      working_hours_end: z
+        .string()
+        .regex(/^\d{2}:\d{2}$/)
+        .default("18:00"),
+      break_duration_minutes: z.number().int().min(0).max(120).default(60),
+    })
+    .optional(),
 });
 
 export const updateCompanySchema = createCompanySchema.partial();
@@ -67,7 +79,10 @@ export const createEmployeeSchema = z.object({
   full_name: z.string().min(2).max(100),
   position: z.string().min(2).max(100),
   email: z.string().email().optional(),
-  phone_number: z.string().regex(/^\+?[1-9]\d{1,14}$/).optional(),
+  phone_number: z
+    .string()
+    .regex(/^\+?[1-9]\d{1,14}$/)
+    .optional(),
   hire_date: dateSchema.optional(),
   status: z.enum(["active", "inactive", "on_leave"]).default("active"),
 });
@@ -83,34 +98,44 @@ export const linkTelegramSchema = z.object({
 // SHIFT SCHEMAS
 // ============================================================================
 
-export const shiftStatusSchema = z.enum(["scheduled", "active", "paused", "completed", "cancelled"]);
+export const shiftStatusSchema = z.enum([
+  "scheduled",
+  "active",
+  "paused",
+  "completed",
+  "cancelled",
+]);
 
-export const createShiftSchema = z.object({
-  employee_id: uuidSchema,
-  planned_start_at: dateSchema,
-  planned_end_at: dateSchema,
-  notes: z.string().max(500).optional(),
-}).refine(
-  (data) => new Date(data.planned_end_at) > new Date(data.planned_start_at),
-  { message: "End time must be after start time", path: ["planned_end_at"] },
-);
+export const createShiftSchema = z
+  .object({
+    employee_id: uuidSchema,
+    planned_start_at: dateSchema,
+    planned_end_at: dateSchema,
+    notes: z.string().max(500).optional(),
+  })
+  .refine(
+    (data) => new Date(data.planned_end_at) > new Date(data.planned_start_at),
+    { message: "End time must be after start time", path: ["planned_end_at"] },
+  );
 
-export const updateShiftSchema = z.object({
-  planned_start_at: dateSchema.optional(),
-  planned_end_at: dateSchema.optional(),
-  actual_start_at: dateSchema.optional(),
-  actual_end_at: dateSchema.optional(),
-  status: shiftStatusSchema.optional(),
-  notes: z.string().max(500).optional(),
-}).refine(
-  (data) => {
-    if (data.planned_start_at && data.planned_end_at) {
-      return new Date(data.planned_end_at) > new Date(data.planned_start_at);
-    }
-    return true;
-  },
-  { message: "End time must be after start time", path: ["planned_end_at"] },
-);
+export const updateShiftSchema = z
+  .object({
+    planned_start_at: dateSchema.optional(),
+    planned_end_at: dateSchema.optional(),
+    actual_start_at: dateSchema.optional(),
+    actual_end_at: dateSchema.optional(),
+    status: shiftStatusSchema.optional(),
+    notes: z.string().max(500).optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.planned_start_at && data.planned_end_at) {
+        return new Date(data.planned_end_at) > new Date(data.planned_start_at);
+      }
+      return true;
+    },
+    { message: "End time must be after start time", path: ["planned_end_at"] },
+  );
 
 export const startShiftSchema = z.object({
   actual_start_at: dateSchema.optional(),
@@ -220,7 +245,9 @@ export const createReminderSchema = z.object({
   employee_id: uuidSchema,
   message: z.string().min(1).max(500),
   planned_at: dateSchema,
-  type: z.enum(["shift_start", "break_end", "shift_end", "custom"]).default("custom"),
+  type: z
+    .enum(["shift_start", "break_end", "shift_end", "custom"])
+    .default("custom"),
 });
 
 // ============================================================================
@@ -229,7 +256,11 @@ export const createReminderSchema = z.object({
 
 export const createViolationRuleSchema = z.object({
   company_id: uuidSchema,
-  code: z.string().min(2).max(50).regex(/^[A-Z_]+$/),
+  code: z
+    .string()
+    .min(2)
+    .max(50)
+    .regex(/^[A-Z_]+$/),
   name: z.string().min(2).max(100),
   description: z.string().min(10).max(500),
   severity: z.number().int().min(1).max(10),
@@ -238,7 +269,9 @@ export const createViolationRuleSchema = z.object({
   is_active: z.boolean().default(true),
 });
 
-export const updateViolationRuleSchema = createViolationRuleSchema.partial().omit({ company_id: true });
+export const updateViolationRuleSchema = createViolationRuleSchema
+  .partial()
+  .omit({ company_id: true });
 
 // ============================================================================
 // QUERY PARAMS SCHEMAS
@@ -299,11 +332,3 @@ export type EmployeeQuery = z.infer<typeof employeeQuerySchema>;
 export type ShiftQuery = z.infer<typeof shiftQuerySchema>;
 export type ViolationQuery = z.infer<typeof violationQuerySchema>;
 export type ExceptionQuery = z.infer<typeof exceptionQuerySchema>;
-
-
-
-
-
-
-
-

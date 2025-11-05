@@ -3,13 +3,13 @@ name: Automated Database Backup
 on:
   schedule:
     # Daily backup at 3:00 AM UTC
-    - cron: '0 3 * * *'
+    - cron: "0 3 * * *"
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to backup'
+        description: "Environment to backup"
         required: true
-        default: 'production'
+        default: "production"
         type: choice
         options:
           - production
@@ -17,31 +17,31 @@ on:
           - development
 
 env:
-  NODE_VERSION: '20.x'
+  NODE_VERSION: "20.x"
 
 jobs:
   backup:
     name: Database Backup
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Setup PostgreSQL client
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
-      
+
       - name: Setup AWS CLI (if S3 backup enabled)
         if: vars.ENABLE_S3_BACKUP == 'true'
         run: |
@@ -49,7 +49,7 @@ jobs:
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set default.region ${{ vars.AWS_REGION || 'us-east-1' }}
-      
+
       - name: Create backup
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
@@ -57,7 +57,7 @@ jobs:
         run: |
           chmod +x scripts/backup-database.sh
           ./scripts/backup-database.sh ${{ github.event.inputs.environment || 'production' }}
-      
+
       - name: Upload backup artifact
         uses: actions/upload-artifact@v4
         with:
@@ -67,7 +67,7 @@ jobs:
             backups/**/*.sha256
             backups/**/*.meta
           retention-days: 7
-      
+
       - name: Verify backup
         run: |
           chmod +x scripts/verify-backup.sh
@@ -78,7 +78,7 @@ jobs:
             echo "⚠️ No backup file found to verify"
             exit 1
           fi
-      
+
       - name: Backup summary
         if: always()
         run: |
@@ -87,7 +87,7 @@ jobs:
           echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           LATEST_BACKUP=$(find backups -name "*.sql.gz" -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -d' ' -f2-)
           if [ -n "$LATEST_BACKUP" ]; then
             BACKUP_SIZE=$(du -h "$LATEST_BACKUP" | cut -f1)
@@ -97,7 +97,7 @@ jobs:
           else
             echo "**Status:** ❌ Failed" >> $GITHUB_STEP_SUMMARY
           fi
-      
+
       - name: Notify on failure
         if: failure()
         uses: actions/github-script@v7
@@ -110,7 +110,3 @@ jobs:
               body: `Database backup failed for ${{ github.event.inputs.environment || 'production' }} environment.\n\n**Run:** ${{ github.run_id }}\n**Workflow:** ${{ github.workflow }}\n**Commit:** ${{ github.sha }}`,
               labels: ['backup', 'alert']
             })
-
-
-
-

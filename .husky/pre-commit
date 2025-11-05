@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-export NODE_OPTIONS="--max-old-space-size=8192"
-npx lint-staged
+export NODE_OPTIONS="--max-old-space-size=16384"
+export ESLINT_USE_FLAT_CONFIG=true
+npx lint-staged --verbose

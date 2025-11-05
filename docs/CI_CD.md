@@ -22,6 +22,7 @@ The project uses **GitHub Actions** for CI/CD with multiple workflow files:
 ### Main CI Pipeline (`ci-comprehensive.yml`)
 
 **Triggers:**
+
 - Push to `main` or `develop`
 - Pull requests to `main` or `develop`
 - Manual dispatch
@@ -191,6 +192,7 @@ Coverage reports are automatically uploaded to Codecov:
 ### Automatic Deployment
 
 **Triggers:**
+
 - Push to `main` branch
 - Manual dispatch
 
@@ -228,12 +230,14 @@ Coverage reports are automatically uploaded to Codecov:
 ### Required GitHub Secrets
 
 #### For CI/CD:
+
 - `CODECOV_TOKEN` - Codecov upload token (optional)
 - `TEST_SUPABASE_URL` - Test Supabase URL (for E2E tests)
 - `TEST_SUPABASE_ANON_KEY` - Test Supabase anon key
 - `TEST_SUPABASE_SERVICE_ROLE_KEY` - Test Supabase service role key
 
 #### For Deployment:
+
 - `VERCEL_TOKEN` - Vercel deployment token
 - `VERCEL_ORG_ID` - Vercel organization ID
 - `VERCEL_PROJECT_ID` - Vercel project ID
@@ -260,12 +264,14 @@ Coverage reports are automatically uploaded to Codecov:
 ### Tests Fail in CI but Pass Locally
 
 1. **Check environment variables:**
+
    ```bash
    # CI sets NODE_ENV=test
    # Make sure test setup handles this
    ```
 
 2. **Database timing:**
+
    ```bash
    # CI services may need more time to start
    # Check health checks in workflow
@@ -280,6 +286,7 @@ Coverage reports are automatically uploaded to Codecov:
 ### Coverage Threshold Not Met
 
 1. **Check coverage report:**
+
    ```bash
    npm run test:coverage
    open coverage/index.html
@@ -301,12 +308,14 @@ Coverage reports are automatically uploaded to Codecov:
 ### E2E Tests Timeout
 
 1. **Increase timeout:**
+
    ```typescript
    // In playwright.config.ts
-   timeout: 60_000 // Increase from 30s
+   timeout: 60_000; // Increase from 30s
    ```
 
 2. **Check server startup:**
+
    ```bash
    # Ensure test server starts before tests
    # Check wait time in workflow
@@ -368,7 +377,3 @@ npm run test:unit
 
 **Last Updated:** January 2025  
 **Status:** ✅ Fully Configured
-
-
-
-

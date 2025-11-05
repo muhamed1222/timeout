@@ -1,8 +1,8 @@
-import express, { type Express } from 'express';
-import { createServer, type Server } from 'http';
-import request from 'supertest';
-import { registerRoutes } from '../../../server/routes.js';
-import { setupTestDatabase, cleanupTestDatabase } from './testDatabase.js';
+import express, { type Express } from "express";
+import { createServer, type Server } from "http";
+import request from "supertest";
+import { registerRoutes } from "../../../server/routes.js";
+import { setupTestDatabase, cleanupTestDatabase } from "./testDatabase.js";
 
 let testServer: Server | null = null;
 let testApp: Express | null = null;
@@ -23,7 +23,7 @@ export async function setupTestServer(): Promise<Express> {
   app.use(express.json());
 
   // Register routes
-  registerRoutes(app);
+  void registerRoutes(app);
 
   testApp = app;
   testServer = createServer(app);
@@ -40,7 +40,7 @@ export async function cleanupTestServer() {
     testServer = null;
   }
   testApp = null;
-  
+
   await cleanupTestDatabase();
 }
 
@@ -49,13 +49,11 @@ export async function cleanupTestServer() {
  */
 export function authenticatedRequest(
   app: Express,
-  method: 'get' | 'post' | 'put' | 'delete',
+  method: "get" | "post" | "put" | "delete",
   url: string,
-  token: string
+  token: string,
 ) {
-  return request(app)
-    [method](url)
-    .set('Authorization', `Bearer ${token}`);
+  return request(app)[method](url).set("Authorization", `Bearer ${token}`);
 }
 
 /**
@@ -64,11 +62,3 @@ export function authenticatedRequest(
 export function getRequest(app: Express) {
   return request(app);
 }
-
-
-
-
-
-
-
-

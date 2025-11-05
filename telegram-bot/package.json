@@ -5,4 +5,3 @@
     "start": "ts-node launchBot.ts"
   }
 }
-

@@ -1,6 +1,6 @@
 /**
  * Dependency Injection Container
- * 
+ *
  * Simple DI container for managing dependencies and reducing coupling.
  * Provides constructor injection for services and repositories.
  */
@@ -54,7 +54,9 @@ export function createContainer(dependencies: DIContainer): DIContainer {
  */
 export function getContainer(): DIContainer {
   if (!container) {
-    throw new Error("DI Container not initialized. Call createContainer() first.");
+    throw new Error(
+      "DI Container not initialized. Call createContainer() first.",
+    );
   }
   return container;
 }
@@ -65,7 +67,3 @@ export function getContainer(): DIContainer {
 export function resetContainer(): void {
   container = null;
 }
-
-
-
-

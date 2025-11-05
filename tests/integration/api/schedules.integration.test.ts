@@ -1,10 +1,18 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { setupTestServer, cleanupTestServer, getRequest } from '../helpers/testServer.js';
-import { createTestCompany, createTestEmployee, createTestShift } from '../helpers/fixtures.js';
-import { cleanDatabase } from '../helpers/testDatabase.js';
-import type { Express } from 'express';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import {
+  setupTestServer,
+  cleanupTestServer,
+  getRequest,
+} from "../helpers/testServer.js";
+import {
+  createTestCompany,
+  createTestEmployee,
+  createTestShift,
+} from "../helpers/fixtures.js";
+import { cleanDatabase } from "../helpers/testDatabase.js";
+import type { Express } from "express";
 
-describe('Schedules API Integration', () => {
+describe("Schedules API Integration", () => {
   let app: Express;
   let authToken: string;
   let companyId: string;
@@ -27,64 +35,70 @@ describe('Schedules API Integration', () => {
     await cleanupTestServer();
   });
 
-  describe('GET /api/schedules', () => {
-    it('should return schedule for date range', async () => {
+  describe("GET /api/schedules", () => {
+    it("should return schedule for date range", async () => {
       const now = new Date();
       const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
       await createTestShift(employeeId, {
         planned_start_at: now,
-        status: 'planned',
+        status: "planned",
       });
 
       const response = await getRequest(app)
-        .get('/api/schedules')
+        .get("/api/schedules")
         .query({
           company_id: companyId,
           start_date: now.toISOString(),
           end_date: tomorrow.toISOString(),
         })
-        .set('Authorization', `Bearer ${authToken}`);
+        .set("Authorization", `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toBeInstanceOf(Array);
     });
 
-    it('should filter by employee', async () => {
-      await createTestShift(employeeId, { status: 'planned' });
+    it("should filter by employee", async () => {
+      await createTestShift(employeeId, { status: "planned" });
       const otherEmployee = await createTestEmployee(companyId);
-      await createTestShift(otherEmployee.id, { status: 'planned' });
+      await createTestShift(otherEmployee.id, { status: "planned" });
 
       const response = await getRequest(app)
-        .get('/api/schedules')
+        .get("/api/schedules")
         .query({ employee_id: employeeId })
-        .set('Authorization', `Bearer ${authToken}`);
+        .set("Authorization", `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toBeInstanceOf(Array);
     });
   });
 
-  describe('POST /api/schedules/bulk', () => {
-    it('should create multiple shifts', async () => {
+  describe("POST /api/schedules/bulk", () => {
+    it("should create multiple shifts", async () => {
       const shifts = [
         {
           employee_id: employeeId,
           planned_start_at: new Date().toISOString(),
-          planned_end_at: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-          status: 'planned' as const,
+          planned_end_at: new Date(
+            Date.now() + 8 * 60 * 60 * 1000,
+          ).toISOString(),
+          status: "planned" as const,
         },
         {
           employee_id: employeeId,
-          planned_start_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          planned_end_at: new Date(Date.now() + 32 * 60 * 60 * 1000).toISOString(),
-          status: 'planned' as const,
+          planned_start_at: new Date(
+            Date.now() + 24 * 60 * 60 * 1000,
+          ).toISOString(),
+          planned_end_at: new Date(
+            Date.now() + 32 * 60 * 60 * 1000,
+          ).toISOString(),
+          status: "planned" as const,
         },
       ];
 
       const response = await getRequest(app)
-        .post('/api/schedules/bulk')
-        .set('Authorization', `Bearer ${authToken}`)
+        .post("/api/schedules/bulk")
+        .set("Authorization", `Bearer ${authToken}`)
         .send({ shifts });
 
       expect([200, 201]).toContain(response.status);
@@ -93,8 +107,8 @@ describe('Schedules API Integration', () => {
     });
   });
 
-  describe('GET /api/schedules/conflicts', () => {
-    it('should detect schedule conflicts', async () => {
+  describe("GET /api/schedules/conflicts", () => {
+    it("should detect schedule conflicts", async () => {
       const now = new Date();
       const later = new Date(now.getTime() + 4 * 60 * 60 * 1000);
 
@@ -110,20 +124,12 @@ describe('Schedules API Integration', () => {
       });
 
       const response = await getRequest(app)
-        .get('/api/schedules/conflicts')
+        .get("/api/schedules/conflicts")
         .query({ company_id: companyId })
-        .set('Authorization', `Bearer ${authToken}`);
+        .set("Authorization", `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toBeInstanceOf(Array);
     });
   });
 });
-
-
-
-
-
-
-
-

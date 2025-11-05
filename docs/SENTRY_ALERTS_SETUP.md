@@ -20,13 +20,15 @@
 **Когда настраивать:** Для мониторинга общего уровня ошибок в приложении
 
 **Настройка:**
+
 - **Trigger:** When the number of events in a function is **greater than** `50` in `5 minutes`
-- **Filter:** 
+- **Filter:**
   - `environment:production`
   - `level:error`
 - **Aggregate:** Count of events
 
 **Действия:**
+
 - ✅ Email notification
 - ✅ Slack notification
 - ⚠️ PagerDuty (если критично)
@@ -40,6 +42,7 @@
 **Когда настраивать:** Для мониторинга внутренних ошибок сервера
 
 **Настройка:**
+
 - **Trigger:** When the number of events in a function is **greater than** `10` in `5 minutes`
 - **Filter:**
   - `environment:production`
@@ -48,6 +51,7 @@
 - **Aggregate:** Count of events
 
 **Действия:**
+
 - ✅ Email notification (immediate)
 - ✅ Slack notification (immediate)
 - ✅ PagerDuty incident (если критично)
@@ -61,6 +65,7 @@
 **Когда настраивать:** Для мониторинга проблем с базой данных
 
 **Настройка:**
+
 - **Trigger:** When the number of events is **greater than** `5` in `5 minutes`
 - **Filter:**
   - `environment:production`
@@ -69,6 +74,7 @@
 - **Aggregate:** Count of events
 
 **Действия:**
+
 - ✅ Email notification
 - ✅ Slack notification
 - ✅ Автоматическая проверка статуса БД
@@ -84,6 +90,7 @@
 **Когда настраивать:** Для мониторинга медленных запросов
 
 **Настройка:**
+
 - **Trigger:** When the p95 transaction duration is **greater than** `2000ms` (2 секунды) in `5 minutes`
 - **Filter:**
   - `environment:production`
@@ -91,6 +98,7 @@
 - **Aggregate:** p95(transaction.duration)
 
 **Действия:**
+
 - ✅ Email notification
 - ✅ Slack notification
 - ✅ Логирование в мониторинг
@@ -102,6 +110,7 @@
 ### 5. Медленные database запросы
 
 **Настройка:**
+
 - **Trigger:** When the p95 transaction duration is **greater than** `1000ms` (1 секунда) in `5 minutes`
 - **Filter:**
   - `environment:production`
@@ -109,6 +118,7 @@
 - **Aggregate:** p95(transaction.duration)
 
 **Действия:**
+
 - ✅ Email notification
 - ✅ Slack notification
 
@@ -121,6 +131,7 @@
 **Когда настраивать:** Для обнаружения возможных атак или проблем с аутентификацией
 
 **Настройка:**
+
 - **Trigger:** When the number of events is **greater than** `20` in `10 minutes`
 - **Filter:**
   - `environment:production`
@@ -129,6 +140,7 @@
 - **Aggregate:** Count of events
 
 **Действия:**
+
 - ✅ Email notification
 - ✅ Slack notification
 - ⚠️ Security team notification
@@ -144,6 +156,7 @@
 **Когда настраивать:** Для отслеживания новых проблем в коде
 
 **Настройка:**
+
 - **Trigger:** When a new issue is created
 - **Filter:**
   - `environment:production`
@@ -151,6 +164,7 @@
 - **Aggregate:** Issue creation
 
 **Действия:**
+
 - ✅ Email notification (daily digest)
 - ✅ Slack notification
 - ✅ Автоматическое создание задачи в Jira/Linear
@@ -162,6 +176,7 @@
 ### 8. Повторяющиеся ошибки
 
 **Настройка:**
+
 - **Trigger:** When an issue has **more than** `100` events in `1 hour`
 - **Filter:**
   - `environment:production`
@@ -169,6 +184,7 @@
 - **Aggregate:** Count of events per issue
 
 **Действия:**
+
 - ✅ Email notification
 - ✅ Slack notification
 - ✅ Высокий приоритет в backlog
@@ -325,7 +341,3 @@
 
 **Последнее обновление:** Январь 2025  
 **Статус:** ✅ Готово к использованию
-
-
-
-

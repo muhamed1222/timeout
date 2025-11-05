@@ -36,7 +36,3 @@ export function getShiftService(): ShiftService {
 export function getRatingService(): RatingService {
   return new RatingService(getContainer());
 }
-
-
-
-

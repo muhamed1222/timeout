@@ -169,7 +169,7 @@
   "lint-staged": {
     "*.{ts,tsx}": [
       "prettier --write",
-      "eslint --config config/eslint.config.js --fix --max-warnings 500"
+      "eslint --config config/eslint.config.js --fix --max-warnings 500 --cache --cache-location .eslintcache"
     ],
     "*.{json,md,yml,yaml}": [
       "prettier --write"
