@@ -169,7 +169,7 @@
   "lint-staged": {
     "*.{ts,tsx}": [
       "prettier --write",
-      "node --max-old-space-size=8192 node_modules/.bin/eslint --config config/eslint.config.js --fix --max-warnings 500"
+      "eslint --config config/eslint.config.js --fix --max-warnings 500"
     ],
     "*.{json,md,yml,yaml}": [
       "prettier --write"
