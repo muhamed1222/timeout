@@ -21,10 +21,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files (including workspace package.json files)
+# Copy package files
 COPY package*.json ./
-COPY client/package.json ./client/
-COPY server/package.json ./server/
+# Copy workspace package.json files (only shared exists, client and server use root package.json)
 COPY shared/package.json ./shared/
 
 # Install only production dependencies
