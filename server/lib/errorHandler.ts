@@ -59,10 +59,14 @@ export function errorHandler(
     path: req.path,
     method: req.method,
     userId:
-      (req as Record<string, unknown>).user?.id ??
-      (req as Record<string, unknown>).userId,
+      (
+        (req as unknown as Record<string, unknown>).user as Record<
+          string,
+          unknown
+        >
+      )?.id ?? (req as unknown as Record<string, unknown>).userId,
     companyId:
-      (req as Record<string, unknown>).companyId ??
+      (req as unknown as Record<string, unknown>).companyId ??
       req.params?.companyId ??
       req.body?.company_id,
     ip:
