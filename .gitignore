@@ -32,3 +32,6 @@ vite.config.ts.*
 *.db
 *.sqlitecoverage/
 *.lcov
+test-results/
+playwright-report/
+playwright/.cache/
