@@ -7,7 +7,7 @@
  * - `Esc` - Close modals/dialogs
  */
 
-import { useEffect, useCallback, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 
 export interface KeyboardShortcut {
   key: string;
@@ -23,7 +23,7 @@ export interface KeyboardShortcut {
 /**
  * Hook for managing keyboard shortcuts
  */
-export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
+export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]): void {
   const shortcutsRef = useRef(shortcuts);
 
   useEffect(() => {
@@ -31,13 +31,21 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
   }, [shortcuts]);
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
       for (const shortcut of shortcutsRef.current) {
         const keyMatches = event.key === shortcut.key || event.code === shortcut.key;
-        const ctrlMatches = shortcut.ctrlKey === undefined ? true : event.ctrlKey === shortcut.ctrlKey;
-        const metaMatches = shortcut.metaKey === undefined ? true : event.metaKey === shortcut.metaKey;
-        const shiftMatches = shortcut.shiftKey === undefined ? true : event.shiftKey === shortcut.shiftKey;
-        const altMatches = shortcut.altKey === undefined ? true : event.altKey === shortcut.altKey;
+        const ctrlMatches = shortcut.ctrlKey === undefined
+          ? true
+          : event.ctrlKey === shortcut.ctrlKey;
+        const metaMatches = shortcut.metaKey === undefined
+          ? true
+          : event.metaKey === shortcut.metaKey;
+        const shiftMatches = shortcut.shiftKey === undefined
+          ? true
+          : event.shiftKey === shortcut.shiftKey;
+        const altMatches = shortcut.altKey === undefined
+          ? true
+          : event.altKey === shortcut.altKey;
 
         if (keyMatches && ctrlMatches && metaMatches && shiftMatches && altMatches) {
           // Check if we're in an input/textarea/contenteditable
@@ -65,23 +73,28 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }
   }, []);
 }
 
 /**
  * Hook for focusing search input with `/` key
  */
-export function useSearchShortcut(searchInputRef: React.RefObject<HTMLInputElement>) {
+export function useSearchShortcut(searchInputRef: React.RefObject<HTMLInputElement>): void {
   useKeyboardShortcuts([
     {
       key: "/",
       description: "Focus search input",
-      callback: () => {
-        if (searchInputRef.current && document.activeElement !== searchInputRef.current) {
+      callback: (): void => {
+        if (
+          searchInputRef.current &&
+          document.activeElement !== searchInputRef.current
+        ) {
           searchInputRef.current.focus();
         }
       },
@@ -92,7 +105,7 @@ export function useSearchShortcut(searchInputRef: React.RefObject<HTMLInputEleme
 /**
  * Hook for command palette with Ctrl+K / Cmd+K
  */
-export function useCommandPalette(onOpen: () => void) {
+export function useCommandPalette(onOpen: () => void): void {
   useKeyboardShortcuts([
     {
       key: "k",
@@ -112,7 +125,7 @@ export function useCommandPalette(onOpen: () => void) {
 /**
  * Hook for closing modals/dialogs with Esc
  */
-export function useEscapeShortcut(onClose: () => void, enabled: boolean = true) {
+export function useEscapeShortcut(onClose: () => void, enabled: boolean = true): void {
   useKeyboardShortcuts([
     {
       key: "Escape",
@@ -141,6 +154,7 @@ export const commonShortcuts = {
     description: "Close modal/dialog",
   },
 } as const;
+
 
 
 

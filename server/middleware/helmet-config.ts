@@ -47,7 +47,7 @@ export const helmetConfig = helmet({
       baseUri: ["'self'"],
       formAction: ["'self'"],
       frameAncestors: ["'self'"],
-      upgradeInsecureRequests: process.env.NODE_ENV === "production" ? [] : null,
+      upgradeInsecureRequests: process.env.NODE_ENV === "production" ? [] : undefined,
     },
   },
 
@@ -135,7 +135,7 @@ export function additionalSecurityHeaders(req: Request, res: Response, next: Nex
  * CORS Configuration
  */
 export const corsConfig = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+  origin: (_origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     const allowedOrigins = [
       process.env.FRONTEND_URL,
       "http://localhost:5000",
@@ -143,7 +143,7 @@ export const corsConfig = {
       "https://telegram.org",
     ].filter(Boolean);
 
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!_origin || allowedOrigins.includes(_origin)) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
@@ -155,6 +155,7 @@ export const corsConfig = {
   exposedHeaders: ["X-Total-Count", "X-Page-Count"],
   maxAge: 86400, // 24 hours
 };
+
 
 
 

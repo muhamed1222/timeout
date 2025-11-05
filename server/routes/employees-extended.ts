@@ -5,7 +5,7 @@ import { logger } from "../lib/logger.js";
 const router = Router();
 
 // Get employees by company (company-specific endpoint)
-router.get("/companies/:companyId/employees", async (req, res) => {
+router.get("/companies/:companyId/employees", async (req, res): Promise<void> => {
   try {
     const { companyId } = req.params;
     const employees = await repositories.employee.findByCompanyId(companyId);
@@ -17,7 +17,7 @@ router.get("/companies/:companyId/employees", async (req, res) => {
 });
 
 // Get employee shifts
-router.get("/:employeeId/shifts", async (req, res) => {
+router.get("/:employeeId/shifts", async (req, res): Promise<void> => {
   try {
     const { employeeId } = req.params;
     const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
@@ -30,7 +30,7 @@ router.get("/:employeeId/shifts", async (req, res) => {
 });
 
 // Get employee schedules
-router.get("/:employeeId/schedules", async (req, res) => {
+router.get("/:employeeId/schedules", async (req, res): Promise<void> => {
   try {
     const { employeeId } = req.params;
     const schedules = await repositories.schedule.findEmployeeSchedules(employeeId);
@@ -42,12 +42,12 @@ router.get("/:employeeId/schedules", async (req, res) => {
 });
 
 // Get active employee schedule
-router.get("/:employeeId/active-schedule", async (req, res) => {
+router.get("/:employeeId/active-schedule", async (req, res): Promise<void> => {
   try {
     const { employeeId } = req.params;
     const date = req.query.date ? new Date(req.query.date as string) : new Date();
     const schedule = await repositories.schedule.findActiveEmployeeSchedule(employeeId, date);
-    res.json(schedule || null);
+    res.json(schedule ?? null);
   } catch (error) {
     logger.error("Error fetching active employee schedule", error);
     res.status(500).json({ error: "Internal server error" });
@@ -55,6 +55,7 @@ router.get("/:employeeId/active-schedule", async (req, res) => {
 });
 
 export default router;
+
 
 
 

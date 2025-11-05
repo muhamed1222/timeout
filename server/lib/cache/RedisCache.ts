@@ -39,7 +39,7 @@ export class RedisCache implements CacheAdapter {
     });
 
     // Connect asynchronously
-    this.connect();
+    void this.connect();
   }
 
   private async connect(): Promise<void> {
@@ -105,7 +105,7 @@ export class RedisCache implements CacheAdapter {
       
       const values = (await this.client.mGet(keys)) as Array<string | null>;
       return values.map((value) => {
-        if (value == null) {
+        if (value === null) {
           return undefined;
         }
         try {
@@ -120,7 +120,7 @@ export class RedisCache implements CacheAdapter {
     }
   }
 
-  async mset(entries: Array<[string, any, number?]>): Promise<void> {
+  async mset(entries: Array<[string, unknown, number?]>): Promise<void> {
     try {
       // Redis mSet doesn't support TTL, so we need to set individually
       await Promise.all(
@@ -161,6 +161,7 @@ export class RedisCache implements CacheAdapter {
     }
   }
 }
+
 
 
 

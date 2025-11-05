@@ -11,12 +11,12 @@ import { useCallback } from "react";
 /**
  * Prefetch employee data on hover
  */
-export function usePrefetchEmployee() {
+export function usePrefetchEmployee(): (employeeId: string) => void {
   const queryClient = useQueryClient();
 
   return useCallback(
-    (employeeId: string) => {
-      queryClient.prefetchQuery({
+    (employeeId: string): void => {
+      void queryClient.prefetchQuery({
         queryKey: ["/api/employees", employeeId],
         queryFn: async () => {
           const res = await fetch(`/api/employees/${employeeId}`, {
@@ -37,12 +37,12 @@ export function usePrefetchEmployee() {
 /**
  * Prefetch employee stats on hover
  */
-export function usePrefetchEmployeeStats() {
+export function usePrefetchEmployeeStats(): (employeeId: string) => void {
   const queryClient = useQueryClient();
 
   return useCallback(
-    (employeeId: string) => {
-      queryClient.prefetchQuery({
+    (employeeId: string): void => {
+      void queryClient.prefetchQuery({
         queryKey: ["/api/employees", employeeId, "stats"],
         queryFn: async () => {
           const res = await fetch(`/api/employees/${employeeId}/stats`, {
@@ -63,12 +63,12 @@ export function usePrefetchEmployeeStats() {
 /**
  * Prefetch company data when user might navigate to company settings
  */
-export function usePrefetchCompany() {
+export function usePrefetchCompany(): (companyId: string) => void {
   const queryClient = useQueryClient();
 
   return useCallback(
-    (companyId: string) => {
-      queryClient.prefetchQuery({
+    (companyId: string): void => {
+      void queryClient.prefetchQuery({
         queryKey: ["/api/companies", companyId],
         queryFn: async () => {
           const res = await fetch(`/api/companies/${companyId}`, {
@@ -89,11 +89,11 @@ export function usePrefetchCompany() {
 /**
  * Prefetch shifts for a specific employee
  */
-export function usePrefetchEmployeeShifts() {
+export function usePrefetchEmployeeShifts(): (employeeId: string, startDate?: string, endDate?: string) => void {
   const queryClient = useQueryClient();
 
   return useCallback(
-    (employeeId: string, startDate?: string, endDate?: string) => {
+    (employeeId: string, startDate?: string, endDate?: string): void => {
       const queryKey = [
         "/api/shifts",
         employeeId,
@@ -101,7 +101,7 @@ export function usePrefetchEmployeeShifts() {
         ...(endDate ? [endDate] : []),
       ];
 
-      queryClient.prefetchQuery({
+      void queryClient.prefetchQuery({
         queryKey,
         queryFn: async () => {
           const params = new URLSearchParams();
@@ -133,11 +133,11 @@ export function usePrefetchEmployeeShifts() {
 /**
  * Prefetch ratings for a company
  */
-export function usePrefetchRatings() {
+export function usePrefetchRatings(): (companyId: string, periodStart?: string, periodEnd?: string) => void {
   const queryClient = useQueryClient();
 
   return useCallback(
-    (companyId: string, periodStart?: string, periodEnd?: string) => {
+    (companyId: string, periodStart?: string, periodEnd?: string): void => {
       const queryKey = [
         "/api/companies",
         companyId,
@@ -146,7 +146,7 @@ export function usePrefetchRatings() {
         ...(periodEnd ? [periodEnd] : []),
       ];
 
-      queryClient.prefetchQuery({
+      void queryClient.prefetchQuery({
         queryKey,
         queryFn: async () => {
           const params = new URLSearchParams();
@@ -178,7 +178,14 @@ export function usePrefetchRatings() {
 /**
  * Generic prefetch hook that accepts custom query key and function
  */
-export function usePrefetch<TData = unknown>() {
+export function usePrefetch<TData = unknown>(): (
+  queryKey: unknown[],
+  queryFn: () => Promise<TData>,
+  options?: {
+    staleTime?: number;
+    cacheTime?: number;
+  },
+) => void {
   const queryClient = useQueryClient();
 
   return useCallback(
@@ -189,8 +196,8 @@ export function usePrefetch<TData = unknown>() {
         staleTime?: number;
         cacheTime?: number;
       },
-    ) => {
-      queryClient.prefetchQuery({
+    ): void => {
+      void queryClient.prefetchQuery({
         queryKey,
         queryFn,
         staleTime: options?.staleTime,
@@ -199,6 +206,7 @@ export function usePrefetch<TData = unknown>() {
     [queryClient],
   );
 }
+
 
 
 

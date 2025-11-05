@@ -4,6 +4,8 @@
  * Provides helpers for improving accessibility (a11y) across the application
  */
 
+import React from "react";
+
 /**
  * Generate unique ID for aria-labelledby
  */
@@ -89,17 +91,26 @@ export class FocusTrap {
   }
 
   public activate(): void {
+    if (typeof document === "undefined") {
+      return;
+    }
     this.previouslyFocused = document.activeElement as HTMLElement;
     this.firstFocusable?.focus();
     document.addEventListener("keydown", this.handleKeyDown);
   }
 
   public deactivate(): void {
+    if (typeof document === "undefined") {
+      return;
+    }
     document.removeEventListener("keydown", this.handleKeyDown);
     this.previouslyFocused?.focus();
   }
 
   private handleKeyDown = (event: KeyboardEvent): void => {
+    if (typeof document === "undefined") {
+      return;
+    }
     if (event.key !== Keys.TAB) {
       return;
     }
@@ -127,6 +138,9 @@ export function announceToScreenReader(
   message: string,
   priority: "polite" | "assertive" = "polite",
 ): void {
+  if (typeof document === "undefined") {
+    return;
+  }
   const announcement = document.createElement("div");
   announcement.setAttribute("role", "status");
   announcement.setAttribute("aria-live", priority);
@@ -138,7 +152,9 @@ export function announceToScreenReader(
 
   // Remove after announcement
   setTimeout(() => {
-    document.body.removeChild(announcement);
+    if (document.body.contains(announcement)) {
+      document.body.removeChild(announcement);
+    }
   }, 1000);
 }
 
@@ -146,6 +162,9 @@ export function announceToScreenReader(
  * Get accessible name for element
  */
 export function getAccessibleName(element: HTMLElement): string {
+  if (typeof document === "undefined") {
+    return "";
+  }
   // Check aria-label
   const ariaLabel = element.getAttribute("aria-label");
   if (ariaLabel) {
@@ -157,7 +176,7 @@ export function getAccessibleName(element: HTMLElement): string {
   if (labelledby) {
     const labelElement = document.getElementById(labelledby);
     if (labelElement) {
-      return labelElement.textContent || "";
+      return labelElement.textContent ?? "";
     }
   }
 
@@ -165,12 +184,12 @@ export function getAccessibleName(element: HTMLElement): string {
   if (element instanceof HTMLInputElement) {
     const label = document.querySelector(`label[for="${element.id}"]`);
     if (label) {
-      return label.textContent || "";
+      return label.textContent ?? "";
     }
   }
 
   // Fallback to text content
-  return element.textContent || "";
+  return element.textContent ?? "";
 }
 
 /**
@@ -183,6 +202,9 @@ export function isVisibleToScreenReader(element: HTMLElement): boolean {
   }
 
   // Check if element or ancestors have display: none or visibility: hidden
+  if (typeof window === "undefined") {
+    return true;
+  }
   let current: HTMLElement | null = element;
   while (current) {
     const style = window.getComputedStyle(current);
@@ -198,7 +220,10 @@ export function isVisibleToScreenReader(element: HTMLElement): boolean {
 /**
  * Skip links helper
  */
-export function createSkipLink(targetId: string, label: string): HTMLAnchorElement {
+export function createSkipLink(targetId: string, label: string): HTMLAnchorElement | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
   const skipLink = document.createElement("a");
   skipLink.href = `#${targetId}`;
   skipLink.className = "skip-link";
@@ -285,7 +310,7 @@ export class RovingTabIndex {
  */
 import { useEffect, useRef } from "react";
 
-export function useFocusTrap(isActive: boolean) {
+export function useFocusTrap(isActive: boolean): React.RefObject<HTMLElement | null> {
   const elementRef = useRef<HTMLElement | null>(null);
   const trapRef = useRef<FocusTrap | null>(null);
 
@@ -310,8 +335,8 @@ export function useFocusTrap(isActive: boolean) {
 /**
  * React hook for announcements
  */
-export function useAnnouncement() {
-  return (message: string, priority: "polite" | "assertive" = "polite") => {
+export function useAnnouncement(): (message: string, priority?: "polite" | "assertive") => void {
+  return (message: string, priority: "polite" | "assertive" = "polite"): void => {
     announceToScreenReader(message, priority);
   };
 }
@@ -319,11 +344,14 @@ export function useAnnouncement() {
 /**
  * React hook for roving tabindex
  */
-export function useRovingTabIndex(itemsCount: number) {
+export function useRovingTabIndex(itemsCount: number): {
+  registerItem: (element: HTMLElement | null, index: number) => void;
+  handleKeyDown: (event: React.KeyboardEvent) => void;
+} {
   const rovingTabIndexRef = useRef<RovingTabIndex | null>(null);
   const itemsRef = useRef<HTMLElement[]>([]);
 
-  const registerItem = (element: HTMLElement | null, index: number) => {
+  const registerItem = (element: HTMLElement | null, index: number): void => {
     if (element) {
       itemsRef.current[index] = element;
       
@@ -333,7 +361,7 @@ export function useRovingTabIndex(itemsCount: number) {
     }
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent) => {
+  const handleKeyDown = (event: React.KeyboardEvent): void => {
     rovingTabIndexRef.current?.handleKeyDown(event.nativeEvent);
   };
 
@@ -343,7 +371,7 @@ export function useRovingTabIndex(itemsCount: number) {
 /**
  * Accessible button props
  */
-export function IgetAccessibleButtonProps(
+export function getAccessibleButtonProps(
   label: string,
   onClick: () => void,
 ): React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -357,7 +385,7 @@ export function IgetAccessibleButtonProps(
 /**
  * Accessible link props
  */
-export function IgetAccessibleLinkProps(
+export function getAccessibleLinkProps(
   label: string,
   href: string,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
@@ -367,6 +395,7 @@ export function IgetAccessibleLinkProps(
     rel: href.startsWith("http") ? "noopener noreferrer" : undefined,
   };
 }
+
 
 
 

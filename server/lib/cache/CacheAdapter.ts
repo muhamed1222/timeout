@@ -7,17 +7,17 @@ export interface CacheAdapter {
   /**
    * Get value from cache
    */
-  get<T>(key: string): Promise<T | undefined>;
+  get<T>(_key: string): Promise<T | undefined>;
   
   /**
    * Set value in cache with optional TTL
    */
-  set<T>(key: string, value: T, ttl?: number): Promise<void>;
+  set<T>(_key: string, _value: T, _ttl?: number): Promise<void>;
   
   /**
    * Delete value from cache
    */
-  delete(key: string): Promise<void>;
+  delete(_key: string): Promise<void>;
   
   /**
    * Clear all values from cache
@@ -27,18 +27,19 @@ export interface CacheAdapter {
   /**
    * Check if key exists
    */
-  has(key: string): Promise<boolean>;
+  has(_key: string): Promise<boolean>;
   
   /**
    * Get multiple values
    */
-  mget<T>(keys: string[]): Promise<(T | undefined)[]>;
+  mget<T>(_keys: string[]): Promise<(T | undefined)[]>;
   
   /**
    * Set multiple values
    */
-  mset(entries: Array<[string, any, number?]>): Promise<void>;
+  mset(_entries: Array<[string, unknown, number?]>): Promise<void>;
 }
+
 
 
 

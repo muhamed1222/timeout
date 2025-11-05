@@ -90,13 +90,23 @@ export default [
     },
   },
   {
+    files: ['client/**/*.{ts,tsx}'],
+    languageOptions: {
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        fetch: 'readonly',
+      },
+    },
+  },
+  {
     files: ['server/**/*.ts'],
     rules: {
       '@typescript-eslint/explicit-function-return-type': 'warn',
     },
   },
   {
-    files: ['**/*.test.ts', '**/*.spec.ts', '**/__tests__/**'],
+    files: ['**/*.test.ts', '**/*.spec.ts', '**/__tests__/**/*.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       'no-console': 'off',

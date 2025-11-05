@@ -13,7 +13,7 @@ export class AppError extends Error {
     public readonly message: string,
     public readonly statusCode: number = 500,
     public readonly code?: string,
-    public readonly details?: Record<string, any>,
+    public readonly details?: Record<string, unknown>,
     public readonly isOperational: boolean = true,
   ) {
     super(message);
@@ -24,11 +24,11 @@ export class AppError extends Error {
   /**
    * Convert error to JSON response format
    */
-  toJSON() {
+  toJSON(): Record<string, unknown> {
     return {
       error: {
         message: this.message,
-        code: this.code || this.name,
+        code: this.code ?? this.name,
         statusCode: this.statusCode,
         ...(this.details && { details: this.details }),
       },
@@ -42,7 +42,7 @@ export class AppError extends Error {
 export class ValidationError extends AppError {
   constructor(
     message: string = "Validation failed",
-    details?: Record<string, any>,
+    details?: Record<string, unknown>,
   ) {
     super(message, 400, "VALIDATION_ERROR", details);
   }
@@ -79,7 +79,7 @@ export class NotFoundError extends AppError {
  * 409 Conflict - Resource conflict (e.g., duplicate)
  */
 export class ConflictError extends AppError {
-  constructor(message: string = "Resource conflict", details?: Record<string, any>) {
+  constructor(message: string = "Resource conflict", details?: Record<string, unknown>) {
     super(message, 409, "CONFLICT", details);
   }
 }
@@ -90,7 +90,7 @@ export class ConflictError extends AppError {
 export class BusinessLogicError extends AppError {
   constructor(
     message: string,
-    details?: Record<string, any>,
+    details?: Record<string, unknown>,
   ) {
     super(message, 422, "BUSINESS_LOGIC_ERROR", details);
   }
@@ -111,7 +111,7 @@ export class RateLimitError extends AppError {
 export class InternalServerError extends AppError {
   constructor(
     message: string = "Internal server error",
-    details?: Record<string, any>,
+    details?: Record<string, unknown>,
   ) {
     super(message, 500, "INTERNAL_SERVER_ERROR", details, false);
   }
@@ -133,7 +133,7 @@ export class DatabaseError extends AppError {
   constructor(
     message: string = "Database operation failed",
     originalError?: Error,
-    details?: Record<string, any>,
+    details?: Record<string, unknown>,
   ) {
     super(
       message,
@@ -184,6 +184,7 @@ export function normalizeError(error: unknown): AppError {
   // Unknown error type
   return new InternalServerError("An unexpected error occurred");
 }
+
 
 
 

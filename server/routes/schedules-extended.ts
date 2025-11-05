@@ -5,11 +5,12 @@ import { logger } from "../lib/logger.js";
 const router = Router();
 
 // Employee schedule assignment
-router.post("/employee-schedule", async (req, res) => {
+router.post("/employee-schedule", async (req, res): Promise<void> => {
   try {
     const { employee_id, schedule_id, valid_from, valid_to } = req.body;
     if (!employee_id || !schedule_id || !valid_from) {
-      return res.status(400).json({ error: "employee_id, schedule_id, and valid_from are required" });
+      res.status(400).json({ error: "employee_id, schedule_id, and valid_from are required" });
+      return;
     }
     await repositories.schedule.assignToEmployee(
       employee_id, 
@@ -25,6 +26,7 @@ router.post("/employee-schedule", async (req, res) => {
 });
 
 export default router;
+
 
 
 

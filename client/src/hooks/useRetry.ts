@@ -19,20 +19,25 @@ export interface RetryOptions {
 /**
  * Hook for retrying failed queries
  */
-export function useRetry(queryKey: unknown[]) {
+export function useRetry(queryKey: unknown[]): {
+  retry: (options?: RetryOptions) => Promise<void>;
+  isRetrying: boolean;
+  retryCount: number;
+  reset: () => void;
+} {
   const queryClient = useQueryClient();
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 
   const retry = useCallback(
-    async (options: RetryOptions = {}) => {
+    async (_options: RetryOptions = {}): Promise<void> => {
       const {
         maxRetries = 3,
         retryDelay = 1000,
         onRetry,
         onSuccess,
         onFailure,
-      } = options;
+      } = _options;
 
       if (isRetrying) {
         return;
@@ -100,7 +105,7 @@ export function useRetry(queryKey: unknown[]) {
     [queryClient, queryKey, isRetrying],
   );
 
-  const reset = useCallback(() => {
+  const reset = useCallback((): void => {
     setIsRetrying(false);
     setRetryCount(0);
   }, []);
@@ -116,13 +121,16 @@ export function useRetry(queryKey: unknown[]) {
 /**
  * Hook for retrying multiple queries
  */
-export function useRetryMultiple(queryKeys: unknown[][]) {
+export function useRetryMultiple(queryKeys: unknown[][]): {
+  retryAll: (options?: RetryOptions) => Promise<void>;
+  isRetrying: boolean;
+} {
   const queryClient = useQueryClient();
   const [isRetrying, setIsRetrying] = useState(false);
 
   const retryAll = useCallback(
-    async (options: RetryOptions = {}) => {
-      const { maxRetries = 3, onSuccess, onFailure } = options;
+    async (_options: RetryOptions = {}): Promise<void> => {
+      const { onSuccess, onFailure } = _options;
 
       if (isRetrying) {
         return;
@@ -169,6 +177,7 @@ export function useRetryMultiple(queryKeys: unknown[][]) {
     isRetrying,
   };
 }
+
 
 
 

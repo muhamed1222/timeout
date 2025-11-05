@@ -4,11 +4,12 @@
  * Shows a banner when the user is offline
  */
 
+import React from "react";
 import { useNetworkStatus } from "@/lib/errorHandling";
 import { WifiOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/ui/alert";
 
-export function OfflineBanner() {
+export function OfflineBanner(): React.JSX.Element | null {
   const isOnline = useNetworkStatus();
 
   if (isOnline) {
@@ -26,6 +27,7 @@ export function OfflineBanner() {
     </div>
   );
 }
+
 
 
 

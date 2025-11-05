@@ -8,10 +8,10 @@ import React from "react";
 
 interface IVisuallyHiddenProps {
   children: React.ReactNode;
-  as?: keyof JSX.IntrinsicElements;
+  as?: keyof React.JSX.IntrinsicElements;
 }
 
-export function VisuallyHidden({ children, as: Component = "span" }: IVisuallyHiddenProps) {
+export function VisuallyHidden({ children, as: Component = "span" }: IVisuallyHiddenProps): React.JSX.Element {
   return (
     <Component
       style={{
@@ -47,6 +47,7 @@ export function VisuallyHidden({ children, as: Component = "span" }: IVisuallyHi
  *   border-width: 0;
  * }
  */
+
 
 
 
