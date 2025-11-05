@@ -115,7 +115,13 @@ export default [
     },
   },
   {
-    files: ['**/*.test.ts', '**/*.spec.ts', 'tests/**/*.ts'],
+    files: ['**/*.test.ts', '**/*.spec.ts', 'tests/**/*.ts', 'tests/setup.ts'],
+    languageOptions: {
+      globals: {
+        window: 'readonly',
+        global: 'readonly',
+      },
+    },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       'no-console': 'off',
@@ -125,6 +131,14 @@ export default [
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/prefer-nullish-coalescing': 'off',
       '@typescript-eslint/no-non-null-assertion': 'warn',
+    },
+  },
+  {
+    files: ['config/vitest-setup.ts'],
+    languageOptions: {
+      globals: {
+        window: 'readonly',
+      },
     },
   },
   {
