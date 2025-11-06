@@ -44,6 +44,10 @@ export default [
       // React rules
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
+
+      // Disable base rules in favor of TypeScript-aware versions
+      'no-undef': 'off',
+      'no-unused-vars': 'off',
       
       // TypeScript rules
       '@typescript-eslint/no-explicit-any': 'warn', // TODO: постепенно убрать все any
@@ -164,4 +168,3 @@ export default [
     ],
   },
 ];
-

@@ -1,28 +1,38 @@
 /**
  * Command Palette Component
- * 
+ *
  * Provides a command palette for quick actions (triggered with Ctrl+K / Cmd+K)
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ElementType } from "react";
 import { Dialog, DialogContent } from "@/ui/dialog";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/ui/command";
-import { useCommandPalette, useEscapeShortcut } from "@/hooks/useKeyboardShortcuts";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/ui/command";
+import {
+  useCommandPalette,
+  useEscapeShortcut,
+} from "@/hooks/useKeyboardShortcuts";
 import { useLocation } from "wouter";
-import { 
-  Home, 
-  Users, 
-  BarChart3, 
-  AlertTriangle, 
-  FileText, 
-  Calendar, 
+import {
+  Home,
+  Users,
+  BarChart3,
+  AlertTriangle,
+  FileText,
+  Calendar,
   Settings,
 } from "lucide-react";
 
 interface CommandAction {
   id: string;
   label: string;
-  icon: React.ElementType;
+  icon: ElementType;
   keywords: string[];
   action: () => void;
 }
@@ -136,7 +146,10 @@ export function CommandPalette() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[600px] p-0" aria-label="Command Palette">
+      <DialogContent
+        className="sm:max-w-[600px] p-0"
+        aria-label="Command Palette"
+      >
         <Command className="rounded-lg border-none">
           <CommandInput
             ref={inputRef}
@@ -168,4 +181,3 @@ export function CommandPalette() {
     </Dialog>
   );
 }
-

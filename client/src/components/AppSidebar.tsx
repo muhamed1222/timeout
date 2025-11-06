@@ -1,8 +1,8 @@
-import { 
-  Home, 
-  Award, 
-  Users, 
-  AlertCircle, 
+import {
+  Home,
+  Award,
+  Users,
+  AlertCircle,
   FileText,
   Settings,
   Moon,
@@ -58,19 +58,29 @@ export function AppSidebar() {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    const theme = localStorage.getItem("theme");
-    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return;
+    }
+
+    const theme = window.localStorage.getItem("theme");
+    const systemTheme = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
     const initialTheme = theme === "dark" || (!theme && systemTheme);
-    
+
     setIsDark(initialTheme);
     document.documentElement.classList.toggle("dark", initialTheme);
   }, []);
 
   const toggleTheme = () => {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return;
+    }
+
     const newTheme = !isDark;
     setIsDark(newTheme);
     document.documentElement.classList.toggle("dark", newTheme);
-    localStorage.setItem("theme", newTheme ? "dark" : "light");
+    window.localStorage.setItem("theme", newTheme ? "dark" : "light");
   };
 
   return (
@@ -80,10 +90,14 @@ export function AppSidebar() {
           <div className="flex items-center gap-2">
             <img src={companyLogo} alt="Company Logo" className="w-6 h-6" />
             <div className="flex flex-col">
-              <h2 className="font-semibold text-base leading-tight text-foreground">OutTime</h2>
+              <h2 className="font-semibold text-base leading-tight text-foreground">
+                OutTime
+              </h2>
             </div>
           </div>
-          <p className="text-sm leading-tight text-muted-foreground">{"ООО \"РАРААВИС ГРУП\""}</p>
+          <p className="text-sm leading-tight text-muted-foreground">
+            {'ООО "РАРААВИС ГРУП"'}
+          </p>
         </div>
       </SidebarHeader>
       <SidebarContent className="px-2 pt-8">
@@ -97,20 +111,26 @@ export function AppSidebar() {
                 const isActive = location === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
-                      asChild 
+                    <SidebarMenuButton
+                      asChild
                       isActive={isActive}
                       data-testid={`nav-${item.title.toLowerCase()}`}
                       aria-current={isActive ? "page" : undefined}
                       className={`h-12 pl-4 pr-0 rounded-full font-normal ${
-                        isActive 
-                          ? "bg-background text-primary hover:bg-background" 
+                        isActive
+                          ? "bg-background text-primary hover:bg-background"
                           : "bg-transparent text-muted-foreground hover:bg-transparent hover:text-foreground"
                       }`}
                     >
-                      <Link href={item.url} aria-label={`Перейти к ${item.title}`} className="flex items-center gap-3">
+                      <Link
+                        href={item.url}
+                        aria-label={`Перейти к ${item.title}`}
+                        className="flex items-center gap-3"
+                      >
                         <item.icon className="w-5 h-5" aria-hidden="true" />
-                        <span className="text-base leading-tight">{item.title}</span>
+                        <span className="text-base leading-tight">
+                          {item.title}
+                        </span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -122,11 +142,11 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="px-2 pb-2">
         <div className="flex flex-col gap-2">
-          <Link 
-            href="/settings" 
+          <Link
+            href="/settings"
             className={`flex items-center gap-3 h-12 pl-4 pr-0 rounded-full transition-colors ${
               location === "/settings" || location === "/company"
-                ? "text-muted-foreground" 
+                ? "text-muted-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >

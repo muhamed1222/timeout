@@ -1,8 +1,5 @@
-import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-} from "@/ui/dialog";
+import { useState, type FormEvent } from "react";
+import { Dialog, DialogContent } from "@/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -24,8 +21,11 @@ interface EmployeeInvite {
   qr_code_url: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: AddEmployeeModalProps) {
+export function AddEmployeeModal({
+  open,
+  onOpenChange,
+  onSuccess,
+}: AddEmployeeModalProps) {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -53,10 +53,10 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
   ];
 
   const toggleWorkingDay = (dayValue: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       workingDays: prev.workingDays.includes(dayValue)
-        ? prev.workingDays.filter(d => d !== dayValue)
+        ? prev.workingDays.filter((d) => d !== dayValue)
         : [...prev.workingDays, dayValue],
     }));
   };
@@ -83,7 +83,9 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
     },
     onSuccess: async (invite) => {
       // Получаем ссылку и QR-код
-      const linkResponse = await fetch(`/api/employee-invites/${invite.code}/link`);
+      const linkResponse = await fetch(
+        `/api/employee-invites/${invite.code}/link`,
+      );
       if (linkResponse.ok) {
         const linkData = await linkResponse.json();
         setInviteData({
@@ -97,12 +99,18 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
       }
 
       // Обновляем список инвайтов
-      queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "employee-invites"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/companies", companyId, "employee-invites"],
+      });
 
       toast({
         title: "Инвайт создан",
-        description: `Приглашение для ${formData.firstName} ${formData.lastName}`.trim() + " успешно создано",
+        description:
+          `Приглашение для ${formData.firstName} ${formData.lastName}`.trim() +
+          " успешно создано",
       });
+
+      onSuccess?.();
     },
     onError: (error) => {
       toast({
@@ -113,8 +121,8 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
     },
   });
 
-  const handleSubmit = (e: React.FormEvent): void => {
-    e.preventDefault();
+  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
     if (!formData.firstName.trim()) {
       toast({
         title: "Ошибка",
@@ -131,8 +139,17 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
     });
   };
 
-  const handleCopyLink = async () => {
+  const handleCopyLink = async (): Promise<void> => {
     if (inviteData?.deep_link) {
+      if (typeof navigator === "undefined" || !navigator.clipboard) {
+        toast({
+          title: "Ошибка",
+          description: "Буфер обмена недоступен",
+          variant: "destructive",
+        });
+        return;
+      }
+
       try {
         await navigator.clipboard.writeText(inviteData.deep_link);
         setCopied(true);
@@ -141,7 +158,7 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
           title: "Скопировано",
           description: "Ссылка скопирована в буфер обмена",
         });
-      } catch (error) {
+      } catch (_error) {
         toast({
           title: "Ошибка",
           description: "Не удалось скопировать ссылку",
@@ -169,7 +186,9 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0 [&>button]:hidden ${!inviteData ? "sm:max-w-[620px]" : "sm:max-w-[425px]"}`}>
+      <DialogContent
+        className={`bg-white rounded-[20px] p-5 shadow-[0px_0px_20px_0px_rgba(144,144,144,0.1)] border-0 [&>button]:hidden ${!inviteData ? "sm:max-w-[620px]" : "sm:max-w-[425px]"}`}
+      >
         {!inviteData ? (
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="flex items-center justify-between">
@@ -196,7 +215,12 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
                     <input
                       type="text"
                       value={formData.firstName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          firstName: e.target.value,
+                        }))
+                      }
                       className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                       placeholder="Иван"
                       required
@@ -209,7 +233,12 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
                     <input
                       type="text"
                       value={formData.lastName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          lastName: e.target.value,
+                        }))
+                      }
                       className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                       placeholder="Петров"
                     />
@@ -223,7 +252,12 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
                   <input
                     type="text"
                     value={formData.position}
-                    onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        position: e.target.value,
+                      }))
+                    }
                     className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                     placeholder="Руководитель отдела разработки"
                   />
@@ -239,10 +273,16 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
                   <div className="relative">
                     <select
                       value={formData.schedulePeriod}
-                      onChange={(e) => setFormData(prev => ({ ...prev, schedulePeriod: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          schedulePeriod: e.target.value,
+                        }))
+                      }
                       className="bg-[rgba(225,101,70,0.1)] px-[10px] py-1 rounded-[20px] text-sm text-[#e16546] appearance-none pr-8 focus:outline-none"
                       style={{
-                        backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='7' height='4' viewBox='0 0 7 4' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0L3.5 4L7 0H0Z' fill='%23e16546'/%3E%3C/svg%3E\")",
+                        backgroundImage:
+                          "url(\"data:image/svg+xml,%3Csvg width='7' height='4' viewBox='0 0 7 4' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0L3.5 4L7 0H0Z' fill='%23e16546'/%3E%3C/svg%3E\")",
                         backgroundRepeat: "no-repeat",
                         backgroundPosition: "right 10px center",
                       }}
@@ -262,7 +302,12 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
                     <input
                       type="time"
                       value={formData.shiftStart}
-                      onChange={(e) => setFormData(prev => ({ ...prev, shiftStart: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          shiftStart: e.target.value,
+                        }))
+                      }
                       className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                     />
                   </div>
@@ -273,7 +318,12 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
                     <input
                       type="text"
                       value={formData.breakDuration}
-                      onChange={(e) => setFormData(prev => ({ ...prev, breakDuration: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          breakDuration: e.target.value,
+                        }))
+                      }
                       className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                       placeholder="30 мин"
                     />
@@ -285,7 +335,12 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
                     <input
                       type="time"
                       value={formData.shiftEnd}
-                      onChange={(e) => setFormData(prev => ({ ...prev, shiftEnd: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          shiftEnd: e.target.value,
+                        }))
+                      }
                       className="bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#e16546] focus:ring-offset-0"
                     />
                   </div>
@@ -320,8 +375,10 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
 
             <div className="flex gap-2">
               <button
-                type="submit" 
-                disabled={createEmployeeMutation.isPending || !formData.firstName.trim()}
+                type="submit"
+                disabled={
+                  createEmployeeMutation.isPending || !formData.firstName.trim()
+                }
                 className="bg-[#e16546] px-[17px] py-3 rounded-[40px] text-sm font-medium text-white leading-[1.2] hover:bg-[#d15536] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {createEmployeeMutation.isPending ? (
@@ -360,13 +417,13 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
             <div className="flex flex-col gap-5 items-center">
               {/* QR Code */}
               <div className="size-[200px] flex items-center justify-center">
-                <img 
-                  src={inviteData.qr_code_url} 
+                <img
+                  src={inviteData.qr_code_url}
                   alt="QR код для подключения"
                   className="w-full h-full object-contain"
                 />
               </div>
-              
+
               {/* Ссылка для подключения и Инструкция */}
               <div className="flex flex-col gap-[10px] w-full">
                 <div className="flex flex-col gap-1">
@@ -376,15 +433,19 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
                   <div className="flex gap-[10px]">
                     <input
                       type="text"
-                      value={inviteData.deep_link} 
-                      readOnly 
+                      value={inviteData.deep_link}
+                      readOnly
                       className="flex-1 bg-[#f8f8f8] px-[14px] py-3 rounded-[12px] text-sm text-black leading-[1.2] truncate"
                     />
                     <button
-                      onClick={handleCopyLink}
+                      onClick={() => {
+                        void handleCopyLink();
+                      }}
                       disabled={copied}
                       className="bg-[#f8f8f8] rounded-[12px] size-[41px] flex items-center justify-center hover:bg-[#eeeeee] transition-colors disabled:opacity-50"
-                      aria-label={copied ? "Ссылка скопирована" : "Копировать ссылку"}
+                      aria-label={
+                        copied ? "Ссылка скопирована" : "Копировать ссылку"
+                      }
                     >
                       {copied ? (
                         <Check className="w-[18px] h-[18px] text-[#34c759]" />
@@ -403,7 +464,7 @@ export function AddEmployeeModal({ open, onOpenChange, onSuccess: _onSuccess }: 
                   <ol className="list-decimal text-sm text-black leading-[1.2] space-y-[3px] ml-[21px]">
                     <li>Отсканируйте QR-код или перейдите по ссылке</li>
                     <li>Откроется Telegram с ботом</li>
-                    <li>{"Нажмите \"Начать\" в боте"}</li>
+                    <li>{'Нажмите "Начать" в боте'}</li>
                     <li>Сотрудник будет автоматически подключен к системе</li>
                   </ol>
                 </div>

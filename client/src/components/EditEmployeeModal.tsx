@@ -1,4 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -37,7 +43,12 @@ const TEMPLATE_AVATARS = [
   { id: 8, image: "/avatars/8.png" },
 ];
 
-export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: EditEmployeeModalProps) {
+export function EditEmployeeModal({
+  open,
+  onOpenChange,
+  employee,
+  onSuccess,
+}: EditEmployeeModalProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [position, setPosition] = useState("");
@@ -46,7 +57,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
   const [selectedAvatarId, setSelectedAvatarId] = useState<number | null>(null);
   const [initialPhotoUrl, setInitialPhotoUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const { toast } = useToast();
   const { companyId } = useAuth();
   const queryClient = useQueryClient();
@@ -54,11 +65,11 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
   // Update form when employee changes
   useEffect(() => {
     if (employee) {
-      const nameParts = employee.full_name.split(' ');
+      const nameParts = employee.full_name.split(" ");
       setFirstName(nameParts[0] || "");
-      setLastName(nameParts.slice(1).join(' ') || "");
+      setLastName(nameParts.slice(1).join(" ") || "");
       setPosition(employee.position);
-      
+
       // Restore saved avatar or photo
       if (employee.photo_url) {
         setPhoto(employee.photo_url);
@@ -79,16 +90,29 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
   }, [employee]);
 
   const updateEmployeeMutation = useMutation({
-    mutationFn: async (data: { full_name: string; position: string; photo?: File; avatarId?: number | null; clearPhoto?: boolean }) => {
-      if (!employee) return;
-      
+    mutationFn: async (data: {
+      full_name: string;
+      position: string;
+      photo?: File;
+      avatarId?: number | null;
+      clearPhoto?: boolean;
+    }) => {
+      if (!employee) {
+        return;
+      }
+
       // TODO: Implement photo upload endpoint
       // For now, only send JSON data (photo upload will be implemented separately)
-      const body: { full_name: string; position: string; avatar_id?: number | null; photo_url?: string | null } = {
+      const body: {
+        full_name: string;
+        position: string;
+        avatar_id?: number | null;
+        photo_url?: string | null;
+      } = {
         full_name: data.full_name,
         position: data.position,
       };
-      
+
       // Always include avatar_id - null if not selected, number if selected
       body.avatar_id = data.avatarId ?? null;
 
@@ -96,9 +120,9 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
       if (data.clearPhoto || data.avatarId === null) {
         body.photo_url = null;
       }
-      
-      console.log('Sending update request:', body);
-      
+
+      console.log("Sending update request:", body);
+
       const response = await fetch(`/api/employees/${employee.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -107,59 +131,66 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Update failed:', errorData);
+        console.error("Update failed:", errorData);
         throw new Error(errorData.error || "Ошибка обновления сотрудника");
       }
 
       const result = await response.json();
-      console.log('Update response:', result);
+      console.log("Update response:", result);
       return result;
     },
     onSuccess: (data) => {
-      console.log('Update successful, received data:', data);
-      
+      console.log("Update successful, received data:", data);
+
       // Ensure data has correct avatar fields
       const updatedData = {
         ...data,
         avatar_id: normalizeAvatarId(data.avatar_id),
         photo_url: data.photo_url ?? null,
       };
-      
+
       // Update employee in the employees list cache
       if (updatedData && employee) {
         queryClient.setQueriesData(
           { queryKey: ["/api/companies", companyId, "employees"] },
           (old: any) => {
-            if (!old || !Array.isArray(old)) return old;
-            return old.map((emp: any) => 
-              emp.id === employee.id 
-                ? { ...emp, ...updatedData }
-                : emp
+            if (!old || !Array.isArray(old)) {
+              return old;
+            }
+            return old.map((emp: any) =>
+              emp.id === employee.id ? { ...emp, ...updatedData } : emp,
             );
-          }
+          },
         );
-        
+
         // Also update individual employee cache
-        queryClient.setQueryData(["/api/employees", employee.id], (old: any) => {
-          if (old) {
-            return { ...old, ...updatedData };
-          }
-          return updatedData;
-        });
+        queryClient.setQueryData(
+          ["/api/employees", employee.id],
+          (old: any) => {
+            if (old) {
+              return { ...old, ...updatedData };
+            }
+            return updatedData;
+          },
+        );
       }
-      
+
       // Invalidate queries after a short delay to allow server to process
       // This ensures the server has time to save the changes before refetching
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "employees"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/employees", employee?.id] });
+        void queryClient.invalidateQueries({
+          queryKey: ["/api/companies", companyId, "employees"],
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["/api/employees", employee?.id],
+        });
       }, 500);
-      
+
       toast({
         title: "Успешно",
         description: "Профиль сотрудника обновлен",
       });
-      
+
       onSuccess?.();
       onOpenChange(false);
     },
@@ -172,10 +203,11 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
     },
   });
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 5 * 1024 * 1024) {
+        // 5MB limit
         toast({
           title: "Ошибка",
           description: "Размер файла не должен превышать 5 МБ",
@@ -183,8 +215,8 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
         });
         return;
       }
-      
-      if (!file.type.startsWith('image/')) {
+
+      if (!file.type.startsWith("image/")) {
         toast({
           title: "Ошибка",
           description: "Выберите изображение",
@@ -192,7 +224,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
         });
         return;
       }
-      
+
       setPhotoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -207,7 +239,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
     setPhotoFile(null);
     setSelectedAvatarId(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -216,24 +248,24 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
     setPhoto(null);
     setPhotoFile(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
   const getCurrentAvatar = () => {
     if (photo) {
-      return { type: 'photo' as const, src: photo };
+      return { type: "photo" as const, src: photo };
     }
     if (selectedAvatarId) {
-      const avatar = TEMPLATE_AVATARS.find(a => a.id === selectedAvatarId);
-      return { type: 'template' as const, avatar };
+      const avatar = TEMPLATE_AVATARS.find((a) => a.id === selectedAvatarId);
+      return { type: "template" as const, avatar };
     }
-    return { type: 'initials' as const };
+    return { type: "initials" as const };
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
     if (!firstName.trim()) {
       toast({
         title: "Ошибка",
@@ -242,7 +274,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
       });
       return;
     }
-    
+
     if (!position.trim()) {
       toast({
         title: "Ошибка",
@@ -255,11 +287,10 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
 
     // Determine if we're clearing photo (user removed photo or selected avatar)
-    const hasTemplateAvatar = selectedAvatarId !== null && selectedAvatarId !== undefined;
+    const hasTemplateAvatar =
+      selectedAvatarId !== null && selectedAvatarId !== undefined;
     const isClearingPhoto =
-      !!initialPhotoUrl &&
-      !photoFile &&
-      (!photo || hasTemplateAvatar);
+      !!initialPhotoUrl && !photoFile && (!photo || hasTemplateAvatar);
 
     updateEmployeeMutation.mutate({
       full_name: fullName,
@@ -289,7 +320,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
             <div className="relative">
               {(() => {
                 const currentAvatar = getCurrentAvatar();
-                if (currentAvatar.type === 'photo') {
+                if (currentAvatar.type === "photo") {
                   return (
                     <div className="relative">
                       <img
@@ -307,7 +338,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
                     </div>
                   );
                 }
-                if (currentAvatar.type === 'template') {
+                if (currentAvatar.type === "template") {
                   return (
                     <div className="relative">
                       <img
@@ -317,20 +348,23 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
                         onError={(e) => {
                           // Fallback to initials if image fails to load
                           const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const fallback = target.parentElement?.querySelector('.avatar-fallback') as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
+                          target.style.display = "none";
+                          const fallback = target.parentElement?.querySelector(
+                            ".avatar-fallback",
+                          ) as HTMLElement;
+                          if (fallback) {
+                            fallback.style.display = "flex";
+                          }
                         }}
                       />
-                      <div
-                        className="avatar-fallback size-[80px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-2xl hidden"
-                      >
-                        {employee && employee.full_name
-                          .split(' ')
-                          .map(n => n[0])
-                          .slice(0, 2)
-                          .join('')
-                          .toUpperCase()}
+                      <div className="avatar-fallback size-[80px] rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-medium text-2xl hidden">
+                        {employee &&
+                          employee.full_name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .slice(0, 2)
+                            .join("")
+                            .toUpperCase()}
                       </div>
                       <button
                         type="button"
@@ -347,10 +381,10 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
                     {employee && (
                       <>
                         {employee.full_name
-                          .split(' ')
-                          .map(n => n[0])
+                          .split(" ")
+                          .map((n) => n[0])
                           .slice(0, 2)
-                          .join('')
+                          .join("")
                           .toUpperCase()}
                         <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <Upload className="w-6 h-6 text-white" />
@@ -361,7 +395,7 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
                 );
               })()}
             </div>
-            
+
             <div className="flex flex-col items-center gap-3 w-full">
               <input
                 ref={fileInputRef}
@@ -392,8 +426,8 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
                       onClick={() => handleSelectAvatar(avatar.id)}
                       className={`size-14 rounded-full overflow-hidden transition-all relative ${
                         selectedAvatarId === avatar.id
-                          ? 'ring-2 ring-[#e16546] ring-offset-2 ring-offset-white scale-105'
-                          : 'hover:scale-105 hover:ring-2 hover:ring-[#eeeeee]'
+                          ? "ring-2 ring-[#e16546] ring-offset-2 ring-offset-white scale-105"
+                          : "hover:scale-105 hover:ring-2 hover:ring-[#eeeeee]"
                       }`}
                     >
                       <img
@@ -403,11 +437,12 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
                         onError={(e) => {
                           // Show placeholder if image fails to load
                           const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
+                          target.style.display = "none";
                           const parent = target.parentElement;
                           if (parent) {
-                            parent.classList.add('bg-[#f8f8f8]');
-                            parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-xs text-[#959595]">?</div>';
+                            parent.classList.add("bg-[#f8f8f8]");
+                            parent.innerHTML =
+                              '<div class="w-full h-full flex items-center justify-center text-xs text-[#959595]">?</div>';
                           }
                         }}
                       />
@@ -422,7 +457,10 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
           <div className="grid grid-cols-2 gap-4">
             {/* First Name */}
             <div className="space-y-2">
-              <label htmlFor="edit-firstName" className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block">
+              <label
+                htmlFor="edit-firstName"
+                className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block"
+              >
                 Имя *
               </label>
               <input
@@ -438,7 +476,10 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
 
             {/* Last Name */}
             <div className="space-y-2">
-              <label htmlFor="edit-lastName" className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block">
+              <label
+                htmlFor="edit-lastName"
+                className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block"
+              >
                 Фамилия
               </label>
               <input
@@ -454,7 +495,10 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSuccess }: E
 
           {/* Position */}
           <div className="space-y-2">
-            <label htmlFor="edit-position" className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block">
+            <label
+              htmlFor="edit-position"
+              className="text-sm font-medium text-[#1a1a1a] leading-[1.2] block"
+            >
               Должность *
             </label>
             <input
