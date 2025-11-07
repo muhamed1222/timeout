@@ -4,6 +4,8 @@ import { asyncHandler } from "../lib/errorHandler.js";
 import { validateParams } from "../middleware/validate.js";
 import { companyIdInParamsSchema } from "../lib/schemas/index.js";
 import { getOrSet } from "../lib/utils/cache.js";
+import { useMockApiData, getMockActiveShifts } from "../lib/mock/index.js";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 
@@ -25,14 +27,22 @@ router.get("/:companyId/schedule-templates", validateParams(companyIdInParamsSch
 router.get("/:companyId/shifts/active", validateParams(companyIdInParamsSchema), asyncHandler(async (req, res) => {
   const { companyId } = req.params;
   
-  const shifts = await getOrSet(
-    `company:${companyId}:active-shifts`,
-    async () => await repositories.shift.findActiveByCompanyId(companyId),
-    60 // Cache for 1 minute (active shifts change frequently)
-  );
-  
-  res.json(shifts);
+  try {
+    const shifts = await getOrSet(
+      `company:${companyId}:active-shifts`,
+      async () => await repositories.shift.findActiveByCompanyId(companyId),
+      60 // Cache for 1 minute (active shifts change frequently)
+    );
+    
+    res.json(shifts);
+  } catch (error) {
+    if (useMockApiData && !res.headersSent) {
+      logger.error("Active shifts query failed, returning mock data", error instanceof Error ? { error: error.message } : undefined);
+      res.json(getMockActiveShifts(companyId));
+      return;
+    }
+    throw error;
+  }
 }));
 
 export default router;
-

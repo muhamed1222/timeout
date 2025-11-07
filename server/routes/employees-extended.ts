@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { repositories } from "../repositories/index.js";
 import { logger } from "../lib/logger.js";
+import { useMockApiData, getMockEmployees } from "../lib/mock/index.js";
 
 const router = Router();
 
@@ -12,6 +13,10 @@ router.get("/companies/:companyId/employees", async (req, res): Promise<void> =>
     res.json(employees);
   } catch (error) {
     logger.error("Error fetching employees", error);
+    if (useMockApiData && !res.headersSent) {
+      res.json(getMockEmployees(req.params.companyId));
+      return;
+    }
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -55,7 +60,6 @@ router.get("/:employeeId/active-schedule", async (req, res): Promise<void> => {
 });
 
 export default router;
-
 
 
 

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import { repositories } from "../repositories/index.js";
-import { insertEmployeeInviteSchema } from "@outcasts/shared/schema.js";
+import { createInviteSchema } from "../lib/schemas/invites.schemas.js";
 import { logger } from "../lib/logger.js";
 import { NotFoundError, ValidationError, ConflictError, asyncHandler } from "../lib/errorHandler.js";
 
@@ -31,7 +31,7 @@ router.post("/", asyncHandler(async (req, res) => {
   data.code = randomBytes(16).toString("hex");
   let validatedData;
   try {
-    validatedData = insertEmployeeInviteSchema.parse(data);
+    validatedData = createInviteSchema.parse(data);
   } catch (error) {
     if (error instanceof z.ZodError) {
       throw new ValidationError("Validation failed", { errors: error.errors });
@@ -83,7 +83,7 @@ router.post("/:code/use", asyncHandler(async (req, res) => {
 // Accept invite (for Telegram bot)
 router.post("/:code/accept", asyncHandler(async (req, res) => {
   const { code } = req.params;
-  const { telegram_user_id, telegram_username } = req.body;
+  const { telegram_user_id } = req.body;
   
   if (!telegram_user_id) {
     throw new ValidationError("telegram_user_id is required");

@@ -8,6 +8,7 @@ import { validateBody, validateParams, validateQuery } from "../middleware/valid
 import { createCompanySchema, updateCompanySchema, companyIdParamSchema, companyIdInParamsSchema, generateShiftsSchema, exceptionIdParamSchema } from "../lib/schemas/index.js";
 import { dateRangeQuerySchema, limitQuerySchema } from "../lib/schemas/common.schemas.js";
 import { invalidateCompanyStats } from "../lib/utils/index.js";
+import { useMockApiData, getMockCompanyStats, getMockEmployees, getMockViolationRules, getMockRatings } from "../lib/mock/index.js";
 import type { Shift, EmployeeSchedule, InsertShift } from "@outcasts/shared/schema.js";
 
 interface ScheduleRules {
@@ -138,8 +139,11 @@ router.get("/:companyId/stats", validateParams(companyIdInParamsSchema), asyncHa
     res.json(stats);
   } catch (error) {
     clearTimeout(timeout);
-    // Re-throw error to be handled by asyncHandler
-    // This will properly set status code based on error type
+    if (useMockApiData && !res.headersSent) {
+      logger.error("Company stats query failed, returning mock data", error instanceof Error ? { error: error.message } : undefined);
+      res.json(getMockCompanyStats(req.params.companyId));
+      return;
+    }
     throw error;
   }
 }));
@@ -450,8 +454,17 @@ router.get("/:companyId/daily-reports", validateParams(companyIdInParamsSchema),
 // Get violation rules by company (alias for frontend compatibility)
 router.get("/:companyId/violation-rules", validateParams(companyIdInParamsSchema), asyncHandler(async (req, res) => {
   const { companyId } = req.params;
-  const rules = await repositories.violation.findByCompanyId(companyId);
-  res.json(rules);
+  try {
+    const rules = await repositories.violation.findByCompanyId(companyId);
+    res.json(rules);
+  } catch (error) {
+    if (useMockApiData && !res.headersSent) {
+      logger.error("Violation rules query failed, returning mock data", error instanceof Error ? { error: error.message } : undefined);
+      res.json(getMockViolationRules(companyId));
+      return;
+    }
+    throw error;
+  }
 }));
 
 // Get ratings by company and period
@@ -463,21 +476,38 @@ router.get("/:companyId/ratings", validateParams(companyIdInParamsSchema), valid
   const { periodStart, periodEnd } = req.query;
   const start = new Date(typeof periodStart === 'string' ? periodStart : String(periodStart));
   const end = new Date(typeof periodEnd === 'string' ? periodEnd : String(periodEnd));
-  const ratings = await repositories.rating.findByCompanyId(companyId, start, end);
-  res.json(ratings);
+  try {
+    const ratings = await repositories.rating.findByCompanyId(companyId, start, end);
+    res.json(ratings);
+  } catch (error) {
+    if (useMockApiData && !res.headersSent) {
+      logger.error("Company ratings (legacy route) failed, returning mock data", error instanceof Error ? { error: error.message } : undefined);
+      res.json(getMockRatings(companyId));
+      return;
+    }
+    throw error;
+  }
 }));
 
 // Get employees by company
 router.get("/:companyId/employees", validateParams(companyIdInParamsSchema), asyncHandler(async (req, res) => {
   const { companyId } = req.params;
-  const employees = await repositories.employee.findByCompanyId(companyId);
-  // Ensure avatar_id and photo_url are present (for backward compatibility with DBs that don't have these fields yet)
-  const employeesWithDefaults = employees.map(emp => ({
-    ...emp,
-    avatar_id: emp.avatar_id ?? null,
-    photo_url: emp.photo_url ?? null,
-  }));
-  res.json(employeesWithDefaults);
+  try {
+    const employees = await repositories.employee.findByCompanyId(companyId);
+    const employeesWithDefaults = employees.map(emp => ({
+      ...emp,
+      avatar_id: emp.avatar_id ?? null,
+      photo_url: emp.photo_url ?? null,
+    }));
+    res.json(employeesWithDefaults);
+  } catch (error) {
+    if (useMockApiData && !res.headersSent) {
+      logger.error("Company employees query failed, returning mock data", error instanceof Error ? { error: error.message } : undefined);
+      res.json(getMockEmployees(companyId));
+      return;
+    }
+    throw error;
+  }
 }));
 
 // Get employee invites by company
@@ -488,4 +518,3 @@ router.get("/:companyId/employee-invites", validateParams(companyIdInParamsSchem
 }));
 
 export default router;
-

@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
 import { repositories } from "../repositories/index.js";
-import { insertCompanyViolationRulesSchema, insertViolationsSchema } from "@outcasts/shared/schema.js";
 import type { EmployeeRating, InsertEmployeeRating, InsertCompanyViolationRules } from "@outcasts/shared/schema.js";
 import { logger } from "../lib/logger.js";
 import { invalidateCompanyStats, getCurrentMonthPeriod } from "../lib/utils/index.js";
@@ -9,8 +8,9 @@ import { asyncHandler, NotFoundError, ValidationError } from "../lib/errorHandle
 import { validateBody, validateParams, validateQuery } from "../middleware/validate.js";
 import { companyIdInParamsSchema } from "../lib/schemas/companies.schemas.js";
 import { employeeIdInParamsSchema } from "../lib/schemas/employees.schemas.js";
-import { violationRuleIdParamSchema, createViolationRuleSchema, updateViolationRuleSchema } from "../lib/schemas/violations.schemas.js";
+import { violationRuleIdParamSchema, createViolationRuleSchema, updateViolationRuleSchema, createViolationSchema } from "../lib/schemas/violations.schemas.js";
 import { dateRangeQuerySchema, adjustRatingBodySchema, recalculateRatingBodySchema } from "../lib/schemas/common.schemas.js";
+import { useMockApiData, getMockRatings } from "../lib/mock/index.js";
 
 const router = Router();
 
@@ -203,17 +203,28 @@ router.get("/companies/:companyId/ratings", validateParams(companyIdInParamsSche
     startDate = new Date(periodStart as string);
     endDate = new Date(periodEnd as string);
   }
-  
-  const ratings = await repositories.rating.findByCompanyId(companyId, startDate, endDate);
-  
-  // Transform to format expected by frontend: { employee_id, rating }
-  // rating is numeric (string) from PostgreSQL, convert to number
-  const transformedRatings = ratings.map((r: EmployeeRating) => ({
-    employee_id: r.employee_id,
-    rating: Number(r.rating || 100) // Convert numeric string to number, default to 100
-  }));
-  
-  res.json(transformedRatings);
+
+  try {
+    const ratings = await repositories.rating.findByCompanyId(companyId, startDate, endDate);
+    
+    const transformedRatings = ratings.map((r: EmployeeRating) => ({
+      employee_id: r.employee_id,
+      rating: Number(r.rating || 100),
+    }));
+    
+    res.json(transformedRatings);
+  } catch (error) {
+    if (useMockApiData && !res.headersSent) {
+      logger.error("Company ratings query failed, returning mock data", error instanceof Error ? { error: error.message } : undefined);
+      const mockRatings = getMockRatings(companyId).map((r) => ({
+        employee_id: r.employee_id,
+        rating: Number(r.rating),
+      }));
+      res.json(mockRatings);
+      return;
+    }
+    throw error;
+  }
 }));
 
 // Recalculate company ratings
@@ -341,4 +352,3 @@ router.post("/employees/:employeeId/adjust", validateParams(employeeIdInParamsSc
 }));
 
 export default router;
-

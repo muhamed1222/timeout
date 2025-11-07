@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { repositories } from "../repositories/index.js";
-import { insertScheduleTemplateSchema } from "@outcasts/shared/schema.js";
+import { createScheduleTemplateSchema, updateScheduleTemplateSchema } from "../lib/schemas/schedules.schemas.js";
 import { logger } from "../lib/logger.js";
 
 const router = Router();
@@ -9,7 +9,7 @@ const router = Router();
 // Create schedule template
 router.post("/", async (req, res) => {
   try {
-    const validatedData = insertScheduleTemplateSchema.parse(req.body);
+    const validatedData = createScheduleTemplateSchema.parse(req.body);
     const template = await repositories.schedule.create(validatedData as any);
     res.json(template);
   } catch (error) {
@@ -40,7 +40,7 @@ router.get("/:id", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = insertScheduleTemplateSchema.partial().parse(req.body);
+    const updates = updateScheduleTemplateSchema.parse(req.body);
     const template = await repositories.schedule.update(id, updates as any);
     if (!template) {
       return res.status(404).json({ error: "Schedule template not found" });
